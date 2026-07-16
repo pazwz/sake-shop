@@ -1,0 +1,3 @@
+'use client';
+import {useEffect,useState} from 'react'; import {useLanguage} from './language-provider';
+export function BackToTop(){const [visible,setVisible]=useState(false);const {t}=useLanguage();useEffect(()=>{const onScroll=()=>setVisible(window.scrollY>500);window.addEventListener('scroll',onScroll);return()=>window.removeEventListener('scroll',onScroll)},[]);if(!visible)return null;return <button onClick={()=>window.scrollTo({top:0,behavior:'smooth'})} className="fixed bottom-6 right-6 z-50 flex h-12 w-12 items-center justify-center border border-[#c7a463] bg-[#1b1a17]/95 text-[10px] text-[#e5c277] shadow-xl" aria-label={t('ページ上部へ戻る','Back to top','回到顶部','맨 위로')}>TOP<br/>↑</button>}

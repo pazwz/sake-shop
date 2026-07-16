@@ -1,0 +1,4 @@
+'use client';
+import {useEffect,useState} from 'react'; import {products,Product} from '@/lib/products'; import {ProductCard} from './product-card'; import {useLanguage} from './language-provider';
+export const HISTORY_KEY='kura-view-history';
+export function RecentlyViewed(){const [items,setItems]=useState<Product[]>([]);const {t}=useLanguage();useEffect(()=>{const ids=JSON.parse(localStorage.getItem(HISTORY_KEY)||'[]') as number[];setItems(ids.map(id=>products.find(product=>product.id===id)).filter(Boolean) as Product[])},[]);if(!items.length)return null;return <section id="recently-viewed" className="wrap py-16"><p className="eyebrow">Recently viewed</p><h2 className="serif mt-3 text-3xl">{t('閲覧履歴','Recently viewed','浏览记录','최근 본 상품')}</h2><div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">{items.slice(0,4).map(product=><ProductCard key={product.id} product={product}/>)}</div></section>}
