@@ -900,4 +900,37 @@ Payment Integration
 
 ---
 
+---
+
+# Database Health API
+
+## GET /api/v1/health/database
+
+用途：
+
+用于开发、部署及监控过程中确认应用是否能够正常连接 PostgreSQL。
+
+该接口不用于业务处理。
+
+### Authentication
+
+当前开发阶段允许公开访问。
+
+正式生产环境后，可根据监控方案决定是否限制访问。
+
+### Success Response
+
+HTTP 200
+
+```json
+{
+  "success": true,
+  "data": {
+    "database": "connected",
+    "timestamp": "2026-08-09T00:00:00.000Z",
+    "version": "v1"
+  },
+  "message": "",
+  "error": null
+}
 本文件作为整个项目 API 开发唯一标准，所有后续开发必须遵循本规范。
