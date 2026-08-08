@@ -2,7 +2,33 @@
   "name": "kura-select-demo",
   "version": "0.1.0",
   "private": true,
-  "scripts": {"dev": "next dev", "build": "next build", "lint": "tsc --noEmit"},
-  "dependencies": {"@tailwindcss/postcss": "latest", "@types/node": "latest", "@types/react": "latest", "@types/react-dom": "latest", "autoprefixer": "latest", "next": "latest", "postcss": "latest", "react": "latest", "react-dom": "latest", "tailwindcss": "latest", "typescript": "^5.7.0"},
-  "devDependencies": {}
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "lint": "eslint . --max-warnings=0 && tsc --noEmit",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "prisma:generate": "prisma generate"
+  },
+  "dependencies": {
+    "@prisma/client": "6.16.0",
+    "@tailwindcss/postcss": "latest",
+    "@types/node": "latest",
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
+    "autoprefixer": "latest",
+    "next": "latest",
+    "postcss": "latest",
+    "react": "latest",
+    "react-dom": "latest",
+    "tailwindcss": "latest",
+    "typescript": "^5.7.0",
+    "zod": "3.24.1"
+  },
+  "devDependencies": {
+    "eslint": "9.22.0",
+    "eslint-config-next": "16.2.10",
+    "prettier": "3.5.3",
+    "prisma": "6.16.0"
+  }
 }
