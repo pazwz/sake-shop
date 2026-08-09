@@ -31,6 +31,7 @@ export default function Cart() {
                 <div className="relative aspect-square">
                   <Image
                     fill
+                    sizes="100px"
                     className="object-cover"
                     src={product.image}
                     alt={product.name}

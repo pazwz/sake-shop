@@ -1,5 +1,282 @@
 'use client';
-import Image from 'next/image';import Link from 'next/link';import {useState} from 'react';import {categories,products} from '@/lib/products';import {ProductCard} from '@/components/product-card';import {useLanguage} from '@/components/language-provider';
-const seasons={spring:{label:'春',query:'spring',title:'春を祝う、華やかな一献。',text:'花見や春の食卓に寄り添う、軽やかで香り豊かな酒を選びました。',image:'photo-1510812431401-41d2bd2722f3',ids:[0,1,10,12],cats:['日本酒','ワイン']},summer:{label:'夏',query:'summer',title:'夏を愉しむ、涼やかな一献。',text:'冷やして嬉しい日本酒や、爽やかな白ワインを集めました。',image:'photo-1506377247377-2a5b3b417ebb',ids:[1,10,15,17],cats:['日本酒','ワイン','リキュール']},autumn:{label:'秋',query:'autumn',title:'実りの季節に、深みのある一杯。',text:'ひやおろしや熟成酒など、秋の味覚に寄り添う酒を選びました。',image:'photo-1513558161293-cdaf765ed2fd',ids:[2,4,7,9],cats:['日本酒','ウイスキー','焼酎']},winter:{label:'冬',query:'winter',title:'冬の食卓を温める一杯。',text:'燗酒や濃醇な酒。年末年始の贈り物にもふさわしいラインアップです。',image:'photo-1568213816046-0ee1c42bd559',ids:[0,3,6,13],cats:['日本酒','シャンパン','焼酎']}} as const;
-const editorial=[['今月のおすすめ','夏の食卓に寄り添う、透明感のある味わい。','photo-1569529465841-dfecdab7503b'],['贈り物におすすめ','感謝を丁寧に伝える、記憶に残る一本。','photo-1568213816046-0ee1c42bd559']];
-export default function Home(){const [key,setKey]=useState<keyof typeof seasons>('summer');const {categoryLabel}=useLanguage();const season=seasons[key];const owner=products.filter(product=>product.recommendationTags.includes('店主おすすめ')).slice(0,3);const newItems=[...products].sort((a,b)=>b.createdAt.localeCompare(a.createdAt)).slice(0,3);return <><section className="relative h-[82vh] min-h-[620px] overflow-hidden"><Image fill priority className="object-cover" src={`https://images.unsplash.com/${season.image}?auto=format&fit=crop&w=2000&q=88`} alt={season.title}/><div className="absolute inset-0 bg-gradient-to-r from-black/55 via-black/20 to-transparent"/><div className="wrap relative flex h-full items-end pb-20 text-white"><div className="max-w-2xl"><p className="eyebrow text-[#eed9aa]">SEASONAL JOURNAL / {season.label}</p><h1 className="serif mt-6 text-5xl leading-tight md:text-7xl">{season.title}</h1><p className="mt-6 max-w-md text-sm leading-8 text-stone-100">{season.text}</p><Link className="btn mt-9 bg-white text-[#171412] hover:bg-[#ead9b7]" href={`/products?season=${season.query}`}>季節を味わう　→</Link></div></div></section><section className="wrap py-20 md:py-28"><div className="flex flex-wrap items-end justify-between gap-6"><div><p className="eyebrow">SEASONAL RECOMMENDATIONS</p><h2 className="serif mt-4 text-4xl">季節のおすすめ</h2></div><div className="flex border-b line text-sm font-semibold">{(Object.keys(seasons) as (keyof typeof seasons)[]).map(item=><button key={item} onClick={()=>setKey(item)} className={`px-4 py-3 ${item===key?'border-b-2 border-[#6d2227] text-[#6d2227]':'text-stone-500'}`}>{seasons[item].label}</button>)}</div></div><div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">{season.ids.map(index=><ProductCard key={products[index].id} product={products[index]}/>)}</div><div className="mt-8 flex flex-wrap gap-3">{season.cats.map(category=><Link key={category} href={`/products?category=${encodeURIComponent(category)}&season=${season.query}`} className="border border-stone-300 px-4 py-3 text-xs">{categoryLabel(category)}　→</Link>)}</div><Link href={`/products?season=${season.query}`} className="mt-8 inline-block border-b border-[#171412] pb-1 text-xs font-bold">{season.label}のおすすめをすべて見る　→</Link></section><section className="border-y line bg-[#faf8f4]"><div className="wrap py-20"><p className="eyebrow">Explore by category</p><div className="mt-10 grid grid-cols-2 border-l line md:grid-cols-3">{categories.map((category,index)=><Link key={category} href={`/products?category=${encodeURIComponent(category)}`} className="group border-b border-r line p-7 md:p-10"><span className="text-xs text-stone-500">0{index+1}</span><p className="serif mt-10 text-2xl group-hover:text-[#6d2227]">{categoryLabel(category)}</p><span className="mt-3 block text-xs text-[#6d2227]">選ぶ　→</span></Link>)}</div></div></section><section className="wrap grid gap-10 py-24 md:grid-cols-[.8fr_1.2fr]"><div><p className="eyebrow">SHOPKEEPER&apos;S CHOICE</p><h2 className="serif mt-5 text-4xl">店主のおすすめ</h2><p className="mt-6 text-sm leading-8 text-stone-600">造り手の哲学と、食卓の時間まで想像しながら選びました。</p><Link href="/products" className="mt-7 inline-block border-b border-[#171412] pb-1 text-xs">選び抜いた一本へ　→</Link></div><div className="grid gap-5 sm:grid-cols-3">{owner.map(product=><ProductCard key={product.id} product={product}/>)}</div></section><section className="grid min-h-[540px] md:grid-cols-2"><div className="relative min-h-80"><Image fill className="object-cover" src="https://images.unsplash.com/photo-1527281400683-1aae777175f8?auto=format&fit=crop&w=1500&q=85" alt="九州の酒"/></div><div className="flex items-center bg-[#3d3028] px-10 py-20 text-white md:px-20"><div><p className="eyebrow text-[#e7cf9f]">EDITORIAL FEATURE</p><h2 className="serif mt-6 text-5xl leading-tight">九州の風土が<br/>育てた、深い余韻。</h2><p className="mt-7 max-w-md text-sm leading-8 text-stone-200">海と山に囲まれた蒸溜所を訪ね、土地の香りを映す酒を集めました。</p><Link className="mt-8 inline-block border-b border-[#e7cf9f] pb-1 text-xs text-[#e7cf9f]" href="/products?origin=鹿児島県">九州の特集へ　→</Link></div></div></section><section className="wrap py-24"><p className="eyebrow">NEW ARRIVALS</p><h2 className="serif mt-4 text-4xl">新着商品</h2><div className="mt-10 grid gap-5 sm:grid-cols-3">{newItems.map(product=><ProductCard key={product.id} product={product}/>)}</div></section><section className="bg-[#f3f0ea]"><div className="wrap py-24"><p className="eyebrow">GIFT & JOURNAL</p><div className="mt-5 grid gap-8 md:grid-cols-2">{editorial.map(([title,text,image])=><Link key={title} href="/products" className="grid gap-6 sm:grid-cols-2"><div className="relative aspect-[4/3]"><Image fill className="object-cover" src={`https://images.unsplash.com/${image}?auto=format&fit=crop&w=900&q=80`} alt={title}/></div><div className="self-center"><h3 className="serif text-3xl">{title}</h3><p className="mt-4 text-sm leading-7 text-stone-600">{text}</p><span className="mt-5 block text-xs text-[#6d2227]">特集を見る　→</span></div></Link>)}</div></div></section><section className="wrap grid gap-12 py-28 md:grid-cols-2"><div><p className="eyebrow">VISIT OUR STORE</p><h2 className="serif mt-6 text-4xl">店でしか出会えない、<br/>余白があります。</h2><p className="mt-7 max-w-md text-sm leading-8 text-stone-600">東京・神楽坂の小さな店で、香りを感じ、つくり手の話を交わしながら、あなたのための一本をお選びします。</p><Link href="/about" className="btn btn-outline mt-8">店舗について</Link></div><div className="relative h-80"><Image fill className="object-cover" src="https://images.unsplash.com/photo-1528823872057-9c018a7a7553?auto=format&fit=crop&w=1200&q=80" alt="店舗"/></div></section></>}
+import Image from 'next/image';
+import Link from 'next/link';
+import { useState } from 'react';
+import { categories, products } from '@/lib/products';
+import { ProductCard } from '@/components/product-card';
+import { useLanguage } from '@/components/language-provider';
+const seasons = {
+  spring: {
+    label: '春',
+    query: 'spring',
+    title: '春を祝う、華やかな一献。',
+    text: '花見や春の食卓に寄り添う、軽やかで香り豊かな酒を選びました。',
+    image: 'photo-1510812431401-41d2bd2722f3',
+    ids: [0, 1, 10, 12],
+    cats: ['日本酒', 'ワイン'],
+  },
+  summer: {
+    label: '夏',
+    query: 'summer',
+    title: '夏を愉しむ、涼やかな一献。',
+    text: '冷やして嬉しい日本酒や、爽やかな白ワインを集めました。',
+    image: 'photo-1506377247377-2a5b3b417ebb',
+    ids: [1, 10, 15, 17],
+    cats: ['日本酒', 'ワイン', 'リキュール'],
+  },
+  autumn: {
+    label: '秋',
+    query: 'autumn',
+    title: '実りの季節に、深みのある一杯。',
+    text: 'ひやおろしや熟成酒など、秋の味覚に寄り添う酒を選びました。',
+    image: 'photo-1513558161293-cdaf765ed2fd',
+    ids: [2, 4, 7, 9],
+    cats: ['日本酒', 'ウイスキー', '焼酎'],
+  },
+  winter: {
+    label: '冬',
+    query: 'winter',
+    title: '冬の食卓を温める一杯。',
+    text: '燗酒や濃醇な酒。年末年始の贈り物にもふさわしいラインアップです。',
+    image: 'photo-1568213816046-0ee1c42bd559',
+    ids: [0, 3, 6, 13],
+    cats: ['日本酒', 'シャンパン', '焼酎'],
+  },
+} as const;
+const editorial = [
+  [
+    '今月のおすすめ',
+    '夏の食卓に寄り添う、透明感のある味わい。',
+    'photo-1569529465841-dfecdab7503b',
+  ],
+  [
+    '贈り物におすすめ',
+    '感謝を丁寧に伝える、記憶に残る一本。',
+    'photo-1568213816046-0ee1c42bd559',
+  ],
+];
+export default function Home() {
+  const [key, setKey] = useState<keyof typeof seasons>('summer');
+  const { categoryLabel } = useLanguage();
+  const season = seasons[key];
+  const owner = products
+    .filter((product) => product.recommendationTags.includes('店主おすすめ'))
+    .slice(0, 3);
+  const newItems = [...products]
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    .slice(0, 3);
+  return (
+    <>
+      <section className="relative h-[82vh] min-h-[620px] overflow-hidden">
+        <Image
+          fill
+          sizes="100vw"
+          loading="eager"
+          className="object-cover"
+          src={`https://images.unsplash.com/${season.image}?auto=format&fit=crop&w=2000&q=88`}
+          alt={season.title}
+        />
+        <div className="absolute inset-0 bg-gradient-to-r from-black/55 via-black/20 to-transparent" />
+        <div className="wrap relative flex h-full items-end pb-20 text-white">
+          <div className="max-w-2xl">
+            <p className="eyebrow text-[#eed9aa]">
+              SEASONAL JOURNAL / {season.label}
+            </p>
+            <h1 className="serif mt-6 text-5xl leading-tight md:text-7xl">
+              {season.title}
+            </h1>
+            <p className="mt-6 max-w-md text-sm leading-8 text-stone-100">
+              {season.text}
+            </p>
+            <Link
+              className="btn mt-9 bg-white text-[#171412] hover:bg-[#ead9b7]"
+              href={`/products?season=${season.query}`}
+            >
+              季節を味わう　→
+            </Link>
+          </div>
+        </div>
+      </section>
+      <section className="wrap py-20 md:py-28">
+        <div className="flex flex-wrap items-end justify-between gap-6">
+          <div>
+            <p className="eyebrow">SEASONAL RECOMMENDATIONS</p>
+            <h2 className="serif mt-4 text-4xl">季節のおすすめ</h2>
+          </div>
+          <div className="flex border-b line text-sm font-semibold">
+            {(Object.keys(seasons) as (keyof typeof seasons)[]).map((item) => (
+              <button
+                key={item}
+                onClick={() => setKey(item)}
+                className={`px-4 py-3 ${item === key ? 'border-b-2 border-[#6d2227] text-[#6d2227]' : 'text-stone-500'}`}
+              >
+                {seasons[item].label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          {season.ids.map((index) => (
+            <ProductCard key={products[index].id} product={products[index]} />
+          ))}
+        </div>
+        <div className="mt-8 flex flex-wrap gap-3">
+          {season.cats.map((category) => (
+            <Link
+              key={category}
+              href={`/products?category=${encodeURIComponent(category)}&season=${season.query}`}
+              className="border border-stone-300 px-4 py-3 text-xs"
+            >
+              {categoryLabel(category)}　→
+            </Link>
+          ))}
+        </div>
+        <Link
+          href={`/products?season=${season.query}`}
+          className="mt-8 inline-block border-b border-[#171412] pb-1 text-xs font-bold"
+        >
+          {season.label}のおすすめをすべて見る　→
+        </Link>
+      </section>
+      <section className="border-y line bg-[#faf8f4]">
+        <div className="wrap py-20">
+          <p className="eyebrow">Explore by category</p>
+          <div className="mt-10 grid grid-cols-2 border-l line md:grid-cols-3">
+            {categories.map((category, index) => (
+              <Link
+                key={category}
+                href={`/products?category=${encodeURIComponent(category)}`}
+                className="group border-b border-r line p-7 md:p-10"
+              >
+                <span className="text-xs text-stone-500">0{index + 1}</span>
+                <p className="serif mt-10 text-2xl group-hover:text-[#6d2227]">
+                  {categoryLabel(category)}
+                </p>
+                <span className="mt-3 block text-xs text-[#6d2227]">
+                  選ぶ　→
+                </span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+      <section className="wrap grid gap-10 py-24 md:grid-cols-[.8fr_1.2fr]">
+        <div>
+          <p className="eyebrow">SHOPKEEPER&apos;S CHOICE</p>
+          <h2 className="serif mt-5 text-4xl">店主のおすすめ</h2>
+          <p className="mt-6 text-sm leading-8 text-stone-600">
+            造り手の哲学と、食卓の時間まで想像しながら選びました。
+          </p>
+          <Link
+            href="/products"
+            className="mt-7 inline-block border-b border-[#171412] pb-1 text-xs"
+          >
+            選び抜いた一本へ　→
+          </Link>
+        </div>
+        <div className="grid gap-5 sm:grid-cols-3">
+          {owner.map((product) => (
+            <ProductCard key={product.id} product={product} />
+          ))}
+        </div>
+      </section>
+      <section className="grid min-h-[540px] md:grid-cols-2">
+        <div className="relative min-h-80">
+          <Image
+            fill
+            sizes="(max-width: 767px) 100vw, 50vw"
+            className="object-cover"
+            src="https://images.unsplash.com/photo-1527281400683-1aae777175f8?auto=format&fit=crop&w=1500&q=85"
+            alt="九州の酒"
+          />
+        </div>
+        <div className="flex items-center bg-[#3d3028] px-10 py-20 text-white md:px-20">
+          <div>
+            <p className="eyebrow text-[#e7cf9f]">EDITORIAL FEATURE</p>
+            <h2 className="serif mt-6 text-5xl leading-tight">
+              九州の風土が
+              <br />
+              育てた、深い余韻。
+            </h2>
+            <p className="mt-7 max-w-md text-sm leading-8 text-stone-200">
+              海と山に囲まれた蒸溜所を訪ね、土地の香りを映す酒を集めました。
+            </p>
+            <Link
+              className="mt-8 inline-block border-b border-[#e7cf9f] pb-1 text-xs text-[#e7cf9f]"
+              href="/products?origin=鹿児島県"
+            >
+              九州の特集へ　→
+            </Link>
+          </div>
+        </div>
+      </section>
+      <section className="wrap py-24">
+        <p className="eyebrow">NEW ARRIVALS</p>
+        <h2 className="serif mt-4 text-4xl">新着商品</h2>
+        <div className="mt-10 grid gap-5 sm:grid-cols-3">
+          {newItems.map((product) => (
+            <ProductCard key={product.id} product={product} />
+          ))}
+        </div>
+      </section>
+      <section className="bg-[#f3f0ea]">
+        <div className="wrap py-24">
+          <p className="eyebrow">GIFT & JOURNAL</p>
+          <div className="mt-5 grid gap-8 md:grid-cols-2">
+            {editorial.map(([title, text, image]) => (
+              <Link
+                key={title}
+                href="/products"
+                className="grid gap-6 sm:grid-cols-2"
+              >
+                <div className="relative aspect-[4/3]">
+                  <Image
+                    fill
+                    sizes="(max-width: 639px) 100vw, (max-width: 767px) 50vw, 25vw"
+                    className="object-cover"
+                    src={`https://images.unsplash.com/${image}?auto=format&fit=crop&w=900&q=80`}
+                    alt={title}
+                  />
+                </div>
+                <div className="self-center">
+                  <h3 className="serif text-3xl">{title}</h3>
+                  <p className="mt-4 text-sm leading-7 text-stone-600">
+                    {text}
+                  </p>
+                  <span className="mt-5 block text-xs text-[#6d2227]">
+                    特集を見る　→
+                  </span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+      <section className="wrap grid gap-12 py-28 md:grid-cols-2">
+        <div>
+          <p className="eyebrow">VISIT OUR STORE</p>
+          <h2 className="serif mt-6 text-4xl">
+            店でしか出会えない、
+            <br />
+            余白があります。
+          </h2>
+          <p className="mt-7 max-w-md text-sm leading-8 text-stone-600">
+            東京・神楽坂の小さな店で、香りを感じ、つくり手の話を交わしながら、あなたのための一本をお選びします。
+          </p>
+          <Link href="/about" className="btn btn-outline mt-8">
+            店舗について
+          </Link>
+        </div>
+        <div className="relative h-80">
+          <Image
+            fill
+            sizes="(max-width: 767px) 100vw, 50vw"
+            className="object-cover"
+            src="https://images.unsplash.com/photo-1528823872057-9c018a7a7553?auto=format&fit=crop&w=1200&q=80"
+            alt="店舗"
+          />
+        </div>
+      </section>
+    </>
+  );
+}

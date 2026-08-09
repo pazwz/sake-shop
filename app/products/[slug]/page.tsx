@@ -83,7 +83,8 @@ export default function ProductDetailPage() {
           {imageUrl ? (
             <Image
               fill
-              priority
+              sizes="(max-width: 767px) 100vw, 50vw"
+              loading="eager"
               className="object-cover"
               src={imageUrl}
               alt={product.name}
