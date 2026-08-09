@@ -16,9 +16,9 @@ System Foundation
 
 Current Sprint:
 
-Sprint 8
+Sprint 9
 
-Admin Authentication
+Order System
 
 ---
 
@@ -33,7 +33,7 @@ Admin Authentication
 | Sprint 5  | PostgreSQL & Migration       | ✅ Completed   |
 | Sprint 6  | Product Module               | ✅ Completed   |
 | Sprint 7  | CMS / Featured Collections   | ✅ Completed   |
-| Sprint 8  | Admin Authentication         | ⏳ Pending     |
+| Sprint 8  | Admin CMS                    | ✅ Completed   |
 | Sprint 9  | Order System                 | ⏳ Pending     |
 | Sprint 10 | Payment Integration          | ⏳ Pending     |
 | Sprint 11 | Smaregi Platform API         | ⏳ Pending     |
@@ -90,29 +90,29 @@ Admin Authentication
 
 # Current Sprint Goal
 
-Sprint 8
+Sprint 9
 
-Build Admin Authentication.
+Build Order System.
 
 Tasks:
 
-- [ ] Admin login
-- [ ] Admin session
-- [ ] Role authorization
+- [ ] Order creation
+- [ ] Order list
+- [ ] Order detail
 
 ---
 
 # Next Sprint
 
-Sprint 8
+Sprint 9
 
-Admin Authentication
+Order System
 
 Scope:
 
-- Admin login
-- Admin session
-- Role authorization
+- Order creation
+- Order list
+- Order detail
 
 ---
 
@@ -214,7 +214,7 @@ Website stores mirror data only.
 
 Current
 
-- None for Sprint 8.
+- None for Sprint 9.
 
 ---
 
@@ -226,7 +226,7 @@ main
 
 Latest Completed Sprint
 
-Sprint 7
+Sprint 8
 
 Latest Commit
 
