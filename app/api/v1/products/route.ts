@@ -1,3 +1,3 @@
 import { createSuccessResponse } from '@/lib/api-response';
 
-export const GET = createSuccessResponse;
+export const GET = () => createSuccessResponse({});
