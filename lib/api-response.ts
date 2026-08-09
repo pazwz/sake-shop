@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { API_EMPTY_MESSAGE } from '@/config/api';
+import { AppError } from '@/lib/errors';
 import type { ApiErrorResponse, ApiSuccessResponse } from '@/types/api';
 
 export const createSuccessResponse = <T>(data: T, status = 200) =>
@@ -27,3 +28,6 @@ export const createErrorResponse = (
     },
     { status },
   );
+
+export const createAppErrorResponse = (error: AppError) =>
+  createErrorResponse(error.code, error.message, error.statusCode);

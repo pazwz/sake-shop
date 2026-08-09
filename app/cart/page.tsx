@@ -1,2 +1,93 @@
-'use client'; import Image from 'next/image'; import Link from 'next/link'; import {useCart} from '@/components/cart-provider'; import {useAuth} from '@/components/auth-provider'; import {formatPrice} from '@/lib/products'; import {QuantitySelector} from '@/components/quantity-selector';
-export default function Cart(){const {items,subtotal,update,remove}=useCart();const {member}=useAuth();const shipping=items.length?880:0;return <div className="wrap py-14 md:py-20"><p className="eyebrow">Shopping bag</p><h1 className="serif mt-4 text-5xl">ショッピングバッグ</h1>{!items.length?<div className="py-20 text-center"><p>バッグに商品がありません。</p><Link href="/products" className="btn mt-7">商品を探す</Link></div>:<div className="mt-12 grid gap-12 lg:grid-cols-[1.5fr_.7fr]"><div>{items.map(({product,quantity})=><div className="grid grid-cols-[100px_1fr] gap-5 border-t line py-5" key={product.id}><div className="relative aspect-square"><Image fill className="object-cover" src={product.image} alt={product.name}/></div><div><p className="text-xs text-stone-500">{product.category}</p><h2 className="mt-1 text-sm">{product.name}</h2><p className="mt-2 text-sm">{formatPrice(product.price)}</p><div className="mt-4 flex items-center justify-between"><QuantitySelector value={quantity} onChange={q=>update(product.id,q)}/><button onClick={()=>remove(product.id)} className="text-xs underline">削除</button></div></div></div>)}</div><aside className="h-fit bg-[#e8e1d5] p-7"><p className="serif text-2xl">ご注文内容</p><div className="mt-7 space-y-4 border-y line py-5 text-sm"><p className="flex justify-between"><span>小計</span><span>{formatPrice(subtotal)}</span></p><p className="flex justify-between"><span>配送料</span><span>{formatPrice(shipping)}</span></p></div><p className="mt-5 flex justify-between text-lg"><span>合計</span><span>{formatPrice(subtotal+shipping)}</span></p><Link href={member?'/checkout':'/login?redirect=/checkout'} className="btn mt-7 w-full">{member?'購入手続きへ':'ログインして購入手続きへ'}</Link><p className="mt-5 text-[10px] leading-5 text-stone-500">20歳未満の方への酒類販売は行っておりません。</p></aside></div>}</div>}
+'use client';
+import Image from 'next/image';
+import Link from 'next/link';
+import { useCart } from '@/components/cart-provider';
+import { useAuth } from '@/components/auth-provider';
+import { formatPrice } from '@/lib/products';
+import { QuantitySelector } from '@/components/quantity-selector';
+export default function Cart() {
+  const { items, subtotal, update, remove } = useCart();
+  const { member } = useAuth();
+  const shipping = items.length ? 880 : 0;
+  return (
+    <div className="wrap py-14 md:py-20">
+      <p className="eyebrow">Shopping bag</p>
+      <h1 className="serif mt-4 text-5xl">ショッピングバッグ</h1>
+      {!items.length ? (
+        <div className="py-20 text-center">
+          <p>バッグに商品がありません。</p>
+          <Link href="/products" className="btn mt-7">
+            商品を探す
+          </Link>
+        </div>
+      ) : (
+        <div className="mt-12 grid gap-12 lg:grid-cols-[1.5fr_.7fr]">
+          <div>
+            {items.map(({ product, quantity }) => (
+              <div
+                className="grid grid-cols-[100px_1fr] gap-5 border-t line py-5"
+                key={product.id}
+              >
+                <div className="relative aspect-square">
+                  <Image
+                    fill
+                    className="object-cover"
+                    src={product.image}
+                    alt={product.name}
+                  />
+                </div>
+                <div>
+                  <p className="text-xs text-stone-500">
+                    {typeof product.category === 'string'
+                      ? product.category
+                      : product.category.name}
+                  </p>
+                  <h2 className="mt-1 text-sm">{product.name}</h2>
+                  <p className="mt-2 text-sm">{formatPrice(product.price)}</p>
+                  <div className="mt-4 flex items-center justify-between">
+                    <QuantitySelector
+                      value={quantity}
+                      onChange={(q) => update(product.id, q)}
+                    />
+                    <button
+                      onClick={() => remove(product.id)}
+                      className="text-xs underline"
+                    >
+                      削除
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <aside className="h-fit bg-[#e8e1d5] p-7">
+            <p className="serif text-2xl">ご注文内容</p>
+            <div className="mt-7 space-y-4 border-y line py-5 text-sm">
+              <p className="flex justify-between">
+                <span>小計</span>
+                <span>{formatPrice(subtotal)}</span>
+              </p>
+              <p className="flex justify-between">
+                <span>配送料</span>
+                <span>{formatPrice(shipping)}</span>
+              </p>
+            </div>
+            <p className="mt-5 flex justify-between text-lg">
+              <span>合計</span>
+              <span>{formatPrice(subtotal + shipping)}</span>
+            </p>
+            <Link
+              href={member ? '/checkout' : '/login?redirect=/checkout'}
+              className="btn mt-7 w-full"
+            >
+              {member ? '購入手続きへ' : 'ログインして購入手続きへ'}
+            </Link>
+            <p className="mt-5 text-[10px] leading-5 text-stone-500">
+              20歳未満の方への酒類販売は行っておりません。
+            </p>
+          </aside>
+        </div>
+      )}
+    </div>
+  );
+}

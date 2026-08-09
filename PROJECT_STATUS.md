@@ -16,9 +16,9 @@ System Foundation
 
 Current Sprint:
 
-Sprint 6
+Sprint 7
 
-Product Module
+CMS / Featured Collections
 
 ---
 
@@ -31,8 +31,8 @@ Product Module
 | Sprint 3  | Project Infrastructure       | ✅ Completed   |
 | Sprint 4  | Prisma Database Schema       | ✅ Completed   |
 | Sprint 5  | PostgreSQL & Migration       | ✅ Completed   |
-| Sprint 6  | Product Module               | 🚧 In Progress |
-| Sprint 7  | CMS / Featured Collections   | ⏳ Pending     |
+| Sprint 6  | Product Module               | ✅ Completed   |
+| Sprint 7  | CMS / Featured Collections   | 🚧 In Progress |
 | Sprint 8  | Admin Authentication         | ⏳ Pending     |
 | Sprint 9  | Order System                 | ⏳ Pending     |
 | Sprint 10 | Payment Integration          | ⏳ Pending     |
@@ -74,7 +74,12 @@ Product Module
 
 ## Database
 
+- [x] PostgreSQL (Neon)
 - [x] Prisma Schema
+- [x] Initial Migration
+- [x] Seed
+- [x] Prisma Studio
+- [x] Database Health API
 - [x] Models
 - [x] Relations
 - [x] Enums
@@ -85,32 +90,32 @@ Product Module
 
 # Current Sprint Goal
 
-Sprint 6
+Sprint 7
 
-Build the Product Module.
+Build CMS and Featured Collections.
 
 Tasks:
 
-- [ ] Product API
-- [ ] Category API
-- [ ] Product Detail
-- [ ] Product Search
-- [ ] Product Image
-- [ ] Inventory Mirror Read
+- [ ] CMS API
+- [ ] Featured Collections API
+- [ ] Hero Management
+- [ ] Seasonal Collections
+- [ ] Shopkeeper Recommendations
+- [ ] Collection Management
 
 ---
 
 # Next Sprint
 
-Sprint 7
+Sprint 8
 
-CMS / Featured Collections
+Admin Authentication
 
 Scope:
 
-- CMS API
-- Featured Collections API
-- Featured Collection Management
+- Admin login
+- Admin session
+- Role authorization
 
 ---
 
@@ -140,29 +145,41 @@ Scope:
 Frontend
 
 - Next.js App Router
+- TypeScript
+- Tailwind CSS
 
 Backend
 
-- Route Handler
+- Route Handlers
 - Service Layer
 - Repository Pattern
 
 Database
 
-- PostgreSQL
+- PostgreSQL (Neon)
 - Prisma ORM
+
+Validation
+
+- Zod
 
 Storage
 
-- AWS S3 (Production)
+Development
+
+- Local Storage
+
+Production
+
+- AWS S3
 
 Deployment
 
-Development:
+Development
 
 - Vercel
 
-Production:
+Production
 
 - AWS
 
@@ -170,15 +187,16 @@ Production:
 
 # Important Rules
 
-Product / Category / Price / Inventory
-
-Source of Truth:
+Source of Truth
 
 Smaregi
 
-Website stores mirror data only.
+- Product
+- Category
+- Price
+- Inventory
 
-Website owns:
+Website owns
 
 - Customer
 - Orders
@@ -188,33 +206,47 @@ Website owns:
 - Hero
 - Featured Collections
 - Admin
+- Audit Logs
+- Sync Logs
+
+Website stores mirror data only.
 
 ---
 
 # Blockers
 
-Current:
+Current
 
-- None for Sprint 5.
+- None for Sprint 7.
 
 ---
 
 # Git Status
 
-Main Branch
+Branch
 
-Latest Completed Sprint:
+main
 
-Sprint 5
+Latest Completed Sprint
 
-Latest Commit:
+Sprint 6
 
-feat: initialize database
+Latest Commit
+
+feat: implement product module
 
 ---
 
 # Notes
 
-Do not start a new Sprint until the current Sprint is completed and verified.
+Do not start a new Sprint until the current Sprint has been completed and verified.
 
-All architecture changes must first update the documentation under /docs.
+Any architecture, database, or API changes must first be reflected in the documentation under `/docs`.
+
+All AI development agents must read:
+
+- AGENTS.md
+- PROJECT_STATUS.md
+- docs/
+
+before starting any development task.

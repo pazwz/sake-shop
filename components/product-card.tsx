@@ -1,2 +1,51 @@
-import Image from 'next/image'; import Link from 'next/link'; import {Product,formatPrice} from '@/lib/products'; import {useLanguage} from './language-provider';
-export function ProductCard({product}:{product:Product}){const {categoryLabel,t}=useLanguage();return <Link href={`/products/${product.slug}`} className="group block"><div className="relative aspect-[4/5] overflow-hidden bg-[#f3f0ea]"><Image fill className="object-cover transition duration-500 group-hover:scale-[1.03]" src={product.image} alt={product.name}/>{product.recommendationTags[0]&&<span className="absolute left-3 top-3 bg-[#fffdf9]/90 px-2 py-1 text-[9px] tracking-wider text-[#6d2227]">{product.recommendationTags[0]}</span>}</div><p className="mt-4 text-[10px] tracking-[.15em] text-[#6d2227]">{categoryLabel(product.category)} / {product.producer}</p><h3 className="mt-1 text-sm">{product.name}</h3><p className="mt-2 text-sm">{formatPrice(product.price)} <span className="text-[10px] text-stone-500">{t('税込','tax incl.','含税','세금 포함')}</span></p></Link>}
+import Image from 'next/image';
+import Link from 'next/link';
+import { formatPrice } from '@/lib/products';
+
+export interface ProductCardItem {
+  id: string | number;
+  slug: string;
+  name: string;
+  category: string | { name: string };
+  producer: string | null;
+  price: number;
+  image?: string;
+  images?: Array<{ imageUrl: string }>;
+  recommendationTags?: string[];
+}
+
+export function ProductCard({ product }: { product: ProductCardItem }) {
+  const imageUrl = product.images?.[0]?.imageUrl ?? product.image;
+  const categoryName =
+    typeof product.category === 'string'
+      ? product.category
+      : product.category.name;
+
+  return (
+    <Link href={`/products/${product.slug}`} className="group block">
+      <div className="relative aspect-[4/5] overflow-hidden bg-[#f3f0ea]">
+        {imageUrl ? (
+          <Image
+            fill
+            className="object-cover transition duration-500 group-hover:scale-[1.03]"
+            src={imageUrl}
+            alt={product.name}
+          />
+        ) : null}
+        {product.recommendationTags?.[0] ? (
+          <span className="absolute left-3 top-3 bg-[#fffdf9]/90 px-2 py-1 text-[9px] tracking-wider text-[#6d2227]">
+            {product.recommendationTags[0]}
+          </span>
+        ) : null}
+      </div>
+      <p className="mt-4 text-[10px] tracking-[.15em] text-[#6d2227]">
+        {categoryName} / {product.producer ?? 'KURA'}
+      </p>
+      <h3 className="mt-1 text-sm">{product.name}</h3>
+      <p className="mt-2 text-sm">
+        {formatPrice(product.price)}{' '}
+        <span className="text-[10px] text-stone-500">税込</span>
+      </p>
+    </Link>
+  );
+}
