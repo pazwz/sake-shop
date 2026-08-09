@@ -1,9 +1,7 @@
 import { randomUUID } from 'crypto';
 import { OrderStatus } from '@prisma/client';
-import {
-  DEVELOPMENT_DISCOUNT_AMOUNT,
-  DEVELOPMENT_SHIPPING_FEE,
-} from '@/config/order';
+import { DEVELOPMENT_DISCOUNT_AMOUNT } from '@/config/order';
+import { getTemporaryShippingQuote } from '@/config/shipping';
 import { AppError, NotFoundError } from '@/lib/errors';
 import { CustomerRepository } from '@/repositories/customer.repository';
 import { OrderRepository } from '@/repositories/order.repository';
@@ -69,7 +67,7 @@ export class OrderService {
     const customer = await this.customers.upsertForOrder(input.customer);
     const subtotal = lines.reduce((sum, line) => sum + line.subtotal, 0);
     const taxAmount = lines.reduce((sum, line) => sum + line.tax, 0);
-    const shippingFee = DEVELOPMENT_SHIPPING_FEE;
+    const shippingFee = getTemporaryShippingQuote().fee;
     const discountAmount = DEVELOPMENT_DISCOUNT_AMOUNT;
     return this.orders.create({
       orderNumber: `KURA-${new Date().toISOString().slice(0, 10).replaceAll('-', '')}-${randomUUID().replaceAll('-', '').slice(0, 6).toUpperCase()}`,

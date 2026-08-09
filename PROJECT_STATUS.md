@@ -12,7 +12,7 @@ Last Updated: 2026-08-10
 
 Milestone 2 — System Foundation
 
-Current Sprint: Sprint 11 — Payment Integration
+Current Sprint: Sprint 12 — Smaregi Platform API
 
 ---
 
@@ -30,7 +30,7 @@ Current Sprint: Sprint 11 — Payment Integration
 | Sprint 8  | Admin CMS                            | Completed |
 | Sprint 9  | Admin Authentication & Authorization | Completed |
 | Sprint 10 | Order System                         | Completed |
-| Sprint 11 | Payment Integration                  | Pending   |
+| Sprint 11 | Shipping Foundation                  | Completed |
 | Sprint 12 | Smaregi Platform API                 | Pending   |
 | Sprint 13 | Shipping (Sagawa)                    | Pending   |
 | Sprint 14 | Testing & Optimization               | Pending   |
@@ -40,25 +40,17 @@ Current Sprint: Sprint 11 — Payment Integration
 
 # Current Sprint Goal
 
-Sprint 11 — Payment Integration
+Sprint 12 — Smaregi Platform API
 
 ---
 
 # Next Sprint
 
-Sprint 11 — Payment Integration
-
-Scope:
-
-- Payment provider selection
-- Payment authorization
-- Payment status updates
+Sprint 12 — Smaregi Platform API
 
 ---
 
 # Customer Confirmed
-
-## Business
 
 - Physical Store
 - Alcohol EC sales
@@ -96,7 +88,7 @@ Website stores mirror data only for Smaregi-owned data.
 
 # Blockers
 
-None for Sprint 11.
+None for Sprint 12.
 
 ---
 
@@ -104,9 +96,7 @@ None for Sprint 11.
 
 Branch: main
 
-Latest Completed Sprint: Sprint 10
-
-Latest Commit: feat: implement admin authentication
+Latest Completed Sprint: Sprint 11
 
 ---
 

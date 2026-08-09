@@ -6,7 +6,11 @@ import {
 } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 
-const include = { items: true, customer: true } satisfies Prisma.OrderInclude;
+const include = {
+  items: true,
+  customer: true,
+  shipments: { orderBy: { createdAt: 'desc' } },
+} satisfies Prisma.OrderInclude;
 export class OrderRepository {
   findById(id: string) {
     return prisma.order.findUnique({ where: { id }, include });

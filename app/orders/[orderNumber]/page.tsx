@@ -8,7 +8,6 @@ export default async function OrderConfirmation({
   params: Promise<{ orderNumber: string }>;
 }) {
   let order;
-
   try {
     order = await new OrderService().getByOrderNumber(
       (await params).orderNumber,
@@ -16,7 +15,6 @@ export default async function OrderConfirmation({
   } catch {
     notFound();
   }
-
   const address = order.shippingAddressSnapshot as {
     recipientName: string;
     postalCode: string;
@@ -26,7 +24,7 @@ export default async function OrderConfirmation({
     addressLine2?: string;
     phone: string;
   };
-
+  const shipment = order.shipments[0];
   return (
     <main className="wrap py-20">
       <p className="eyebrow">ORDER CONFIRMATION</p>
@@ -65,8 +63,26 @@ export default async function OrderConfirmation({
             <br />
             {address.phone}
             <br />
-            状態：{order.status}
+            注文状態：{order.status}
           </p>
+          {shipment?.status === 'SHIPPED' ||
+          shipment?.status === 'DELIVERED' ? (
+            <div className="mt-8 border-t line pt-6 text-sm leading-7">
+              <h3 className="serif text-xl">配送情報</h3>
+              <p className="mt-3">
+                配送会社：{shipment.carrier}
+                <br />
+                伝票番号：{shipment.trackingNumber}
+                <br />
+                発送日：
+                {shipment.shippedAt
+                  ? new Date(shipment.shippedAt).toLocaleDateString('ja-JP')
+                  : '—'}
+                <br />
+                配送状態：{shipment.status}
+              </p>
+            </div>
+          ) : null}
         </section>
       </div>
     </main>
