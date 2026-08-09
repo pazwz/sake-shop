@@ -1,18 +1,121 @@
 'use client';
-import {useEffect,useState} from 'react';
-import {useRouter} from 'next/navigation';
-import {useCart} from '@/components/cart-provider';
-import {useAuth} from '@/components/auth-provider';
-import {formatPrice} from '@/lib/products';
-
-export default function Checkout(){
-  const {items,subtotal}=useCart(); const {member,ready}=useAuth(); const router=useRouter();
-  const [payment,setPayment]=useState('card'); const [age,setAge]=useState(false);
-  const [form,setForm]=useState({name:'',postal:'',prefecture:'',city:'',address:'',phone:'',email:''});
-  useEffect(()=>{if(ready&&!member)router.replace('/login?redirect=/checkout')},[member,ready,router]);
-  const shipping=items.length?880:0; const change=(key:keyof typeof form,value:string)=>setForm({...form,[key]:value});
-  if(!ready||!member)return null;
-  if(!items.length)return <div className="wrap py-28">バッグに商品がありません。</div>;
-  const submit=(event:React.FormEvent)=>{event.preventDefault();if(!age)return;sessionStorage.setItem('kura-order',JSON.stringify({form,payment}));router.push('/order-review')};
-  return <div className="wrap py-14 md:py-20"><p className="eyebrow">Checkout / 01 Delivery</p><h1 className="serif mt-4 text-5xl">お届け先</h1><form onSubmit={submit} className="mt-12 grid gap-12 lg:grid-cols-[1.2fr_.7fr]"><div className="space-y-8"><section><h2 className="serif text-2xl">配送先情報</h2><div className="mt-6 grid gap-x-6 gap-y-5 sm:grid-cols-2">{[['name','氏名'],['postal','郵便番号'],['prefecture','都道府県'],['city','市区町村'],['address','番地・建物名'],['phone','電話番号'],['email','メールアドレス']].map(([key,label])=><label className={key==='address'||key==='email'?'sm:col-span-2':''} key={key}><span className="text-xs">{label}</span><input required className="input mt-1" value={form[key as keyof typeof form]} onChange={e=>change(key as keyof typeof form,e.target.value)}/></label>)}</div></section><section className="border-t line pt-8"><h2 className="serif text-2xl">お支払い方法</h2><div className="mt-5 grid gap-3"><label className={`border p-5 ${payment==='card'?'border-[#bc9b5d]':'border-stone-300'}`}><input type="radio" checked={payment==='card'} onChange={()=>setPayment('card')}/> <span className="ml-2 text-sm">クレジットカード</span>{payment==='card'&&<div className="mt-5 grid gap-4 sm:grid-cols-2"><input className="input sm:col-span-2" placeholder="カード番号（デモ）" inputMode="numeric"/><input className="input" placeholder="有効期限 MM/YY"/><input className="input" placeholder="CVC"/><input className="input sm:col-span-2" placeholder="カード名義"/></div>}</label><label className={`border p-5 ${payment==='paypay'?'border-[#bc9b5d]':'border-stone-300'}`}><input type="radio" checked={payment==='paypay'} onChange={()=>setPayment('paypay')}/> <span className="ml-2 text-sm font-semibold">PayPay</span>{payment==='paypay'&&<p className="mt-3 text-xs leading-5 text-stone-600">ご注文確認後、PayPayのお支払い画面を模したデモ画面へ進みます。実際の決済は行われません。</p>}</label></div></section><label className="flex gap-3 border-t line pt-8 text-sm leading-6"><input required type="checkbox" checked={age} onChange={e=>setAge(e.target.checked)} className="mt-1 accent-[#bc9b5d]"/>私は20歳以上です。20歳未満の方への酒類販売は法律で禁止されています。</label><button disabled={!age} className="btn disabled:cursor-not-allowed disabled:bg-stone-400">ご注文内容を確認する</button></div><aside className="h-fit bg-[#e8e1d5] p-7"><p className="serif text-xl">ご注文内容</p><p className="mt-4 text-xs">{items.reduce((sum,line)=>sum+line.quantity,0)} 点の商品</p><div className="mt-5 border-t line pt-5 text-sm"><p className="flex justify-between"><span>小計</span><span>{formatPrice(subtotal)}</span></p><p className="mt-3 flex justify-between"><span>配送料</span><span>{formatPrice(shipping)}</span></p><p className="mt-5 flex justify-between border-t line pt-5 text-base"><span>合計</span><span>{formatPrice(subtotal+shipping)}</span></p></div></aside></form></div>
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useCart } from '@/components/cart-provider';
+import { useAuth } from '@/components/auth-provider';
+import { formatPrice } from '@/lib/products';
+export default function Checkout() {
+  const { items, clear } = useCart();
+  const { member, ready } = useAuth();
+  const router = useRouter();
+  const [age, setAge] = useState(false);
+  const [error, setError] = useState('');
+  const [form, setForm] = useState({
+    name: '',
+    postalCode: '',
+    prefecture: '',
+    city: '',
+    addressLine1: '',
+    phone: '',
+    email: '',
+  });
+  if (!ready || !member)
+    return <div className="wrap py-20">ログイン後にご注文いただけます。</div>;
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const response = await fetch('/api/v1/orders', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        items: items.map(({ product, quantity }) => ({
+          productId: String(product.id),
+          quantity,
+        })),
+        customer: { email: form.email, name: form.name, phone: form.phone },
+        address: {
+          postalCode: form.postalCode,
+          prefecture: form.prefecture,
+          city: form.city,
+          addressLine1: form.addressLine1,
+          recipientName: form.name,
+          phone: form.phone,
+        },
+        ageConfirmed: age,
+        shippingMethod: 'development-standard',
+        paymentMethod: 'card',
+      }),
+    });
+    const payload = await response.json();
+    if (!response.ok) {
+      setError(payload.error?.detail || '注文を作成できませんでした。');
+      return;
+    }
+    clear();
+    router.push(`/orders/${payload.data.orderNumber}`);
+  };
+  return (
+    <main className="wrap py-16">
+      <p className="eyebrow">CHECKOUT</p>
+      <h1 className="serif mt-4 text-5xl">お届け先</h1>
+      <form
+        onSubmit={submit}
+        className="mt-10 grid gap-10 lg:grid-cols-[1.2fr_.7fr]"
+      >
+        <div className="grid gap-5 sm:grid-cols-2">
+          {Object.entries(form).map(([key, value]) => (
+            <label
+              key={key}
+              className={
+                key === 'addressLine1' || key === 'email' ? 'sm:col-span-2' : ''
+              }
+            >
+              <span className="text-xs">{key}</span>
+              <input
+                required
+                className="input mt-2"
+                value={value}
+                onChange={(event) =>
+                  setForm({ ...form, [key]: event.target.value })
+                }
+              />
+            </label>
+          ))}
+          <label className="sm:col-span-2 flex gap-3 text-sm">
+            <input
+              type="checkbox"
+              checked={age}
+              onChange={(event) => setAge(event.target.checked)}
+            />
+            私は20歳以上です。
+          </label>
+          {error ? (
+            <p className="sm:col-span-2 text-sm text-red-700">{error}</p>
+          ) : null}
+          <button
+            disabled={!age || !items.length}
+            className="btn sm:col-span-2"
+          >
+            注文を確定する
+          </button>
+        </div>
+        <aside className="h-fit bg-[#e8e1d5] p-7">
+          <p className="serif text-xl">ご注文内容</p>
+          {items.map((line) => (
+            <p
+              className="mt-4 flex justify-between text-sm"
+              key={line.product.id}
+            >
+              <span>
+                {line.product.name} × {line.quantity}
+              </span>
+              <span>{formatPrice(line.product.price * line.quantity)}</span>
+            </p>
+          ))}
+          <p className="mt-6 text-xs text-stone-600">
+            送料は開発用の暫定設定です。注文金額はサーバーで再計算されます。
+          </p>
+        </aside>
+      </form>
+    </main>
+  );
 }

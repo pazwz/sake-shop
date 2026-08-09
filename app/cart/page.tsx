@@ -5,10 +5,11 @@ import { useCart } from '@/components/cart-provider';
 import { useAuth } from '@/components/auth-provider';
 import { formatPrice } from '@/lib/products';
 import { QuantitySelector } from '@/components/quantity-selector';
+import { DEVELOPMENT_SHIPPING_FEE } from '@/config/order';
 export default function Cart() {
   const { items, subtotal, update, remove } = useCart();
   const { member } = useAuth();
-  const shipping = items.length ? 880 : 0;
+  const shipping = items.length ? DEVELOPMENT_SHIPPING_FEE : 0;
   return (
     <div className="wrap py-14 md:py-20">
       <p className="eyebrow">Shopping bag</p>

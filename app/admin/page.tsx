@@ -15,6 +15,12 @@ export default function AdminPage() {
       >
         コレクションを管理
       </Link>
+      <Link
+        href="/admin/orders"
+        className="btn ml-3 mt-8 border border-[#171412]"
+      >
+        注文を管理
+      </Link>
     </main>
   );
 }

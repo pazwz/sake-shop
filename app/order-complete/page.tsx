@@ -1,1 +1,6 @@
-'use client'; import Link from 'next/link'; import {useEffect,useState} from 'react'; export default function Complete(){const [id,setId]=useState('ORD-2026-000128');useEffect(()=>{setId(sessionStorage.getItem('kura-order-id')||'ORD-2026-000128')},[]);return <div className="bg-[#111110] text-[#f4f0e8]"><div className="wrap flex min-h-[70vh] max-w-3xl flex-col justify-center py-24"><p className="eyebrow">Order confirmed</p><p className="mt-9 text-xs tracking-[.2em] text-[#d7b879]">{id}</p><h1 className="serif mt-6 text-5xl leading-tight md:text-6xl">ありがとうございます。<br/>佳き一杯を、お届けします。</h1><p className="mt-8 max-w-md text-sm leading-8 text-stone-300">ご注文を承りました。お届けの準備が整い次第、確認メールをお送りします。どうぞ、届くまでの時間もお楽しみください。</p><div className="mt-10 flex flex-wrap gap-3"><Link href="/mypage" className="btn bg-[#bc9b5d]">注文状況を見る</Link><Link href="/products" className="btn btn-outline border-[#f4f0e8] text-[#f4f0e8]">酒をもっと見る</Link></div></div></div>}
+import { redirect } from 'next/navigation';
+
+// Legacy demo-only route: successful orders use /orders/[orderNumber].
+export default function OrderCompleteRedirect() {
+  redirect('/checkout');
+}

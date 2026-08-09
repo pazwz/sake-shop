@@ -25,6 +25,12 @@ export type ProductWithRelations = Prisma.ProductGetPayload<{
 }>;
 
 export class ProductRepository {
+  public async findForOrder(ids: string[]) {
+    return prisma.product.findMany({
+      where: { id: { in: ids } },
+      include: productInclude,
+    });
+  }
   public async findById(id: string): Promise<ProductWithRelations | null> {
     return prisma.product.findUnique({
       where: { id },
