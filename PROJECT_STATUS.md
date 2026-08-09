@@ -16,9 +16,9 @@ System Foundation
 
 Current Sprint:
 
-Sprint 7
+Sprint 8
 
-CMS / Featured Collections
+Admin Authentication
 
 ---
 
@@ -32,7 +32,7 @@ CMS / Featured Collections
 | Sprint 4  | Prisma Database Schema       | ✅ Completed   |
 | Sprint 5  | PostgreSQL & Migration       | ✅ Completed   |
 | Sprint 6  | Product Module               | ✅ Completed   |
-| Sprint 7  | CMS / Featured Collections   | 🚧 In Progress |
+| Sprint 7  | CMS / Featured Collections   | ✅ Completed   |
 | Sprint 8  | Admin Authentication         | ⏳ Pending     |
 | Sprint 9  | Order System                 | ⏳ Pending     |
 | Sprint 10 | Payment Integration          | ⏳ Pending     |
@@ -90,18 +90,15 @@ CMS / Featured Collections
 
 # Current Sprint Goal
 
-Sprint 7
+Sprint 8
 
-Build CMS and Featured Collections.
+Build Admin Authentication.
 
 Tasks:
 
-- [ ] CMS API
-- [ ] Featured Collections API
-- [ ] Hero Management
-- [ ] Seasonal Collections
-- [ ] Shopkeeper Recommendations
-- [ ] Collection Management
+- [ ] Admin login
+- [ ] Admin session
+- [ ] Role authorization
 
 ---
 
@@ -217,7 +214,7 @@ Website stores mirror data only.
 
 Current
 
-- None for Sprint 7.
+- None for Sprint 8.
 
 ---
 
@@ -229,7 +226,7 @@ main
 
 Latest Completed Sprint
 
-Sprint 6
+Sprint 7
 
 Latest Commit
 

@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { CollectionStatus, PrismaClient, Season } from '@prisma/client';
 import {
   DEVELOPMENT_STORE_ID,
   developmentSeedAdmin,
@@ -99,6 +99,89 @@ const seed = async (): Promise<void> => {
         lastSyncedAt: new Date(),
       },
     });
+  }
+
+  const seededProducts = await prisma.product.findMany({
+    where: { slug: { startsWith: 'dev-' } },
+    take: 2,
+    orderBy: { slug: 'asc' },
+  });
+  // Development-only CMS records for verifying the Sprint 7 home API.
+  const collections = [
+    ...['春の便り', '夏の涼酒', '秋の深まり'].map((title, index) => ({
+      type: 'HERO' as const,
+      title,
+      displayOrder: index + 1,
+    })),
+    ...[Season.SPRING, Season.SUMMER, Season.AUTUMN, Season.WINTER].map(
+      (season, index) => ({
+        type: 'SEASONAL' as const,
+        season,
+        title: `${season} collection`,
+        displayOrder: index + 1,
+      }),
+    ),
+    ...['店主のおすすめ 1', '店主のおすすめ 2', '店主のおすすめ 3'].map(
+      (title, index) => ({
+        type: 'SHOPKEEPER' as const,
+        title,
+        displayOrder: index + 1,
+      }),
+    ),
+    ...['贈り物 1', '贈り物 2', '贈り物 3'].map((title, index) => ({
+      type: 'GIFT' as const,
+      title,
+      displayOrder: index + 1,
+    })),
+    ...['九州の風土', '食卓の余白', '蔵元を訪ねて'].map((title, index) => ({
+      type: 'EDITORIAL' as const,
+      title,
+      displayOrder: index + 1,
+    })),
+    ...['酒と人の物語', '季節を味わう'].map((title, index) => ({
+      type: 'STORY' as const,
+      title,
+      displayOrder: index + 1,
+    })),
+  ];
+  for (const collection of collections) {
+    const slug = `development-${collection.type.toLowerCase()}-${collection.title.replaceAll(' ', '-').replaceAll('　', '-')}`;
+    const existing = await prisma.featuredCollection.findFirst({
+      where: { title: collection.title, type: collection.type },
+    });
+    const saved = existing
+      ? await prisma.featuredCollection.update({
+          where: { id: existing.id },
+          data: {
+            ...collection,
+            status: CollectionStatus.PUBLISHED,
+            desktopImageUrl:
+              'https://images.unsplash.com/photo-1527281400683-1aae777175f8?auto=format&fit=crop&w=1600&q=85',
+            mobileImageUrl:
+              'https://images.unsplash.com/photo-1527281400683-1aae777175f8?auto=format&fit=crop&w=900&q=85',
+          },
+        })
+      : await prisma.featuredCollection.create({
+          data: {
+            ...collection,
+            status: CollectionStatus.PUBLISHED,
+            desktopImageUrl:
+              'https://images.unsplash.com/photo-1527281400683-1aae777175f8?auto=format&fit=crop&w=1600&q=85',
+            mobileImageUrl:
+              'https://images.unsplash.com/photo-1527281400683-1aae777175f8?auto=format&fit=crop&w=900&q=85',
+          },
+        });
+    await prisma.featuredCollectionProduct.deleteMany({
+      where: { featuredCollectionId: saved.id },
+    });
+    await prisma.featuredCollectionProduct.createMany({
+      data: seededProducts.map((product, index) => ({
+        featuredCollectionId: saved.id,
+        productId: product.id,
+        displayOrder: index + 1,
+      })),
+    });
+    void slug;
   }
 };
 
