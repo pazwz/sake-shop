@@ -669,6 +669,9 @@ email
 
 password_hash
 
+Current database design allows this field to be nullable. A null value means
+the administrator has not set a password and must be denied password login.
+
 name
 
 role

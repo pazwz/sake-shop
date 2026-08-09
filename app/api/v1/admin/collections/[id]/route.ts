@@ -6,6 +6,10 @@ import {
 } from '@/lib/api-response';
 import { AppError, ValidationError } from '@/lib/errors';
 import { FeaturedCollectionService } from '@/services/collection.service';
+import {
+  cmsAdminRoles,
+  requireAdmin,
+} from '@/services/admin-authorization.service';
 import { collectionUpdateValidator } from '@/validators/collection.validator';
 
 const collectionService = new FeaturedCollectionService();
@@ -25,6 +29,7 @@ export const PATCH = async (
   { params }: { params: Promise<{ id: string }> },
 ) => {
   try {
+    await requireAdmin(cmsAdminRoles);
     const { id } = await params;
     const input = collectionUpdateValidator.parse(await request.json());
     return createSuccessResponse(
@@ -40,6 +45,7 @@ export const DELETE = async (
   { params }: { params: Promise<{ id: string }> },
 ) => {
   try {
+    await requireAdmin(cmsAdminRoles);
     const { id } = await params;
     await collectionService.deleteCollection(id);
     return createSuccessResponse({ id });

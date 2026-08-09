@@ -6,6 +6,10 @@ import {
 } from '@/lib/api-response';
 import { AppError, ValidationError } from '@/lib/errors';
 import { FeaturedCollectionService } from '@/services/collection.service';
+import {
+  cmsAdminRoles,
+  requireAdmin,
+} from '@/services/admin-authorization.service';
 import { collectionProductOrderValidator } from '@/validators/collection.validator';
 
 const collectionService = new FeaturedCollectionService();
@@ -15,6 +19,7 @@ export const PATCH = async (
   { params }: { params: Promise<{ id: string }> },
 ) => {
   try {
+    await requireAdmin(cmsAdminRoles);
     const { id } = await params;
     const { productIds } = collectionProductOrderValidator.parse(
       await request.json(),

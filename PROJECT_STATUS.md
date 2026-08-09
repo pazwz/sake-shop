@@ -16,7 +16,7 @@ System Foundation
 
 Current Sprint:
 
-Sprint 9
+Sprint 10
 
 Order System
 
@@ -34,12 +34,13 @@ Order System
 | Sprint 6  | Product Module               | ✅ Completed   |
 | Sprint 7  | CMS / Featured Collections   | ✅ Completed   |
 | Sprint 8  | Admin CMS                    | ✅ Completed   |
-| Sprint 9  | Order System                 | ⏳ Pending     |
-| Sprint 10 | Payment Integration          | ⏳ Pending     |
-| Sprint 11 | Smaregi Platform API         | ⏳ Pending     |
-| Sprint 12 | Shipping (Sagawa)            | ⏳ Pending     |
-| Sprint 13 | Testing & Optimization       | ⏳ Pending     |
-| Sprint 14 | AWS Production Release       | ⏳ Pending     |
+| Sprint 9  | Admin Authentication & Authorization | ✅ Completed   |
+| Sprint 10 | Order System                 | ⏳ Pending     |
+| Sprint 11 | Payment Integration          | ⏳ Pending     |
+| Sprint 12 | Smaregi Platform API         | ⏳ Pending     |
+| Sprint 13 | Shipping (Sagawa)            | ⏳ Pending     |
+| Sprint 14 | Testing & Optimization       | ⏳ Pending     |
+| Sprint 15 | AWS Production Release       | ⏳ Pending     |
 
 ---
 
@@ -90,7 +91,7 @@ Order System
 
 # Current Sprint Goal
 
-Sprint 9
+Sprint 10
 
 Build Order System.
 
@@ -104,7 +105,7 @@ Tasks:
 
 # Next Sprint
 
-Sprint 9
+Sprint 10
 
 Order System
 
@@ -214,7 +215,7 @@ Website stores mirror data only.
 
 Current
 
-- None for Sprint 9.
+- None for Sprint 10.
 
 ---
 
@@ -226,7 +227,7 @@ main
 
 Latest Completed Sprint
 
-Sprint 8
+Sprint 9
 
 Latest Commit
 

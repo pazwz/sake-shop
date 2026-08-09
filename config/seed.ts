@@ -4,7 +4,35 @@ export const developmentSeedAdmin = {
   email: 'owner@kura.local',
   name: 'KURA Development Owner',
   role: AdminRole.OWNER,
-  isActive: false,
+  isActive: true,
+} as const;
+
+export const developmentSeedAdminAccessAccounts = [
+  {
+    email: 'manager@kura.local',
+    name: 'KURA Development Manager',
+    role: AdminRole.MANAGER,
+    isActive: true,
+  },
+  {
+    email: 'staff@kura.local',
+    name: 'KURA Development Staff',
+    role: AdminRole.STAFF,
+    isActive: true,
+  },
+  {
+    email: 'disabled@kura.local',
+    name: 'KURA Disabled Admin',
+    role: AdminRole.MANAGER,
+    isActive: false,
+  },
+] as const;
+
+export const developmentSeedAdminWithoutPassword = {
+  email: 'unconfigured@kura.local',
+  name: 'KURA Unconfigured Admin',
+  role: AdminRole.STAFF,
+  isActive: true,
 } as const;
 
 export const developmentSeedCategories = [

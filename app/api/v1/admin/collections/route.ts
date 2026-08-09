@@ -6,6 +6,10 @@ import {
 } from '@/lib/api-response';
 import { AppError, ValidationError } from '@/lib/errors';
 import { FeaturedCollectionService } from '@/services/collection.service';
+import {
+  cmsAdminRoles,
+  requireAdmin,
+} from '@/services/admin-authorization.service';
 import { collectionInputValidator } from '@/validators/collection.validator';
 
 const collectionService = new FeaturedCollectionService();
@@ -23,6 +27,7 @@ const handleError = (error: unknown) => {
 
 export const GET = async () => {
   try {
+    await requireAdmin();
     return createSuccessResponse(await collectionService.getAdminCollections());
   } catch (error) {
     return handleError(error);
@@ -31,6 +36,7 @@ export const GET = async () => {
 
 export const POST = async (request: Request) => {
   try {
+    await requireAdmin(cmsAdminRoles);
     const input = collectionInputValidator.parse(await request.json());
     return createSuccessResponse(
       await collectionService.createCollection(input),

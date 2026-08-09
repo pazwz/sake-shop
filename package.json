@@ -22,6 +22,8 @@
     "@types/react": "latest",
     "@types/react-dom": "latest",
     "autoprefixer": "latest",
+    "bcryptjs": "^3.0.3",
+    "jose": "^6.2.8",
     "next": "latest",
     "postcss": "latest",
     "react": "latest",

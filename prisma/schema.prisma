@@ -340,6 +340,7 @@ model FeaturedCollectionProduct {
 model AdminUser {
   id                 String               @id @default(cuid())
   email              String               @unique
+  passwordHash       String?              @map("password_hash")
   name               String
   role               AdminRole            @default(STAFF)
   isActive           Boolean              @default(true) @map("is_active")

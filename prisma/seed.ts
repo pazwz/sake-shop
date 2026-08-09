@@ -1,7 +1,10 @@
 import { CollectionStatus, PrismaClient, Season } from '@prisma/client';
+import { hash } from 'bcryptjs';
 import {
   DEVELOPMENT_STORE_ID,
   developmentSeedAdmin,
+  developmentSeedAdminAccessAccounts,
+  developmentSeedAdminWithoutPassword,
   developmentSeedCategories,
   developmentSeedProducts,
   developmentSeedSubcategories,
@@ -10,10 +13,28 @@ import {
 const prisma = new PrismaClient();
 
 const seed = async (): Promise<void> => {
+  const passwordHash = process.env.ADMIN_SEED_PASSWORD
+    ? await hash(process.env.ADMIN_SEED_PASSWORD, 12)
+    : null;
   await prisma.adminUser.upsert({
     where: { email: developmentSeedAdmin.email },
-    update: developmentSeedAdmin,
-    create: developmentSeedAdmin,
+    update: {
+      ...developmentSeedAdmin,
+      ...(passwordHash ? { passwordHash } : {}),
+    },
+    create: { ...developmentSeedAdmin, passwordHash },
+  });
+  for (const account of developmentSeedAdminAccessAccounts) {
+    await prisma.adminUser.upsert({
+      where: { email: account.email },
+      update: { ...account, ...(passwordHash ? { passwordHash } : {}) },
+      create: { ...account, passwordHash },
+    });
+  }
+  await prisma.adminUser.upsert({
+    where: { email: developmentSeedAdminWithoutPassword.email },
+    update: { ...developmentSeedAdminWithoutPassword, passwordHash: null },
+    create: { ...developmentSeedAdminWithoutPassword, passwordHash: null },
   });
 
   for (const category of developmentSeedCategories) {
