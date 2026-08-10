@@ -21,6 +21,12 @@ export default function AdminPage() {
       >
         注文を管理
       </Link>
+      <Link
+        href="/admin/integrations/smaregi"
+        className="btn ml-3 mt-8 border border-[#171412]"
+      >
+        Smaregi 連携
+      </Link>
     </main>
   );
 }
