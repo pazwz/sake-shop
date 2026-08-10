@@ -25,6 +25,9 @@ export default async function OrderConfirmation({
     phone: string;
   };
   const shipment = order.shipments[0];
+  const payment =
+    order.payments.find((entry) => entry.status === 'SUCCEEDED') ??
+    order.payments[0];
   return (
     <main className="wrap py-20">
       <p className="eyebrow">ORDER CONFIRMATION</p>
@@ -65,6 +68,12 @@ export default async function OrderConfirmation({
             <br />
             注文状態：{order.status}
           </p>
+          {payment ? (
+            <div className="mt-6 border-t line pt-5 text-sm leading-7">
+              <h3 className="serif text-xl">お支払い</h3>
+              <p className="mt-3">状態：{payment.status}</p>
+            </div>
+          ) : null}
           {shipment?.status === 'SHIPPED' ||
           shipment?.status === 'DELIVERED' ? (
             <div className="mt-8 border-t line pt-6 text-sm leading-7">

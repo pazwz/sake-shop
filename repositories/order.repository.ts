@@ -9,6 +9,7 @@ import { prisma } from '@/lib/prisma';
 const include = {
   items: true,
   customer: true,
+  payments: { orderBy: { createdAt: 'desc' } },
   shipments: { orderBy: { createdAt: 'desc' } },
 } satisfies Prisma.OrderInclude;
 export class OrderRepository {

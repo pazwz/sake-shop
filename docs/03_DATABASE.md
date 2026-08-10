@@ -519,6 +519,19 @@ STRIPE
 
 ---
 
+## Payment idempotency
+
+`payments.idempotency_key` is nullable and unique. It makes repeated payment
+creation requests return the existing payment rather than creating another one.
+`payments` also uses the composite unique constraint `(provider,
+provider_payment_id)`, allowing the same provider payment ID in different
+provider namespaces while preventing duplicates within one provider.
+
+`payment_webhook_events` stores the provider, provider event ID, related
+payment, SHA-256 payload hash, and processing timestamp. The unique
+`(provider, event_id)` constraint is the final database-level protection for
+webhook idempotency and concurrent delivery.
+
 ## shipments
 
 用途：

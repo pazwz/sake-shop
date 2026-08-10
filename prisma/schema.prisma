@@ -263,22 +263,40 @@ model OrderItem {
 }
 
 model Payment {
-  id                String          @id @default(cuid())
-  orderId           String          @map("order_id")
+  id                String                @id @default(cuid())
+  orderId           String                @map("order_id")
   provider          PaymentProvider
-  providerPaymentId String?         @map("provider_payment_id")
-  status            PaymentStatus   @default(PENDING)
-  amount            Decimal         @db.Decimal(12, 2)
-  paidAt            DateTime?       @map("paid_at")
-  failedAt          DateTime?       @map("failed_at")
-  cancelledAt       DateTime?       @map("cancelled_at")
-  createdAt         DateTime        @default(now()) @map("created_at")
-  updatedAt         DateTime        @updatedAt @map("updated_at")
-  order             Order           @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  providerPaymentId String?               @map("provider_payment_id")
+  idempotencyKey    String?               @unique @map("idempotency_key")
+  status            PaymentStatus         @default(PENDING)
+  amount            Decimal               @db.Decimal(12, 2)
+  paidAt            DateTime?             @map("paid_at")
+  failedAt          DateTime?             @map("failed_at")
+  cancelledAt       DateTime?             @map("cancelled_at")
+  createdAt         DateTime              @default(now()) @map("created_at")
+  updatedAt         DateTime              @updatedAt @map("updated_at")
+  order             Order                 @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  webhookEvents     PaymentWebhookEvent[]
 
+  @@unique([provider, providerPaymentId])
   @@index([orderId])
-  @@index([providerPaymentId])
   @@map("payments")
+}
+
+model PaymentWebhookEvent {
+  id          String          @id @default(cuid())
+  provider    PaymentProvider
+  eventId     String          @map("event_id")
+  paymentId   String          @map("payment_id")
+  payloadHash String          @map("payload_hash")
+  processedAt DateTime?       @map("processed_at")
+  createdAt   DateTime        @default(now()) @map("created_at")
+  payment     Payment         @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+
+  @@unique([provider, eventId])
+  @@index([paymentId])
+  @@index([createdAt])
+  @@map("payment_webhook_events")
 }
 
 model Shipment {

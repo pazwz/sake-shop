@@ -8,6 +8,14 @@ type Shipment = {
   status: string;
   shippedAt: string | null;
 };
+type Payment = {
+  provider: string;
+  providerPaymentId: string | null;
+  status: string;
+  amount: number;
+  paidAt: string | null;
+  failedAt: string | null;
+};
 type Order = {
   id: string;
   orderNumber: string;
@@ -20,6 +28,7 @@ type Order = {
     subtotal: number;
   }[];
   customer: { name: string; email: string };
+  payments: Payment[];
   shipments: Shipment[];
   shippingAddressSnapshot: {
     recipientName: string;
@@ -125,6 +134,9 @@ export function AdminOrderDetail({
 
   if (!order) return <main className="wrap py-16">読み込み中…</main>;
   const shipment = order.shipments[0];
+  const payment =
+    order.payments.find((entry) => entry.status === 'SUCCEEDED') ??
+    order.payments[0];
   return (
     <main className="wrap py-16">
       <p className="eyebrow">{order.orderNumber}</p>
@@ -176,6 +188,34 @@ export function AdminOrderDetail({
               更新
             </button>
           </div>
+        )}
+      </section>
+      <section className="mt-10 border-t line pt-8">
+        <h2 className="serif text-2xl">支払い情報</h2>
+        {payment ? (
+          <p className="mt-3 text-sm leading-7">
+            Provider：{payment.provider}
+            <br />
+            Status：{payment.status}
+            <br />
+            Amount：¥{Number(payment.amount).toLocaleString()}
+            <br />
+            Provider payment ID：{payment.providerPaymentId ?? '—'}
+            <br />
+            Paid at：
+            {payment.paidAt
+              ? new Date(payment.paidAt).toLocaleString('ja-JP')
+              : '—'}
+            <br />
+            Failed at：
+            {payment.failedAt
+              ? new Date(payment.failedAt).toLocaleString('ja-JP')
+              : '—'}
+          </p>
+        ) : (
+          <p className="mt-3 text-sm text-stone-500">
+            支払い記録はありません。
+          </p>
         )}
       </section>
       <section className="mt-10 border-t line pt-8">

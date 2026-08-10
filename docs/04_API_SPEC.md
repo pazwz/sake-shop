@@ -634,6 +634,10 @@ POST
 
 /api/v1/payments/create
 
+Supports an optional `idempotencyKey`. Repeated requests with the same key
+return the existing Payment; the server always derives the amount from the
+Order.
+
 ---
 
 支付成功回调
@@ -641,6 +645,11 @@ POST
 POST
 
 /api/v1/payments/webhook
+
+Webhook requests identify the provider, provider payment ID, and provider event
+ID. Signature verification is delegated to the provider adapter. The endpoint
+stores a unique provider/event record before applying Payment and Order status
+changes, so duplicate deliveries return success without reprocessing.
 
 ---
 
