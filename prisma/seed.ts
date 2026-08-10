@@ -124,7 +124,6 @@ const seed = async (): Promise<void> => {
 
   const seededProducts = await prisma.product.findMany({
     where: { slug: { startsWith: 'dev-' } },
-    take: 2,
     orderBy: { slug: 'asc' },
   });
   // Development-only CMS records for verifying the Sprint 7 home API.
@@ -165,7 +164,16 @@ const seed = async (): Promise<void> => {
       displayOrder: index + 1,
     })),
   ];
+  const collectionIndexes = new Map<string, number>();
+
   for (const collection of collections) {
+    const collectionIndex = collectionIndexes.get(collection.type) ?? 0;
+    const collectionProducts = seededProducts.slice(
+      collectionIndex * 2,
+      collectionIndex * 2 + 2,
+    );
+    collectionIndexes.set(collection.type, collectionIndex + 1);
+
     const slug = `development-${collection.type.toLowerCase()}-${collection.title.replaceAll(' ', '-').replaceAll('　', '-')}`;
     const existing = await prisma.featuredCollection.findFirst({
       where: { title: collection.title, type: collection.type },
@@ -196,7 +204,7 @@ const seed = async (): Promise<void> => {
       where: { featuredCollectionId: saved.id },
     });
     await prisma.featuredCollectionProduct.createMany({
-      data: seededProducts.map((product, index) => ({
+      data: collectionProducts.map((product, index) => ({
         featuredCollectionId: saved.id,
         productId: product.id,
         displayOrder: index + 1,

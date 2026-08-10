@@ -5,6 +5,25 @@ import type {
   CollectionInput,
   CollectionUpdate,
 } from '@/validators/collection.validator';
+
+const deduplicateCollectionProducts = <
+  T extends { products: Array<{ product: { id: string } }> },
+>(
+  collections: T[],
+) => {
+  const productIds = new Set<string>();
+
+  return collections.map((collection) => ({
+    ...collection,
+    products: collection.products.filter(({ product }) => {
+      if (productIds.has(product.id)) return false;
+
+      productIds.add(product.id);
+      return true;
+    }),
+  }));
+};
+
 export class FeaturedCollectionService {
   constructor(
     private readonly repository = new FeaturedCollectionRepository(),
@@ -12,7 +31,7 @@ export class FeaturedCollectionService {
   async getHome() {
     const all = await this.repository.findHomeCollections();
     const by = (type: CollectionType) =>
-      all.filter((item) => item.type === type);
+      deduplicateCollectionProducts(all.filter((item) => item.type === type));
     const current = [
       Season.SPRING,
       Season.SUMMER,

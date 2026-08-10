@@ -3,6 +3,14 @@ import { z } from 'zod';
 
 const optionalText = z.string().trim().max(2000).optional().nullable();
 const optionalDate = z.string().datetime().optional().nullable();
+const productIds = (minimum = 0) =>
+  z
+    .array(z.string().cuid())
+    .min(minimum)
+    .max(24)
+    .refine((ids) => new Set(ids).size === ids.length, {
+      message: 'Product IDs must be unique.',
+    });
 
 const collectionFields = z.object({
   type: z.nativeEnum(CollectionType),
@@ -16,7 +24,7 @@ const collectionFields = z.object({
   publishStartAt: optionalDate,
   publishEndAt: optionalDate,
   displayOrder: z.number().int().min(0).default(0),
-  productIds: z.array(z.string().cuid()).max(24).default([]),
+  productIds: productIds().default([]),
 });
 
 export const collectionInputValidator = collectionFields.superRefine(
@@ -41,7 +49,7 @@ export const collectionInputValidator = collectionFields.superRefine(
 export const collectionUpdateValidator = collectionFields.partial();
 
 export const collectionProductOrderValidator = z.object({
-  productIds: z.array(z.string().cuid()).min(1).max(24),
+  productIds: productIds(1),
 });
 
 export type CollectionInput = z.infer<typeof collectionInputValidator>;
