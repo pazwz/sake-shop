@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { CollectionImageUpload } from '@/components/admin/collection-image-upload';
 
 type Product = {
   id: string;
@@ -48,6 +49,9 @@ export function CollectionForm({ collection }: { collection?: Collection }) {
   );
   const [message, setMessage] = useState('');
   const [saving, setSaving] = useState(false);
+  const [desktopImageUploading, setDesktopImageUploading] = useState(false);
+  const [mobileImageUploading, setMobileImageUploading] = useState(false);
+  const imageUploading = desktopImageUploading || mobileImageUploading;
 
   useEffect(() => {
     const loadProducts = async () => {
@@ -70,6 +74,10 @@ export function CollectionForm({ collection }: { collection?: Collection }) {
   };
 
   const submit = async (formData: FormData) => {
+    if (imageUploading) {
+      setMessage('画像のアップロード完了後に保存してください。');
+      return;
+    }
     setSaving(true);
     setMessage('');
     const type = String(formData.get('type'));
@@ -228,24 +236,18 @@ export function CollectionForm({ collection }: { collection?: Collection }) {
             className="mt-2 w-full border line bg-white p-3"
           />
         </label>
-        <label className="text-sm md:col-span-2">
-          デスクトップ画像 URL
-          <input
-            name="desktopImageUrl"
-            type="url"
-            defaultValue={collection?.desktopImageUrl ?? ''}
-            className="mt-2 w-full border line bg-white p-3"
-          />
-        </label>
-        <label className="text-sm md:col-span-2">
-          モバイル画像 URL
-          <input
-            name="mobileImageUrl"
-            type="url"
-            defaultValue={collection?.mobileImageUrl ?? ''}
-            className="mt-2 w-full border line bg-white p-3"
-          />
-        </label>
+        <CollectionImageUpload
+          name="desktopImageUrl"
+          label="デスクトップ画像"
+          initialUrl={collection?.desktopImageUrl}
+          onUploadingChange={setDesktopImageUploading}
+        />
+        <CollectionImageUpload
+          name="mobileImageUrl"
+          label="モバイル画像"
+          initialUrl={collection?.mobileImageUrl}
+          onUploadingChange={setMobileImageUploading}
+        />
         <label className="text-sm">
           公開開始
           <input
@@ -320,10 +322,10 @@ export function CollectionForm({ collection }: { collection?: Collection }) {
         </div>
       </section>
       <button
-        disabled={saving}
+        disabled={saving || imageUploading}
         className="btn bg-[#171412] text-white disabled:opacity-50"
       >
-        {saving ? '保存中…' : '保存する'}
+        {saving ? '保存中…' : imageUploading ? '画像アップロード中…' : '保存する'}
       </button>
     </form>
   );
