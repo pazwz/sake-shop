@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { CollectionImageUpload } from '@/components/admin/collection-image-upload';
 
@@ -41,6 +41,15 @@ const seasons = ['SPRING', 'SUMMER', 'AUTUMN', 'WINTER'];
 
 const dateValue = (value: string | null) => (value ? value.slice(0, 16) : '');
 
+const getErrorDetail = async (response: Response, fallback: string) => {
+  try {
+    const payload = (await response.json()) as { error?: { detail?: string } };
+    return payload.error?.detail ?? fallback;
+  } catch {
+    return fallback;
+  }
+};
+
 export function CollectionForm({ collection }: { collection?: Collection }) {
   const router = useRouter();
   const [products, setProducts] = useState<Product[]>([]);
@@ -49,17 +58,25 @@ export function CollectionForm({ collection }: { collection?: Collection }) {
   );
   const [message, setMessage] = useState('');
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [desktopImageUploading, setDesktopImageUploading] = useState(false);
   const [mobileImageUploading, setMobileImageUploading] = useState(false);
+  const savingRef = useRef(false);
+  const deletingRef = useRef(false);
   const imageUploading = desktopImageUploading || mobileImageUploading;
 
   useEffect(() => {
     const loadProducts = async () => {
-      const response = await fetch('/api/v1/products?limit=100');
-      const payload = (await response.json()) as {
-        data?: { items?: Product[] };
-      };
-      setProducts(payload.data?.items ?? []);
+      try {
+        const response = await fetch('/api/v1/products?limit=100');
+        if (!response.ok) throw new Error('Product request failed.');
+        const payload = (await response.json()) as {
+          data?: { items?: Product[] };
+        };
+        setProducts(payload.data?.items ?? []);
+      } catch {
+        setMessage('商品一覧を読み込めませんでした。ページを再読み込みしてください。');
+      }
     };
     void loadProducts();
   }, []);
@@ -74,66 +91,102 @@ export function CollectionForm({ collection }: { collection?: Collection }) {
   };
 
   const submit = async (formData: FormData) => {
+    if (savingRef.current || deletingRef.current) return;
     if (imageUploading) {
       setMessage('画像のアップロード完了後に保存してください。');
       return;
     }
+    savingRef.current = true;
     setSaving(true);
     setMessage('');
-    const type = String(formData.get('type'));
-    const payload = {
-      type,
-      season:
-        type === 'SEASONAL' ? String(formData.get('season')) || null : null,
-      title: String(formData.get('title')),
-      subtitle: String(formData.get('subtitle')) || null,
-      description: String(formData.get('description')) || null,
-      desktopImageUrl: String(formData.get('desktopImageUrl')) || null,
-      mobileImageUrl: String(formData.get('mobileImageUrl')) || null,
-      status: String(formData.get('status')),
-      publishStartAt: String(formData.get('publishStartAt'))
-        ? new Date(String(formData.get('publishStartAt'))).toISOString()
-        : null,
-      publishEndAt: String(formData.get('publishEndAt'))
-        ? new Date(String(formData.get('publishEndAt'))).toISOString()
-        : null,
-      displayOrder: Number(formData.get('displayOrder')),
-      productIds: selected,
-    };
-    const response = await fetch(
-      collection
-        ? `/api/v1/admin/collections/${collection.id}`
-        : '/api/v1/admin/collections',
-      {
-        method: collection ? 'PATCH' : 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      },
-    );
-    if (!response.ok) {
-      setMessage('保存できませんでした。入力内容を確認してください。');
+    try {
+      const type = String(formData.get('type'));
+      const payload = {
+        type,
+        season:
+          type === 'SEASONAL' ? String(formData.get('season')) || null : null,
+        title: String(formData.get('title')),
+        subtitle: String(formData.get('subtitle')) || null,
+        description: String(formData.get('description')) || null,
+        desktopImageUrl: String(formData.get('desktopImageUrl')) || null,
+        mobileImageUrl: String(formData.get('mobileImageUrl')) || null,
+        status: String(formData.get('status')),
+        publishStartAt: String(formData.get('publishStartAt'))
+          ? new Date(String(formData.get('publishStartAt'))).toISOString()
+          : null,
+        publishEndAt: String(formData.get('publishEndAt'))
+          ? new Date(String(formData.get('publishEndAt'))).toISOString()
+          : null,
+        displayOrder: Number(formData.get('displayOrder')),
+        productIds: selected,
+      };
+      const response = await fetch(
+        collection
+          ? `/api/v1/admin/collections/${collection.id}`
+          : '/api/v1/admin/collections',
+        {
+          method: collection ? 'PATCH' : 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        },
+      );
+      if (!response.ok) {
+        setMessage(
+          await getErrorDetail(
+            response,
+            '保存できませんでした。入力内容を確認してください。',
+          ),
+        );
+        return;
+      }
+      const result = (await response.json()) as { data?: { id?: string } };
+      if (!result.data?.id) {
+        setMessage('保存結果を読み取れませんでした。');
+        return;
+      }
+      router.push(`/admin/collections/${result.data.id}`);
+      router.refresh();
+    } catch {
+      setMessage('通信エラーが発生しました。もう一度お試しください。');
+    } finally {
+      savingRef.current = false;
       setSaving(false);
-      return;
     }
-    const result = (await response.json()) as { data: { id: string } };
-    router.push(`/admin/collections/${result.data.id}`);
-    router.refresh();
   };
 
   const remove = async () => {
-    if (!collection || !window.confirm('このコレクションを削除しますか？'))
+    if (
+      !collection ||
+      savingRef.current ||
+      deletingRef.current ||
+      !window.confirm('このコレクションを削除しますか？')
+    )
       return;
-    const response = await fetch(`/api/v1/admin/collections/${collection.id}`, {
-      method: 'DELETE',
-    });
-    if (!response.ok) {
-      setMessage(
-        '公開中のコレクションは削除できません。先に下書きまたはアーカイブに変更してください。',
+    deletingRef.current = true;
+    setDeleting(true);
+    setMessage('');
+    try {
+      const response = await fetch(
+        `/api/v1/admin/collections/${collection.id}`,
+        { method: 'DELETE' },
       );
-      return;
+      if (!response.ok) {
+        setMessage(
+          await getErrorDetail(
+            response,
+            'コレクションを削除できませんでした。',
+          ),
+        );
+        return;
+      }
+      router.push('/admin/collections');
+      router.refresh();
+    } catch {
+      setMessage('通信エラーが発生しました。もう一度お試しください。');
+    } finally {
+      deletingRef.current = false;
+      setDeleting(false);
     }
-    router.push('/admin/collections');
-    router.refresh();
   };
 
   return (
@@ -151,9 +204,10 @@ export function CollectionForm({ collection }: { collection?: Collection }) {
           <button
             type="button"
             onClick={remove}
-            className="text-xs text-[#6d2227] underline"
+            disabled={saving || deleting || imageUploading}
+            className="text-xs text-[#6d2227] underline disabled:opacity-50"
           >
-            削除
+            {deleting ? '削除中…' : '削除'}
           </button>
         ) : null}
       </div>
@@ -322,7 +376,7 @@ export function CollectionForm({ collection }: { collection?: Collection }) {
         </div>
       </section>
       <button
-        disabled={saving || imageUploading}
+        disabled={saving || deleting || imageUploading}
         className="btn bg-[#171412] text-white disabled:opacity-50"
       >
         {saving ? '保存中…' : imageUploading ? '画像アップロード中…' : '保存する'}

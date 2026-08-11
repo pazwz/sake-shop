@@ -19,6 +19,7 @@ const uploadImage = (
     formData.set('file', file);
 
     request.open('POST', '/api/v1/admin/media/upload');
+    request.timeout = 120_000;
     request.upload.addEventListener('progress', (event) => {
       if (event.lengthComputable) {
         onProgress(Math.round((event.loaded / event.total) * 100));
@@ -41,6 +42,13 @@ const uploadImage = (
     });
     request.addEventListener('error', () => {
       reject(new Error('画像をアップロードできませんでした。'));
+    });
+    request.addEventListener('timeout', () => {
+      reject(
+        new Error(
+          '画像のアップロードがタイムアウトしました。通信環境を確認してください。',
+        ),
+      );
     });
     request.send(formData);
   });

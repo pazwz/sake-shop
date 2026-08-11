@@ -1,13 +1,14 @@
 import { NextResponse } from 'next/server';
 import { API_EMPTY_MESSAGE } from '@/config/api';
 import { AppError } from '@/lib/errors';
+import { serializeForJson, type JsonCompatible } from '@/lib/serialization';
 import type { ApiErrorResponse, ApiSuccessResponse } from '@/types/api';
 
 export const createSuccessResponse = <T>(data: T, status = 200) =>
-  NextResponse.json<ApiSuccessResponse<T>>(
+  NextResponse.json<ApiSuccessResponse<JsonCompatible<T>>>(
     {
       success: true,
-      data,
+      data: serializeForJson(data),
       message: API_EMPTY_MESSAGE,
       error: null,
     },

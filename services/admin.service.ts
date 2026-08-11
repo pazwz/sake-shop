@@ -3,7 +3,10 @@ import { AdminRole } from '@prisma/client';
 import { UnauthorizedError } from '@/lib/errors';
 import { AdminRepository } from '@/repositories/admin.repository';
 
-export const CMS_ADMIN_ROLES = [AdminRole.OWNER, AdminRole.MANAGER];
+export const CMS_ADMIN_ROLES: AdminRole[] = [
+  AdminRole.OWNER,
+  AdminRole.MANAGER,
+];
 
 export class AdminService {
   public constructor(private readonly repository = new AdminRepository()) {}

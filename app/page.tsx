@@ -1,44 +1,50 @@
-'use client';
-
-import Image from 'next/image';
+import Image, { getImageProps } from 'next/image';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
-import { ProductCard, type ProductCardItem } from '@/components/product-card';
-import { useLanguage } from '@/components/language-provider';
-import { categories } from '@/lib/products';
+import { HomeCategoryGrid } from '@/components/home-category-grid';
+import {
+  HomeSeasonalSection,
+  type HomeProductCardItem,
+  type SeasonKey,
+  type SeasonalCollection,
+} from '@/components/home-seasonal-section';
+import { ProductCard } from '@/components/product-card';
+import { serializeForJson } from '@/lib/serialization';
+import { FeaturedCollectionService } from '@/services/collection.service';
 
-type SeasonKey = 'SPRING' | 'SUMMER' | 'AUTUMN' | 'WINTER';
-type HomeProduct = ProductCardItem & { images: Array<{ imageUrl: string }> };
 type HomeCollection = {
   id: string;
   title: string;
   description: string | null;
   desktopImageUrl: string | null;
+  mobileImageUrl: string | null;
   season: SeasonKey | null;
-  products: Array<{ product: HomeProduct }>;
-};
-type HomeData = {
-  currentSeason: SeasonKey;
-  hero: HomeCollection[];
-  seasonal: HomeCollection[];
-  shopkeeper: HomeCollection[];
-  gift: HomeCollection[];
-  editorial: HomeCollection[];
-  story: HomeCollection[];
-};
-
-const seasonLabels: Record<SeasonKey, string> = {
-  SPRING: '春',
-  SUMMER: '夏',
-  AUTUMN: '秋',
-  WINTER: '冬',
+  products: Array<{
+    product: {
+      id: string;
+      slug: string;
+      name: string;
+      producer: string | null;
+      price: { toString(): string };
+      category: { name: string };
+      images: Array<{ imageUrl: string }>;
+    };
+  }>;
 };
 
-const productsFor = (collections: HomeCollection[]) =>
+const collectionService = new FeaturedCollectionService();
+
+export const dynamic = 'force-dynamic';
+
+const productsFor = (collections: HomeCollection[]): HomeProductCardItem[] =>
   collections.flatMap((collection) =>
     collection.products.map(({ product }) => ({
-      ...product,
-      price: Number(product.price),
+      id: product.id,
+      slug: product.slug,
+      name: product.name,
+      producer: product.producer,
+      price: Number(product.price.toString()),
+      category: { name: product.category.name },
+      images: product.images.map(({ imageUrl }) => ({ imageUrl })),
     })),
   );
 
@@ -57,53 +63,75 @@ function EmptyHome() {
   );
 }
 
-export default function Home() {
-  const { categoryLabel } = useLanguage();
-  const [home, setHome] = useState<HomeData | null>(null);
-  const [activeSeason, setActiveSeason] = useState<SeasonKey | null>(null);
+function CollectionImage({
+  desktopUrl,
+  mobileUrl,
+  alt,
+  sizes,
+  preload = false,
+}: {
+  desktopUrl: string | null;
+  mobileUrl?: string | null;
+  alt: string;
+  sizes: string;
+  preload?: boolean;
+}) {
+  const fallbackUrl = desktopUrl ?? mobileUrl;
+  if (!fallbackUrl) return null;
 
-  useEffect(() => {
-    const loadHome = async () => {
-      const response = await fetch('/api/v1/home');
-      const payload = (await response.json()) as {
-        success: boolean;
-        data: HomeData | null;
-      };
+  const mobileSource = mobileUrl
+    ? getImageProps({
+        src: mobileUrl,
+        alt,
+        fill: true,
+        sizes: '100vw',
+      }).props.srcSet
+    : null;
 
-      if (response.ok && payload.success && payload.data) {
-        setHome(payload.data);
-        setActiveSeason(payload.data.currentSeason);
-      }
-    };
-
-    void loadHome();
-  }, []);
-
-  if (!home || home.hero.length === 0) return <EmptyHome />;
-
-  const currentSeason = activeSeason ?? home.currentSeason;
-  const seasonal = home.seasonal.find(
-    (collection) => collection.season === currentSeason,
+  return (
+    <picture>
+      {mobileSource ? (
+        <source media="(max-width: 767px)" srcSet={mobileSource} />
+      ) : null}
+      <Image
+        fill
+        sizes={sizes}
+        preload={preload}
+        className="object-cover"
+        src={fallbackUrl}
+        alt={alt}
+      />
+    </picture>
   );
+}
+
+export default async function Home() {
+  const home = await collectionService.getHome();
+  if (home.hero.length === 0) return <EmptyHome />;
+
   const hero = home.hero[0];
   const shopkeeperProducts = productsFor(home.shopkeeper).slice(0, 3);
   const giftProducts = productsFor(home.gift).slice(0, 3);
   const editorial = home.editorial[0];
   const stories = home.story.slice(0, 2);
+  const seasonalCollections: SeasonalCollection[] = serializeForJson(
+    home.seasonal.map((collection) => ({
+      id: collection.id,
+      season: collection.season,
+      products: productsFor([collection]).map((product) => ({ product })),
+    })),
+  );
 
   return (
     <>
-      <section className="relative h-[82vh] min-h-[620px] overflow-hidden">
-        {hero.desktopImageUrl ? (
-          <Image
-            fill
-            sizes="100vw"
-            loading="eager"
-            className="object-cover"
-            src={hero.desktopImageUrl}
-            alt={hero.title}
-          />
-        ) : null}
+      <section className="relative h-[82vh] min-h-[620px] overflow-hidden bg-[#3d3028]">
+        <CollectionImage
+          desktopUrl={hero.desktopImageUrl}
+          mobileUrl={hero.mobileImageUrl}
+          sizes="100vw"
+          preload
+          alt={hero.title}
+        />
         <div className="absolute inset-0 bg-gradient-to-r from-black/55 via-black/20 to-transparent" />
         <div className="wrap relative flex h-full items-end pb-20 text-white">
           <div className="max-w-2xl">
@@ -126,64 +154,12 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="wrap py-20 md:py-28">
-        <div className="flex flex-wrap items-end justify-between gap-6">
-          <div>
-            <p className="eyebrow">SEASONAL RECOMMENDATIONS</p>
-            <h2 className="serif mt-4 text-4xl">季節のおすすめ</h2>
-          </div>
-          <div className="flex border-b line text-sm font-semibold">
-            {Object.entries(seasonLabels).map(([season, label]) => (
-              <button
-                key={season}
-                type="button"
-                onClick={() => setActiveSeason(season as SeasonKey)}
-                className={`px-4 py-3 ${season === currentSeason ? 'border-b-2 border-[#6d2227] text-[#6d2227]' : 'text-stone-500'}`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
-        {seasonal ? (
-          <>
-            <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-              {productsFor([seasonal]).map((product) => (
-                <ProductCard key={product.id} product={product} />
-              ))}
-            </div>
-            <Link
-              href="/products"
-              className="mt-8 inline-block border-b border-[#171412] pb-1 text-xs font-bold"
-            >
-              {seasonLabels[currentSeason]}のおすすめをすべて見る　→
-            </Link>
-          </>
-        ) : null}
-      </section>
+      <HomeSeasonalSection
+        collections={seasonalCollections}
+        currentSeason={home.currentSeason}
+      />
 
-      <section className="border-y line bg-[#faf8f4]">
-        <div className="wrap py-20">
-          <p className="eyebrow">Explore by category</p>
-          <div className="mt-10 grid grid-cols-2 border-l line md:grid-cols-3">
-            {categories.map((category, index) => (
-              <Link
-                key={category}
-                href={`/products?category=${encodeURIComponent(category)}`}
-                className="group border-b border-r line p-7 md:p-10"
-              >
-                <span className="text-xs text-stone-500">0{index + 1}</span>
-                <p className="serif mt-10 text-2xl group-hover:text-[#6d2227]">
-                  {categoryLabel(category)}
-                </p>
-                <span className="mt-3 block text-xs text-[#6d2227]">
-                  選ぶ　→
-                </span>
-              </Link>
-            ))}
-          </div>
-        </div>
-      </section>
+      <HomeCategoryGrid />
 
       <section className="wrap grid gap-10 py-24 md:grid-cols-[.8fr_1.2fr]">
         <div>
@@ -208,16 +184,13 @@ export default function Home() {
 
       {editorial ? (
         <section className="grid min-h-[540px] md:grid-cols-2">
-          <div className="relative min-h-80">
-            {editorial.desktopImageUrl ? (
-              <Image
-                fill
-                sizes="(max-width: 767px) 100vw, 50vw"
-                className="object-cover"
-                src={editorial.desktopImageUrl}
-                alt={editorial.title}
-              />
-            ) : null}
+          <div className="relative min-h-80 bg-stone-100">
+            <CollectionImage
+              desktopUrl={editorial.desktopImageUrl}
+              mobileUrl={editorial.mobileImageUrl}
+              sizes="(max-width: 767px) 100vw, 50vw"
+              alt={editorial.title}
+            />
           </div>
           <div className="flex items-center bg-[#3d3028] px-10 py-20 text-white md:px-20">
             <div>
@@ -261,16 +234,13 @@ export default function Home() {
                 href="/products"
                 className="grid gap-6 sm:grid-cols-2"
               >
-                <div className="relative aspect-[4/3]">
-                  {story.desktopImageUrl ? (
-                    <Image
-                      fill
-                      sizes="(max-width: 639px) 100vw, (max-width: 767px) 50vw, 25vw"
-                      className="object-cover"
-                      src={story.desktopImageUrl}
-                      alt={story.title}
-                    />
-                  ) : null}
+                <div className="relative aspect-[4/3] bg-stone-100">
+                  <CollectionImage
+                    desktopUrl={story.desktopImageUrl}
+                    mobileUrl={story.mobileImageUrl}
+                    sizes="(max-width: 639px) 100vw, (max-width: 767px) 50vw, 25vw"
+                    alt={story.title}
+                  />
                 </div>
                 <div className="self-center">
                   <h3 className="serif text-3xl">{story.title}</h3>

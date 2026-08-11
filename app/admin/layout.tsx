@@ -14,7 +14,9 @@ export default async function AdminLayout({
             <Link href="/admin" className="font-semibold tracking-[.18em]">
               KURA ADMIN
             </Link>
-            <AdminUserStatus admin={admin} />
+            <AdminUserStatus
+              admin={{ name: admin.name, role: admin.role }}
+            />
           </div>
         </div>
       ) : null}

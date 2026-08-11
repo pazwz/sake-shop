@@ -25,7 +25,12 @@ export const POST = async (request: Request) => {
       throw new ValidationError('multipart/form-data is required.');
     }
 
-    const formData = await request.formData();
+    let formData: FormData;
+    try {
+      formData = await request.formData();
+    } catch {
+      throw new ValidationError('Invalid multipart/form-data payload.');
+    }
     const file = adminMediaFileValidator.parse(
       formData.get('file') ?? formData.get('image'),
     );
