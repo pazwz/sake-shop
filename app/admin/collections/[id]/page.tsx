@@ -11,14 +11,16 @@ const collectionService = new FeaturedCollectionService();
 
 export default async function CollectionDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ saved?: string }>;
 }) {
   const admin = await getCurrentAdmin();
   if (!admin) redirect('/admin/login');
   if (!cmsAdminRoles.includes(admin.role)) redirect('/admin/collections');
 
-  const { id } = await params;
+  const [{ id }, query] = await Promise.all([params, searchParams]);
   let collection;
   try {
     collection = await collectionService.getAdminCollection(id);
@@ -30,6 +32,7 @@ export default async function CollectionDetailPage({
   return (
     <main className="wrap py-16">
       <CollectionForm
+        initialSaved={query.saved === '1'}
         collection={{
           id: collection.id,
           type: collection.type,

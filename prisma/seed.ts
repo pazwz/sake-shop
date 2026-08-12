@@ -1,4 +1,9 @@
-import { CollectionStatus, PrismaClient, Season } from '@prisma/client';
+import {
+  CollectionStatus,
+  CollectionType,
+  PrismaClient,
+  Season,
+} from '@prisma/client';
 import { hash } from 'bcryptjs';
 import {
   DEVELOPMENT_STORE_ID,
@@ -13,6 +18,9 @@ import {
 const prisma = new PrismaClient();
 
 const seed = async (): Promise<void> => {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('Development seed must not run in production.');
+  }
   const passwordHash = process.env.ADMIN_SEED_PASSWORD
     ? await hash(process.env.ADMIN_SEED_PASSWORD, 12)
     : null;
@@ -126,78 +134,110 @@ const seed = async (): Promise<void> => {
     where: { slug: { startsWith: 'dev-' } },
     orderBy: { slug: 'asc' },
   });
-  // Development-only CMS records for verifying the Sprint 7 home API.
-  const collections = [
+  // Development-only CMS records. SHOPKEEPER and GIFT each represent one
+  // homepage area with multiple products; HERO/EDITORIAL/STORY may have
+  // multiple content candidates.
+  const collections: Array<{
+    type: CollectionType;
+    title: string;
+    legacyTitle?: string;
+    season?: Season;
+    displayOrder: number;
+    productStart: number;
+    productCount?: number;
+    useMobileOverride?: boolean;
+  }> = [
     ...['春の便り', '夏の涼酒', '秋の深まり'].map((title, index) => ({
-      type: 'HERO' as const,
+      type: CollectionType.HERO,
       title,
       displayOrder: index + 1,
+      productStart: index * 2,
+      useMobileOverride: true,
     })),
-    ...[Season.SPRING, Season.SUMMER, Season.AUTUMN, Season.WINTER].map(
-      (season, index) => ({
-        type: 'SEASONAL' as const,
-        season,
-        title: `${season} collection`,
-        displayOrder: index + 1,
-      }),
-    ),
-    ...['店主のおすすめ 1', '店主のおすすめ 2', '店主のおすすめ 3'].map(
-      (title, index) => ({
-        type: 'SHOPKEEPER' as const,
-        title,
-        displayOrder: index + 1,
-      }),
-    ),
-    ...['贈り物 1', '贈り物 2', '贈り物 3'].map((title, index) => ({
-      type: 'GIFT' as const,
+    ...[
+      [Season.SPRING, '春の特集'],
+      [Season.SUMMER, '夏の特集'],
+      [Season.AUTUMN, '秋の特集'],
+      [Season.WINTER, '冬の特集'],
+    ].map(([season, title], index) => ({
+      type: CollectionType.SEASONAL,
+      season: season as Season,
       title,
+      legacyTitle: `${season} collection`,
       displayOrder: index + 1,
+      productStart: index * 2,
     })),
+    {
+      type: CollectionType.SHOPKEEPER,
+      title: '店主のおすすめ',
+      legacyTitle: '店主のおすすめ 1',
+      displayOrder: 1,
+      productStart: 0,
+      productCount: 3,
+    },
+    {
+      type: CollectionType.GIFT,
+      title: 'ギフトにおすすめ',
+      legacyTitle: '贈り物 1',
+      displayOrder: 1,
+      productStart: 0,
+      productCount: 3,
+    },
     ...['九州の風土', '食卓の余白', '蔵元を訪ねて'].map((title, index) => ({
-      type: 'EDITORIAL' as const,
+      type: CollectionType.EDITORIAL,
       title,
       displayOrder: index + 1,
+      productStart: index * 2,
     })),
     ...['酒と人の物語', '季節を味わう'].map((title, index) => ({
-      type: 'STORY' as const,
+      type: CollectionType.STORY,
       title,
       displayOrder: index + 1,
+      productStart: index * 2,
     })),
   ];
-  const collectionIndexes = new Map<string, number>();
 
   for (const collection of collections) {
-    const collectionIndex = collectionIndexes.get(collection.type) ?? 0;
     const collectionProducts = seededProducts.slice(
-      collectionIndex * 2,
-      collectionIndex * 2 + 2,
+      collection.productStart,
+      collection.productStart + (collection.productCount ?? 2),
     );
-    collectionIndexes.set(collection.type, collectionIndex + 1);
-
-    const slug = `development-${collection.type.toLowerCase()}-${collection.title.replaceAll(' ', '-').replaceAll('　', '-')}`;
     const existing = await prisma.featuredCollection.findFirst({
-      where: { title: collection.title, type: collection.type },
+      where: {
+        type: collection.type,
+        title: collection.legacyTitle
+          ? { in: [collection.title, collection.legacyTitle] }
+          : collection.title,
+      },
     });
+    const collectionData = {
+      type: collection.type,
+      title: collection.title,
+      season: collection.season,
+      displayOrder: collection.displayOrder,
+    };
     const saved = existing
       ? await prisma.featuredCollection.update({
           where: { id: existing.id },
           data: {
-            ...collection,
+            ...collectionData,
             status: CollectionStatus.PUBLISHED,
             desktopImageUrl:
               'https://images.unsplash.com/photo-1527281400683-1aae777175f8?auto=format&fit=crop&w=1600&q=85',
-            mobileImageUrl:
-              'https://images.unsplash.com/photo-1527281400683-1aae777175f8?auto=format&fit=crop&w=900&q=85',
+            mobileImageUrl: collection.useMobileOverride
+              ? 'https://images.unsplash.com/photo-1527281400683-1aae777175f8?auto=format&fit=crop&w=900&q=85'
+              : null,
           },
         })
       : await prisma.featuredCollection.create({
           data: {
-            ...collection,
+            ...collectionData,
             status: CollectionStatus.PUBLISHED,
             desktopImageUrl:
               'https://images.unsplash.com/photo-1527281400683-1aae777175f8?auto=format&fit=crop&w=1600&q=85',
-            mobileImageUrl:
-              'https://images.unsplash.com/photo-1527281400683-1aae777175f8?auto=format&fit=crop&w=900&q=85',
+            mobileImageUrl: collection.useMobileOverride
+              ? 'https://images.unsplash.com/photo-1527281400683-1aae777175f8?auto=format&fit=crop&w=900&q=85'
+              : null,
           },
         });
     await prisma.featuredCollectionProduct.deleteMany({
@@ -210,8 +250,25 @@ const seed = async (): Promise<void> => {
         displayOrder: index + 1,
       })),
     });
-    void slug;
   }
+
+  // Retire only the exact legacy development fixtures. No record is deleted,
+  // and production execution is blocked above.
+  await prisma.featuredCollection.updateMany({
+    where: {
+      OR: [
+        {
+          type: CollectionType.SHOPKEEPER,
+          title: { in: ['店主のおすすめ 2', '店主のおすすめ 3'] },
+        },
+        {
+          type: CollectionType.GIFT,
+          title: { in: ['贈り物 2', '贈り物 3'] },
+        },
+      ],
+    },
+    data: { status: CollectionStatus.ARCHIVED },
+  });
 };
 
 seed()

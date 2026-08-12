@@ -56,11 +56,15 @@ const uploadImage = (
 export function CollectionImageUpload({
   name,
   label,
+  description,
+  emptyMessage = '画像はまだ設定されていません',
   initialUrl,
   onUploadingChange,
 }: {
   name: 'desktopImageUrl' | 'mobileImageUrl';
   label: string;
+  description: string;
+  emptyMessage?: string;
   initialUrl?: string | null;
   onUploadingChange: (uploading: boolean) => void;
 }) {
@@ -68,10 +72,12 @@ export function CollectionImageUpload({
   const [url, setUrl] = useState(initialUrl ?? '');
   const [progress, setProgress] = useState<number | null>(null);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
   const selectFile = async (file: File | undefined) => {
     if (!file) return;
     setError('');
+    setSuccess('');
 
     if (!file.type.startsWith('image/')) {
       setError('画像ファイルを選択してください。');
@@ -88,6 +94,7 @@ export function CollectionImageUpload({
       const uploaded = await uploadImage(file, setProgress);
       setUrl(uploaded.url);
       setProgress(100);
+      setSuccess('アップロード完了 ✓　変更を保存してください。');
     } catch (uploadError) {
       setError(
         uploadError instanceof Error
@@ -103,7 +110,8 @@ export function CollectionImageUpload({
   return (
     <section className="text-sm md:col-span-2">
       <input type="hidden" name={name} value={url} />
-      <p>{label}</p>
+      <p className="font-semibold">{label}</p>
+      <p className="mt-2 text-xs leading-6 text-stone-500">{description}</p>
       <div className="mt-2 overflow-hidden border line bg-stone-50">
         {url ? (
           <div
@@ -114,7 +122,7 @@ export function CollectionImageUpload({
           />
         ) : (
           <div className="flex aspect-[16/7] items-center justify-center text-sm text-stone-500">
-            画像はまだ設定されていません
+            {emptyMessage}
           </div>
         )}
       </div>
@@ -142,6 +150,7 @@ export function CollectionImageUpload({
             onClick={() => {
               setUrl('');
               setError('');
+              setSuccess('画像の設定を解除しました。変更を保存してください。');
             }}
             className="text-xs text-stone-500 underline"
           >
@@ -157,6 +166,11 @@ export function CollectionImageUpload({
       {error ? (
         <p className="mt-2 text-xs text-[#6d2227]" role="alert">
           {error}
+        </p>
+      ) : null}
+      {success ? (
+        <p className="mt-2 text-xs font-semibold text-emerald-700" role="status">
+          {success}
         </p>
       ) : null}
       <p className="mt-2 text-xs text-stone-500">画像形式・最大10MB</p>

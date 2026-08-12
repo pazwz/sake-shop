@@ -4,7 +4,7 @@ Project: Sake Shop EC Website
 
 Status: Active Development
 
-Last Updated: 2026-08-10
+Last Updated: 2026-08-12
 
 ---
 
@@ -89,3 +89,15 @@ Latest Completed Sprint: Sprint 12
 
 Do not start a new sprint until the current sprint has been completed and verified.
 All AI development agents must read `AGENTS.md`, `PROJECT_STATUS.md`, and `docs/` before starting work.
+
+## Recent Maintenance
+
+- Admin CMS UX refinement completed without starting a new sprint.
+- `/admin/collections` is now presented as homepage content management by
+  business area rather than raw FeaturedCollection records.
+- Collection image upload distinguishes the main image from the optional
+  smartphone composition override.
+- Homepage SSR, Home API semantics, FeaturedCollection schema, admin roles,
+  and AWS media infrastructure remain unchanged.
+- Orphan media cleanup remains pending; removing an image from a collection
+  only removes the database URL reference.

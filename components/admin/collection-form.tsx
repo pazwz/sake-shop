@@ -4,6 +4,12 @@ import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { CollectionImageUpload } from '@/components/admin/collection-image-upload';
+import {
+  collectionTypeLabels,
+  getCollectionAreaLabel,
+  seasonLabels,
+  statusLabels,
+} from '@/lib/collection-presentation';
 
 type Product = {
   id: string;
@@ -50,20 +56,63 @@ const getErrorDetail = async (response: Response, fallback: string) => {
   }
 };
 
-export function CollectionForm({ collection }: { collection?: Collection }) {
+type Feedback = { kind: 'success' | 'error'; text: string };
+
+export function CollectionForm({
+  collection,
+  initialType = 'HERO',
+  initialSeason = null,
+  initialSaved = false,
+}: {
+  collection?: Collection;
+  initialType?: string;
+  initialSeason?: string | null;
+  initialSaved?: boolean;
+}) {
   const router = useRouter();
   const [products, setProducts] = useState<Product[]>([]);
   const [selected, setSelected] = useState<string[]>(
     collection?.products.map(({ product }) => product.id) ?? [],
   );
-  const [message, setMessage] = useState('');
+  const [feedback, setFeedback] = useState<Feedback | null>(
+    initialSaved
+      ? { kind: 'success', text: '変更を保存しました。' }
+      : null,
+  );
   const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(initialSaved);
   const [deleting, setDeleting] = useState(false);
   const [desktopImageUploading, setDesktopImageUploading] = useState(false);
   const [mobileImageUploading, setMobileImageUploading] = useState(false);
   const savingRef = useRef(false);
   const deletingRef = useRef(false);
+  const feedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const imageUploading = desktopImageUploading || mobileImageUploading;
+  const defaultType = collection?.type ?? initialType;
+  const defaultSeason = collection?.season ?? initialSeason;
+  const areaLabel = getCollectionAreaLabel(defaultType, defaultSeason);
+
+  const showSavedFeedback = () => {
+    if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
+    setSaved(true);
+    setFeedback({ kind: 'success', text: '変更を保存しました。' });
+    feedbackTimerRef.current = setTimeout(() => {
+      setSaved(false);
+      setFeedback(null);
+    }, 3500);
+  };
+
+  useEffect(
+    () => () => {
+      if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
+    },
+    [],
+  );
+
+  useEffect(() => {
+    if (!initialSaved) return;
+    showSavedFeedback();
+  }, [initialSaved]);
 
   useEffect(() => {
     const loadProducts = async () => {
@@ -75,7 +124,10 @@ export function CollectionForm({ collection }: { collection?: Collection }) {
         };
         setProducts(payload.data?.items ?? []);
       } catch {
-        setMessage('商品一覧を読み込めませんでした。ページを再読み込みしてください。');
+        setFeedback({
+          kind: 'error',
+          text: '商品一覧を読み込めませんでした。ページを再読み込みしてください。',
+        });
       }
     };
     void loadProducts();
@@ -93,12 +145,16 @@ export function CollectionForm({ collection }: { collection?: Collection }) {
   const submit = async (formData: FormData) => {
     if (savingRef.current || deletingRef.current) return;
     if (imageUploading) {
-      setMessage('画像のアップロード完了後に保存してください。');
+      setFeedback({
+        kind: 'error',
+        text: '画像のアップロード完了後に保存してください。',
+      });
       return;
     }
     savingRef.current = true;
     setSaving(true);
-    setMessage('');
+    setFeedback(null);
+    setSaved(false);
     try {
       const type = String(formData.get('type'));
       const payload = {
@@ -131,23 +187,34 @@ export function CollectionForm({ collection }: { collection?: Collection }) {
         },
       );
       if (!response.ok) {
-        setMessage(
-          await getErrorDetail(
+        setFeedback({
+          kind: 'error',
+          text: await getErrorDetail(
             response,
-            '保存できませんでした。入力内容を確認してください。',
+            '保存に失敗しました。もう一度お試しください。',
           ),
-        );
+        });
         return;
       }
       const result = (await response.json()) as { data?: { id?: string } };
       if (!result.data?.id) {
-        setMessage('保存結果を読み取れませんでした。');
+        setFeedback({
+          kind: 'error',
+          text: '保存結果を読み取れませんでした。',
+        });
         return;
       }
-      router.push(`/admin/collections/${result.data.id}`);
-      router.refresh();
+      if (collection) {
+        showSavedFeedback();
+        router.refresh();
+      } else {
+        router.push(`/admin/collections/${result.data.id}?saved=1`);
+      }
     } catch {
-      setMessage('通信エラーが発生しました。もう一度お試しください。');
+      setFeedback({
+        kind: 'error',
+        text: '保存に失敗しました。通信環境を確認してもう一度お試しください。',
+      });
     } finally {
       savingRef.current = false;
       setSaving(false);
@@ -159,30 +226,37 @@ export function CollectionForm({ collection }: { collection?: Collection }) {
       !collection ||
       savingRef.current ||
       deletingRef.current ||
-      !window.confirm('このコレクションを削除しますか？')
+      !window.confirm('このホームページコンテンツを削除しますか？')
     )
       return;
     deletingRef.current = true;
     setDeleting(true);
-    setMessage('');
+    setFeedback(null);
     try {
       const response = await fetch(
         `/api/v1/admin/collections/${collection.id}`,
         { method: 'DELETE' },
       );
       if (!response.ok) {
-        setMessage(
-          await getErrorDetail(
-            response,
-            'コレクションを削除できませんでした。',
-          ),
-        );
+        setFeedback({
+          kind: 'error',
+          text:
+            response.status === 409
+              ? '公開中のコンテンツは削除できません。先に下書きまたはアーカイブへ変更してください。'
+              : await getErrorDetail(
+                  response,
+                  'ホームページコンテンツを削除できませんでした。',
+                ),
+        });
         return;
       }
       router.push('/admin/collections');
       router.refresh();
     } catch {
-      setMessage('通信エラーが発生しました。もう一度お試しください。');
+      setFeedback({
+        kind: 'error',
+        text: '通信エラーが発生しました。もう一度お試しください。',
+      });
     } finally {
       deletingRef.current = false;
       setDeleting(false);
@@ -194,11 +268,18 @@ export function CollectionForm({ collection }: { collection?: Collection }) {
       <div className="flex items-center justify-between gap-4">
         <div>
           <Link href="/admin/collections" className="text-xs text-stone-500">
-            ← コレクション一覧
+            ← ホームページ管理
           </Link>
           <h1 className="serif mt-3 text-4xl">
-            {collection ? 'コレクションを編集' : 'コレクションを新規作成'}
+            {collection
+              ? `${areaLabel}を編集`
+              : 'ホームページのコンテンツを追加'}
           </h1>
+          <p className="mt-3 text-sm text-stone-600">
+            {collection
+              ? `${areaLabel}に表示する内容を設定します。`
+              : '追加するホームページのエリアを選び、内容を設定します。'}
+          </p>
         </div>
         {collection ? (
           <button
@@ -211,34 +292,45 @@ export function CollectionForm({ collection }: { collection?: Collection }) {
           </button>
         ) : null}
       </div>
-      {message ? (
-        <p className="border border-[#6d2227] p-4 text-sm text-[#6d2227]">
-          {message}
+      {feedback ? (
+        <p
+          role={feedback.kind === 'error' ? 'alert' : 'status'}
+          className={`border p-4 text-sm ${
+            feedback.kind === 'success'
+              ? 'border-emerald-300 bg-emerald-50 text-emerald-800'
+              : 'border-[#6d2227] bg-red-50 text-[#6d2227]'
+          }`}
+        >
+          {feedback.text}
         </p>
       ) : null}
       <div className="grid gap-6 border-y line py-8 md:grid-cols-2">
         <label className="text-sm">
-          タイプ
+          表示する場所
           <select
             name="type"
-            defaultValue={collection?.type ?? 'HERO'}
+            defaultValue={defaultType}
             className="mt-2 w-full border line bg-white p-3"
           >
             {collectionTypes.map((type) => (
-              <option key={type}>{type}</option>
+              <option key={type} value={type}>
+                {collectionTypeLabels[type] ?? type}
+              </option>
             ))}
           </select>
         </label>
         <label className="text-sm">
-          シーズン（SEASONAL のみ）
+          季節（「季節の特集」のみ）
           <select
             name="season"
-            defaultValue={collection?.season ?? ''}
+            defaultValue={defaultSeason ?? ''}
             className="mt-2 w-full border line bg-white p-3"
           >
             <option value="">選択しない</option>
             {seasons.map((season) => (
-              <option key={season}>{season}</option>
+              <option key={season} value={season}>
+                {seasonLabels[season] ?? season}
+              </option>
             ))}
           </select>
         </label>
@@ -250,7 +342,9 @@ export function CollectionForm({ collection }: { collection?: Collection }) {
             className="mt-2 w-full border line bg-white p-3"
           >
             {statuses.map((status) => (
-              <option key={status}>{status}</option>
+              <option key={status} value={status}>
+                {statusLabels[status] ?? status}
+              </option>
             ))}
           </select>
         </label>
@@ -292,13 +386,16 @@ export function CollectionForm({ collection }: { collection?: Collection }) {
         </label>
         <CollectionImageUpload
           name="desktopImageUrl"
-          label="デスクトップ画像"
+          label="メイン画像"
+          description="PC・タブレット・スマートフォンで自動的に最適化して表示されます。"
           initialUrl={collection?.desktopImageUrl}
           onUploadingChange={setDesktopImageUploading}
         />
         <CollectionImageUpload
           name="mobileImageUrl"
-          label="モバイル画像"
+          label="スマートフォン用画像（任意）"
+          description="未設定の場合はメイン画像をスマートフォンでも自動的に使用します。スマートフォンで構図を変えたい場合のみ設定してください。"
+          emptyMessage="未設定（メイン画像を使用）"
           initialUrl={collection?.mobileImageUrl}
           onUploadingChange={setMobileImageUploading}
         />
@@ -325,7 +422,10 @@ export function CollectionForm({ collection }: { collection?: Collection }) {
         <p className="eyebrow">FEATURED PRODUCTS</p>
         <h2 className="serif mt-3 text-3xl">掲載商品</h2>
         <p className="mt-2 text-sm text-stone-600">
-          チェックで追加・削除し、矢印で表示順を調整できます。
+          チェックした商品がトップページに表示されます。矢印で表示順を調整できます。
+        </p>
+        <p className="mt-3 text-sm font-semibold text-[#6d2227]">
+          {selected.length}件選択中
         </p>
         <div className="mt-6 grid gap-3 md:grid-cols-2">
           {products.map((product) => {
@@ -379,7 +479,13 @@ export function CollectionForm({ collection }: { collection?: Collection }) {
         disabled={saving || deleting || imageUploading}
         className="btn bg-[#171412] text-white disabled:opacity-50"
       >
-        {saving ? '保存中…' : imageUploading ? '画像アップロード中…' : '保存する'}
+        {saving
+          ? '保存中...'
+          : imageUploading
+            ? '画像アップロード中...'
+            : saved
+              ? '保存しました ✓'
+              : '変更を保存'}
       </button>
     </form>
   );

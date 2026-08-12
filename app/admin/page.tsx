@@ -13,7 +13,7 @@ export default function AdminPage() {
         href="/admin/collections"
         className="btn mt-8 bg-[#171412] text-white"
       >
-        コレクションを管理
+        ホームページを管理
       </Link>
       <Link
         href="/admin/orders"
