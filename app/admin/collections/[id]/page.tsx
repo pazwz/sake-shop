@@ -43,8 +43,6 @@ export default async function CollectionDetailPage({
           desktopImageUrl: collection.desktopImageUrl,
           mobileImageUrl: collection.mobileImageUrl,
           status: collection.status,
-          publishStartAt: collection.publishStartAt?.toISOString() ?? null,
-          publishEndAt: collection.publishEndAt?.toISOString() ?? null,
           displayOrder: collection.displayOrder,
           products: collection.products.map(({ product }) => ({
             product: {

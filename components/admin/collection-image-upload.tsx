@@ -9,10 +9,7 @@ type MediaUploadResponse = {
 
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
 
-const uploadImage = (
-  file: File,
-  onProgress: (progress: number) => void,
-) =>
+const uploadImage = (file: File, onProgress: (progress: number) => void) =>
   new Promise<{ url: string; key: string }>((resolve, reject) => {
     const request = new XMLHttpRequest();
     const formData = new FormData();
@@ -38,7 +35,11 @@ const uploadImage = (
         resolve(payload.data);
         return;
       }
-      reject(new Error(payload.error?.detail ?? '画像をアップロードできませんでした。'));
+      reject(
+        new Error(
+          payload.error?.detail ?? '画像をアップロードできませんでした。',
+        ),
+      );
     });
     request.addEventListener('error', () => {
       reject(new Error('画像をアップロードできませんでした。'));
@@ -94,7 +95,7 @@ export function CollectionImageUpload({
       const uploaded = await uploadImage(file, setProgress);
       setUrl(uploaded.url);
       setProgress(100);
-      setSuccess('アップロード完了 ✓　変更を保存してください。');
+      setSuccess('画像をアップロードしました。変更を保存してください。');
     } catch (uploadError) {
       setError(
         uploadError instanceof Error
@@ -169,7 +170,10 @@ export function CollectionImageUpload({
         </p>
       ) : null}
       {success ? (
-        <p className="mt-2 text-xs font-semibold text-emerald-700" role="status">
+        <p
+          className="mt-2 text-xs font-semibold text-emerald-700"
+          role="status"
+        >
           {success}
         </p>
       ) : null}

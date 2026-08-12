@@ -92,12 +92,20 @@ All AI development agents must read `AGENTS.md`, `PROJECT_STATUS.md`, and `docs/
 
 ## Recent Maintenance
 
-- Admin CMS UX refinement completed without starting a new sprint.
-- `/admin/collections` is now presented as homepage content management by
-  business area rather than raw FeaturedCollection records.
+- Homepage CMS simplification completed without starting a new sprint.
+- `/admin/collections` now shows only the content that the homepage actually
+  renders, organized by business area rather than FeaturedCollection records.
+- Publication scheduling was removed from the operator UI. Homepage selection
+  now uses direct `PUBLISHED` state and fixed content limits instead of future
+  start/end times.
+- Hero and Editorial show one current item, Story shows two, and Shopkeeper and
+  Gift each manage one ordered list of at most three products.
+- The development seed now defaults to one Hero, four seasonal slots, one
+  Shopkeeper, one Gift, one Editorial, and two Story records. Exact old seed
+  fixtures are archived without deleting data.
 - Collection image upload distinguishes the main image from the optional
   smartphone composition override.
-- Homepage SSR, Home API semantics, FeaturedCollection schema, admin roles,
-  and AWS media infrastructure remain unchanged.
+- Homepage SSR, Home API shape, FeaturedCollection schema, admin roles, and AWS
+  media infrastructure remain unchanged.
 - Orphan media cleanup remains pending; removing an image from a collection
   only removes the database URL reference.

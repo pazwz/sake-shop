@@ -1,5 +1,6 @@
 import { CollectionStatus, CollectionType, Season } from '@prisma/client';
-import { ConflictError, NotFoundError } from '@/lib/errors';
+import { HOME_CONTENT_LIMITS } from '@/config/home';
+import { ConflictError, NotFoundError, ValidationError } from '@/lib/errors';
 import { FeaturedCollectionRepository } from '@/repositories/collection.repository';
 import type {
   CollectionInput,
@@ -15,16 +16,17 @@ const createUniqueProductFilter = () => {
   };
 };
 
-const deduplicateCollectionProducts = <
+const limitCollectionProducts = <
   T extends { products: Array<{ product: { id: string } }> },
 >(
   collections: T[],
+  limit?: number,
 ) => {
   const uniqueProduct = createUniqueProductFilter();
 
   return collections.map((collection) => ({
     ...collection,
-    products: collection.products.filter(uniqueProduct),
+    products: collection.products.filter(uniqueProduct).slice(0, limit),
   }));
 };
 
@@ -33,16 +35,50 @@ const getCurrentSeason = () =>
     Math.floor(new Date().getMonth() / 3)
   ];
 
-const isCurrentlyPublished = <
+const selectHomepageContent = <
   T extends {
+    type: CollectionType;
+    season: Season | null;
     status: CollectionStatus;
-    publishStartAt: Date | null;
-    publishEndAt: Date | null;
+    products: Array<{ product: { id: string } }>;
   },
->(collection: T, now: Date) =>
-  collection.status === CollectionStatus.PUBLISHED &&
-  (!collection.publishStartAt || collection.publishStartAt <= now) &&
-  (!collection.publishEndAt || collection.publishEndAt > now);
+>(
+  all: T[],
+) => {
+  const published = all.filter(
+    (collection) => collection.status === CollectionStatus.PUBLISHED,
+  );
+  const by = (type: CollectionType) =>
+    published.filter((collection) => collection.type === type);
+  const seasonal = [
+    Season.SPRING,
+    Season.SUMMER,
+    Season.AUTUMN,
+    Season.WINTER,
+  ].flatMap((season) =>
+    by(CollectionType.SEASONAL)
+      .filter((collection) => collection.season === season)
+      .slice(0, HOME_CONTENT_LIMITS.seasonalPerSeason),
+  );
+
+  return {
+    hero: by(CollectionType.HERO).slice(0, HOME_CONTENT_LIMITS.hero),
+    seasonal,
+    shopkeeper: limitCollectionProducts(
+      by(CollectionType.SHOPKEEPER).slice(0, 1),
+      HOME_CONTENT_LIMITS.shopkeeperProducts,
+    ),
+    gift: limitCollectionProducts(
+      by(CollectionType.GIFT).slice(0, 1),
+      HOME_CONTENT_LIMITS.giftProducts,
+    ),
+    editorial: by(CollectionType.EDITORIAL).slice(
+      0,
+      HOME_CONTENT_LIMITS.editorial,
+    ),
+    story: by(CollectionType.STORY).slice(0, HOME_CONTENT_LIMITS.story),
+  };
+};
 
 export class FeaturedCollectionService {
   constructor(
@@ -50,16 +86,10 @@ export class FeaturedCollectionService {
   ) {}
   async getHome() {
     const all = await this.repository.findHomeCollections();
-    const by = (type: CollectionType) =>
-      deduplicateCollectionProducts(all.filter((item) => item.type === type));
+    const current = selectHomepageContent(all);
     return {
-      hero: by(CollectionType.HERO),
+      ...current,
       currentSeason: getCurrentSeason(),
-      seasonal: by(CollectionType.SEASONAL),
-      shopkeeper: by(CollectionType.SHOPKEEPER),
-      gift: by(CollectionType.GIFT),
-      editorial: by(CollectionType.EDITORIAL),
-      story: by(CollectionType.STORY),
     };
   }
   async getAdminCollections() {
@@ -67,38 +97,44 @@ export class FeaturedCollectionService {
   }
   async getAdminHomeManagement() {
     const all = await this.repository.findAdminCollections();
-    const now = new Date();
-    const by = (type: CollectionType) =>
-      all.filter((collection) => collection.type === type);
-    const area = (type: CollectionType) => {
-      const records = by(type);
-      const activeRecords = records.filter((record) =>
-        isCurrentlyPublished(record, now),
-      );
-      const uniqueProduct = createUniqueProductFilter();
-      const visibleProducts = activeRecords
-        .flatMap((record) => record.products)
-        .filter(uniqueProduct)
-        .slice(0, 3);
-
-      return { records, activeRecords, visibleProducts };
-    };
+    const current = selectHomepageContent(all);
 
     return {
       currentSeason: getCurrentSeason(),
-      hero: by(CollectionType.HERO),
-      seasonal: [Season.SPRING, Season.SUMMER, Season.AUTUMN, Season.WINTER].map(
-        (season) => ({
-          season,
-          records: by(CollectionType.SEASONAL).filter(
-            (collection) => collection.season === season,
-          ),
-        }),
-      ),
-      shopkeeper: area(CollectionType.SHOPKEEPER),
-      gift: area(CollectionType.GIFT),
-      editorial: by(CollectionType.EDITORIAL),
-      story: by(CollectionType.STORY),
+      hero: current.hero[0] ?? null,
+      seasonal: [
+        Season.SPRING,
+        Season.SUMMER,
+        Season.AUTUMN,
+        Season.WINTER,
+      ].map((season) => ({
+        season,
+        collection:
+          current.seasonal.find((collection) => collection.season === season) ??
+          null,
+        fallback:
+          all.find(
+            (collection) =>
+              collection.type === CollectionType.SEASONAL &&
+              collection.season === season,
+          ) ?? null,
+      })),
+      shopkeeper: current.shopkeeper[0] ?? null,
+      gift: current.gift[0] ?? null,
+      editorial: current.editorial,
+      story: current.story,
+      fallbacks: {
+        hero:
+          all.find((collection) => collection.type === CollectionType.HERO) ??
+          null,
+        shopkeeper:
+          all.find(
+            (collection) => collection.type === CollectionType.SHOPKEEPER,
+          ) ?? null,
+        gift:
+          all.find((collection) => collection.type === CollectionType.GIFT) ??
+          null,
+      },
     };
   }
   async getAdminCollection(id: string) {
@@ -107,6 +143,7 @@ export class FeaturedCollectionService {
     return collection;
   }
   async createCollection(input: CollectionInput) {
+    this.validateProductLimit(input.type, input.productIds);
     const { productIds, publishStartAt, publishEndAt, ...data } = input;
     return this.repository.create({
       ...data,
@@ -121,7 +158,11 @@ export class FeaturedCollectionService {
     });
   }
   async updateCollection(id: string, input: CollectionUpdate) {
-    await this.getAdminCollection(id);
+    const existing = await this.getAdminCollection(id);
+    this.validateProductLimit(
+      input.type ?? existing.type,
+      input.productIds ?? existing.products.map(({ product }) => product.id),
+    );
     const { productIds, publishStartAt, publishEndAt, ...data } = input;
     const collection = await this.repository.update(id, {
       ...data,
@@ -144,7 +185,20 @@ export class FeaturedCollectionService {
     return this.repository.delete(id);
   }
   async updateProductOrder(id: string, productIds: string[]) {
-    await this.getAdminCollection(id);
+    const collection = await this.getAdminCollection(id);
+    this.validateProductLimit(collection.type, productIds);
     return this.repository.replaceProducts(id, productIds);
+  }
+
+  private validateProductLimit(type: CollectionType, productIds: string[]) {
+    const maximum =
+      type === CollectionType.SHOPKEEPER
+        ? HOME_CONTENT_LIMITS.shopkeeperProducts
+        : type === CollectionType.GIFT
+          ? HOME_CONTENT_LIMITS.giftProducts
+          : null;
+    if (maximum !== null && productIds.length > maximum) {
+      throw new ValidationError(`掲載商品は${maximum}件まで選択できます。`);
+    }
   }
 }

@@ -2,10 +2,8 @@ import { AdminRole } from '@prisma/client';
 import Image from 'next/image';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import {
-  getEffectiveStatusLabel,
-  seasonLabels,
-} from '@/lib/collection-presentation';
+import { HOME_CONTENT_LIMITS } from '@/config/home';
+import { seasonLabels } from '@/lib/collection-presentation';
 import { getCurrentAdmin } from '@/services/admin-authorization.service';
 import { FeaturedCollectionService } from '@/services/collection.service';
 
@@ -15,62 +13,51 @@ type CollectionItem = Awaited<
   ReturnType<FeaturedCollectionService['getAdminCollections']>
 >[number];
 
-const formatDate = (value: Date | null) =>
-  value
-    ? new Intl.DateTimeFormat('ja-JP', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-      }).format(value)
-    : null;
-
-const scheduleLabel = (collection: CollectionItem) => {
-  const start = formatDate(collection.publishStartAt);
-  const end = formatDate(collection.publishEndAt);
-  if (start && end) return `${start} 〜 ${end}`;
-  if (start) return `${start} から`;
-  if (end) return `${end} まで`;
-  return '公開期間の指定なし';
-};
-
-function StatusBadge({ collection }: { collection: CollectionItem }) {
-  const label = getEffectiveStatusLabel(collection);
-  const active = label === '公開中';
-  const scheduled = label === '公開予定';
+function EditLink({ id, canEdit }: { id: string; canEdit: boolean }) {
+  if (!canEdit) return null;
   return (
-    <span
-      className={`inline-flex rounded-full px-3 py-1 text-[11px] font-semibold ${
-        active
-          ? 'bg-emerald-100 text-emerald-800'
-          : scheduled
-            ? 'bg-amber-100 text-amber-800'
-            : 'bg-stone-100 text-stone-600'
-      }`}
+    <Link
+      href={`/admin/collections/${id}`}
+      className="btn btn-outline justify-self-start text-xs sm:justify-self-end"
     >
-      {label}
-    </span>
+      編集
+    </Link>
   );
 }
 
-function CollectionRow({
+function CurrentContent({
   collection,
   canEdit,
-  hideTitle = false,
+  emptyHref,
 }: {
-  collection: CollectionItem;
+  collection: CollectionItem | null;
   canEdit: boolean;
-  hideTitle?: boolean;
+  emptyHref: string;
 }) {
+  if (!collection) {
+    return (
+      <div className="mt-6 border-t line py-6">
+        <p className="text-sm text-stone-500">現在表示中の内容はありません。</p>
+        {canEdit ? (
+          <Link
+            href={emptyHref}
+            className="mt-4 inline-block text-xs font-semibold underline"
+          >
+            設定する
+          </Link>
+        ) : null}
+      </div>
+    );
+  }
+
   const imageUrl = collection.desktopImageUrl ?? collection.mobileImageUrl;
   return (
-    <div className="grid items-center gap-4 border-t line py-5 sm:grid-cols-[96px_1fr_auto]">
+    <div className="mt-6 grid items-center gap-4 border-t line py-5 sm:grid-cols-[120px_1fr_auto]">
       <div className="relative aspect-[4/3] overflow-hidden bg-stone-100">
         {imageUrl ? (
           <Image
             fill
-            sizes="96px"
+            sizes="120px"
             className="object-cover"
             src={imageUrl}
             alt=""
@@ -82,49 +69,34 @@ function CollectionRow({
         )}
       </div>
       <div>
-        <div className="flex flex-wrap items-center gap-2">
-          <StatusBadge collection={collection} />
-          <span className="text-xs text-stone-500">
-            {scheduleLabel(collection)}
-          </span>
-        </div>
-        {!hideTitle ? (
-          <h3 className="serif mt-2 text-xl">{collection.title}</h3>
-        ) : null}
+        <span className="inline-flex rounded-full bg-emerald-100 px-3 py-1 text-[11px] font-semibold text-emerald-800">
+          現在表示中
+        </span>
+        <h3 className="serif mt-3 text-xl">{collection.title}</h3>
         <p className="mt-2 text-xs text-stone-500">
           掲載商品 {collection.products.length}件
         </p>
       </div>
-      {canEdit ? (
-        <Link
-          href={`/admin/collections/${collection.id}`}
-          className="btn btn-outline justify-self-start text-xs sm:justify-self-end"
-        >
-          編集
-        </Link>
-      ) : null}
+      <EditLink id={collection.id} canEdit={canEdit} />
     </div>
   );
 }
 
-function AreaSummary({
+function ProductArea({
   title,
   description,
-  area,
+  collection,
+  fallback,
   canEdit,
   type,
 }: {
   title: string;
   description: string;
-  area: {
-    records: CollectionItem[];
-    activeRecords: CollectionItem[];
-    visibleProducts: CollectionItem['products'];
-  };
+  collection: CollectionItem | null;
+  fallback: CollectionItem | null;
   canEdit: boolean;
   type: 'SHOPKEEPER' | 'GIFT';
 }) {
-  const primary = area.activeRecords[0] ?? area.records[0];
   return (
     <section className="border line bg-white p-6 md:p-8">
       <div className="flex flex-wrap items-start justify-between gap-5">
@@ -138,56 +110,99 @@ function AreaSummary({
         {canEdit ? (
           <Link
             href={
-              primary
-                ? `/admin/collections/${primary.id}`
-                : `/admin/collections/new?type=${type}`
+              collection
+                ? `/admin/collections/${collection.id}`
+                : fallback
+                  ? `/admin/collections/${fallback.id}`
+                  : `/admin/collections/new?type=${type}`
             }
             className="btn bg-[#171412] text-xs text-white"
           >
-            {primary ? '編集' : '設定する'}
+            {collection ? '編集' : '設定する'}
           </Link>
         ) : null}
       </div>
-      <div className="mt-6 grid gap-4 bg-[#faf8f4] p-5 sm:grid-cols-2">
-        <div>
-          <p className="text-xs text-stone-500">現在トップページに掲載</p>
-          <p className="serif mt-2 text-3xl">{area.visibleProducts.length}件</p>
-        </div>
-        <div>
-          <p className="text-xs text-stone-500">有効な内容設定</p>
-          <p className="serif mt-2 text-3xl">{area.activeRecords.length}件</p>
-        </div>
+      <div className="mt-6 bg-[#faf8f4] p-5">
+        <p className="text-xs text-stone-500">現在の掲載商品</p>
+        <p className="serif mt-2 text-3xl">
+          {collection?.products.length ?? 0}件
+        </p>
       </div>
-      {area.visibleProducts.length ? (
-        <p className="mt-4 text-sm text-stone-600">
-          表示商品：
-          {area.visibleProducts.map(({ product }) => product.name).join('、')}
-        </p>
+      {collection?.products.length ? (
+        <ul className="mt-5 space-y-2 text-sm text-stone-700">
+          {collection.products.map(({ product }) => (
+            <li key={product.id}>・{product.name}</li>
+          ))}
+        </ul>
       ) : (
-        <p className="mt-4 text-sm text-stone-500">現在掲載中の商品はありません。</p>
+        <p className="mt-4 text-sm text-stone-500">掲載商品はありません。</p>
       )}
-      {area.activeRecords.length > 1 ? (
-        <p className="mt-4 border-l-2 border-amber-500 pl-3 text-xs leading-6 text-stone-600">
-          公開中の内容が{area.activeRecords.length}
-          件あります。トップページでは表示順に商品をまとめ、重複を除いて先頭3件を表示します。
-        </p>
-      ) : null}
-      {area.records.length > 1 ? (
-        <details className="mt-5 text-sm">
-          <summary className="cursor-pointer text-stone-600">
-            内容候補を確認（{area.records.length}件）
-          </summary>
-          <div className="mt-3">
-            {area.records.map((record) => (
-              <CollectionRow
-                key={record.id}
-                collection={record}
-                canEdit={canEdit}
-                hideTitle
-              />
-            ))}
+    </section>
+  );
+}
+
+function FixedContentList({
+  title,
+  eyebrow,
+  description,
+  collections,
+  canEdit,
+  type,
+  limit,
+}: {
+  title: string;
+  eyebrow: string;
+  description: string;
+  collections: CollectionItem[];
+  canEdit: boolean;
+  type: 'EDITORIAL' | 'STORY';
+  limit: number;
+}) {
+  return (
+    <section className="border line bg-white p-6 md:p-8">
+      <div className="flex flex-wrap items-start justify-between gap-5">
+        <div>
+          <p className="eyebrow">{eyebrow}</p>
+          <h2 className="serif mt-3 text-3xl">{title}</h2>
+          <p className="mt-3 text-sm leading-7 text-stone-600">{description}</p>
+          <p className="mt-3 text-sm font-semibold text-[#6d2227]">
+            現在表示中：{collections.length}件
+          </p>
+        </div>
+        {canEdit && collections.length < limit ? (
+          <Link
+            href={`/admin/collections/new?type=${type}`}
+            className="text-xs font-semibold underline"
+          >
+            追加
+          </Link>
+        ) : null}
+      </div>
+      <div className="mt-6">
+        {collections.map((collection, index) => (
+          <div
+            key={collection.id}
+            className="grid items-center gap-4 border-t line py-5 sm:grid-cols-[1fr_auto]"
+          >
+            <div>
+              <span className="text-xs font-semibold text-emerald-700">
+                現在表示中 {index + 1}
+              </span>
+              <h3 className="serif mt-2 text-xl">{collection.title}</h3>
+            </div>
+            <EditLink id={collection.id} canEdit={canEdit} />
           </div>
-        </details>
+        ))}
+        {collections.length === 0 ? (
+          <p className="border-t line py-6 text-sm text-stone-500">
+            現在表示中の内容はありません。
+          </p>
+        ) : null}
+      </div>
+      {collections.length >= limit ? (
+        <p className="mt-3 text-xs text-stone-500">
+          トップページでは{limit}件まで表示できます。
+        </p>
       ) : null}
     </section>
   );
@@ -202,25 +217,15 @@ export default async function AdminCollectionsPage() {
 
   return (
     <main className="wrap py-16">
-      <div className="flex flex-wrap items-end justify-between gap-5">
-        <div>
-          <Link href="/admin" className="text-xs text-stone-500">
-            ← 管理トップ
-          </Link>
-          <p className="eyebrow mt-5">HOMEPAGE CMS</p>
-          <h1 className="serif mt-3 text-5xl">ホームページ管理</h1>
-          <p className="mt-4 max-w-2xl text-sm leading-7 text-stone-600">
-            トップページの画像、文章、掲載商品、公開期間を管理します。
-          </p>
-        </div>
-        {canEdit ? (
-          <Link
-            href="/admin/collections/new"
-            className="btn bg-[#171412] text-white"
-          >
-            コンテンツを追加
-          </Link>
-        ) : null}
+      <div>
+        <Link href="/admin" className="text-xs text-stone-500">
+          ← 管理トップ
+        </Link>
+        <p className="eyebrow mt-5">HOMEPAGE CMS</p>
+        <h1 className="serif mt-3 text-5xl">ホームページ管理</h1>
+        <p className="mt-4 max-w-2xl text-sm leading-7 text-stone-600">
+          現在トップページに表示している画像、文章、商品を管理します。
+        </p>
       </div>
 
       {!canEdit ? (
@@ -234,30 +239,17 @@ export default async function AdminCollectionsPage() {
           <p className="eyebrow">MAIN VISUAL</p>
           <h2 className="serif mt-3 text-3xl">メインビジュアル</h2>
           <p className="mt-3 text-sm leading-7 text-stone-600">
-            トップページ最上部の大型ビジュアルです。現在公開中、公開予定、下書き、過去の内容を候補として管理できます。
+            トップページ最上部に表示するメイン画像です。現在表示する内容を編集します。
           </p>
-          <div className="mt-6">
-            {management.hero.map((collection) => (
-              <CollectionRow
-                key={collection.id}
-                collection={collection}
-                canEdit={canEdit}
-              />
-            ))}
-            {management.hero.length === 0 ? (
-              <p className="border-t line py-6 text-sm text-stone-500">
-                メインビジュアルはまだ設定されていません。
-              </p>
-            ) : null}
-          </div>
-          {canEdit ? (
-            <Link
-              href="/admin/collections/new?type=HERO"
-              className="mt-5 inline-block text-xs font-semibold underline"
-            >
-              メインビジュアル候補を追加
-            </Link>
-          ) : null}
+          <CurrentContent
+            collection={management.hero}
+            canEdit={canEdit}
+            emptyHref={
+              management.fallbacks.hero
+                ? `/admin/collections/${management.fallbacks.hero.id}`
+                : '/admin/collections/new?type=HERO'
+            }
+          />
         </section>
 
         <section className="border line bg-white p-6 md:p-8">
@@ -266,124 +258,84 @@ export default async function AdminCollectionsPage() {
               <p className="eyebrow">SEASONAL FEATURE</p>
               <h2 className="serif mt-3 text-3xl">季節の特集</h2>
               <p className="mt-3 text-sm leading-7 text-stone-600">
-                春・夏・秋・冬ごとのおすすめ商品を管理します。
+                季節ごとのおすすめ商品を設定します。メインビジュアルとは別のコンテンツです。
               </p>
             </div>
             <p className="rounded-full bg-[#6d2227] px-4 py-2 text-xs text-white">
-              現在：{seasonLabels[management.currentSeason]}
+              現在の季節：{seasonLabels[management.currentSeason]}
             </p>
           </div>
           <div className="mt-7 grid gap-4 md:grid-cols-2">
-            {management.seasonal.map(({ season, records }) => {
-              const primary = records[0];
-              return (
-                <div key={season} className="border line p-5">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <p className="serif text-2xl">{seasonLabels[season]}</p>
-                      {primary ? (
-                        <>
-                          <p className="mt-2 text-sm">{primary.title}</p>
-                          <p className="mt-2 text-xs text-stone-500">
-                            掲載商品 {primary.products.length}件 ·{' '}
-                            {getEffectiveStatusLabel(primary)}
-                          </p>
-                        </>
-                      ) : (
-                        <p className="mt-2 text-sm text-stone-500">未設定</p>
-                      )}
-                    </div>
-                    {canEdit ? (
-                      <Link
-                        href={
-                          primary
-                            ? `/admin/collections/${primary.id}`
-                            : `/admin/collections/new?type=SEASONAL&season=${season}`
-                        }
-                        className="text-xs font-semibold underline"
-                      >
-                        {primary ? '編集' : '設定'}
-                      </Link>
+            {management.seasonal.map(({ season, collection, fallback }) => (
+              <div key={season} className="border line p-5">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="serif text-2xl">{seasonLabels[season]}</p>
+                    <p className="mt-2 text-sm text-stone-600">
+                      {collection?.title ?? '未設定'}
+                    </p>
+                    {collection ? (
+                      <p className="mt-2 text-xs font-semibold text-emerald-700">
+                        現在表示する設定 · 掲載商品 {collection.products.length}
+                        件
+                      </p>
                     ) : null}
                   </div>
-                  {records.length > 1 ? (
-                    <p className="mt-3 text-xs text-amber-700">
-                      内容候補が{records.length}件あります。
-                    </p>
+                  {canEdit ? (
+                    <Link
+                      href={
+                        collection || fallback
+                          ? `/admin/collections/${(collection ?? fallback)?.id}`
+                          : `/admin/collections/new?type=SEASONAL&season=${season}`
+                      }
+                      className="text-xs font-semibold underline"
+                    >
+                      {collection || fallback ? '編集' : '設定'}
+                    </Link>
                   ) : null}
                 </div>
-              );
-            })}
+              </div>
+            ))}
           </div>
         </section>
 
         <div className="grid gap-8 lg:grid-cols-2">
-          <AreaSummary
+          <ProductArea
             title="店主のおすすめ"
-            description="店主が選んだ商品をトップページに最大3件表示します。"
-            area={management.shopkeeper}
+            description={`現在トップページに表示する商品を最大${HOME_CONTENT_LIMITS.shopkeeperProducts}件まで設定します。`}
+            collection={management.shopkeeper}
+            fallback={management.fallbacks.shopkeeper}
             canEdit={canEdit}
             type="SHOPKEEPER"
           />
-          <AreaSummary
+          <ProductArea
             title="ギフト"
-            description="贈り物としておすすめする商品をトップページに最大3件表示します。"
-            area={management.gift}
+            description={`現在トップページに表示する商品を最大${HOME_CONTENT_LIMITS.giftProducts}件まで設定します。`}
+            collection={management.gift}
+            fallback={management.fallbacks.gift}
             canEdit={canEdit}
             type="GIFT"
           />
         </div>
 
-        {[
-          {
-            title: '特集記事',
-            eyebrow: 'EDITORIAL',
-            description: '読み物として紹介する特集コンテンツです。',
-            type: 'EDITORIAL',
-            records: management.editorial,
-          },
-          {
-            title: 'ストーリー',
-            eyebrow: 'STORY',
-            description: '酒蔵や造り手、季節にまつわるストーリーです。',
-            type: 'STORY',
-            records: management.story,
-          },
-        ].map((section) => (
-          <section key={section.type} className="border line bg-white p-6 md:p-8">
-            <div className="flex items-start justify-between gap-5">
-              <div>
-                <p className="eyebrow">{section.eyebrow}</p>
-                <h2 className="serif mt-3 text-3xl">{section.title}</h2>
-                <p className="mt-3 text-sm text-stone-600">
-                  {section.description}
-                </p>
-              </div>
-              {canEdit ? (
-                <Link
-                  href={`/admin/collections/new?type=${section.type}`}
-                  className="text-xs font-semibold underline"
-                >
-                  追加
-                </Link>
-              ) : null}
-            </div>
-            <div className="mt-6">
-              {section.records.map((collection) => (
-                <CollectionRow
-                  key={collection.id}
-                  collection={collection}
-                  canEdit={canEdit}
-                />
-              ))}
-              {section.records.length === 0 ? (
-                <p className="border-t line py-6 text-sm text-stone-500">
-                  まだ登録されていません。
-                </p>
-              ) : null}
-            </div>
-          </section>
-        ))}
+        <FixedContentList
+          title="特集記事"
+          eyebrow="EDITORIAL"
+          description="トップページに表示する特集記事を編集します。"
+          collections={management.editorial}
+          canEdit={canEdit}
+          type="EDITORIAL"
+          limit={HOME_CONTENT_LIMITS.editorial}
+        />
+        <FixedContentList
+          title="ストーリー"
+          eyebrow="STORY"
+          description="トップページに表示する2件のストーリーを編集します。"
+          collections={management.story}
+          canEdit={canEdit}
+          type="STORY"
+          limit={HOME_CONTENT_LIMITS.story}
+        />
       </div>
     </main>
   );

@@ -16,53 +16,46 @@ const include = {
   },
 };
 
-const publishedAt = (now: Date): Prisma.FeaturedCollectionWhereInput => ({
+const visibleOnHomepage = {
   status: CollectionStatus.PUBLISHED,
-  AND: [
-    { OR: [{ publishStartAt: null }, { publishStartAt: { lte: now } }] },
-    { OR: [{ publishEndAt: null }, { publishEndAt: { gt: now } }] },
-  ],
-});
+} as const;
 
 export class FeaturedCollectionRepository {
   findAdminCollections() {
     return prisma.featuredCollection.findMany({
       include,
-      orderBy: [{ type: 'asc' }, { displayOrder: 'asc' }],
+      orderBy: [{ type: 'asc' }, { displayOrder: 'asc' }, { createdAt: 'asc' }],
     });
   }
   findAdminById(id: string) {
     return prisma.featuredCollection.findUnique({ where: { id }, include });
   }
   findPublished() {
-    const now = new Date();
     return prisma.featuredCollection.findMany({
-      where: publishedAt(now),
+      where: visibleOnHomepage,
       include,
-      orderBy: { displayOrder: 'asc' },
+      orderBy: [{ displayOrder: 'asc' }, { createdAt: 'asc' }],
     });
   }
   findByType(type: CollectionType) {
-    const now = new Date();
     return prisma.featuredCollection.findMany({
       where: {
-        ...publishedAt(now),
+        ...visibleOnHomepage,
         type,
       },
       include,
-      orderBy: { displayOrder: 'asc' },
+      orderBy: [{ displayOrder: 'asc' }, { createdAt: 'asc' }],
     });
   }
   findBySeason(season: Season) {
-    const now = new Date();
     return prisma.featuredCollection.findMany({
       where: {
-        ...publishedAt(now),
+        ...visibleOnHomepage,
         type: CollectionType.SEASONAL,
         season,
       },
       include,
-      orderBy: { displayOrder: 'asc' },
+      orderBy: [{ displayOrder: 'asc' }, { createdAt: 'asc' }],
     });
   }
   findHomeCollections() {

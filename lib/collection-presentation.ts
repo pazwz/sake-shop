@@ -14,12 +14,6 @@ export const seasonLabels: Record<string, string> = {
   WINTER: '冬',
 };
 
-export const statusLabels: Record<string, string> = {
-  PUBLISHED: '公開中',
-  DRAFT: '下書き',
-  ARCHIVED: 'アーカイブ',
-};
-
 export const getCollectionAreaLabel = (
   type: string,
   season?: string | null,
@@ -28,21 +22,4 @@ export const getCollectionAreaLabel = (
     return `季節の特集（${seasonLabels[season] ?? season}）`;
   }
   return collectionTypeLabels[type] ?? 'ホームページコンテンツ';
-};
-
-export const getEffectiveStatusLabel = ({
-  status,
-  publishStartAt,
-  publishEndAt,
-  now = new Date(),
-}: {
-  status: string;
-  publishStartAt: Date | string | null;
-  publishEndAt: Date | string | null;
-  now?: Date;
-}) => {
-  if (status !== 'PUBLISHED') return statusLabels[status] ?? status;
-  if (publishStartAt && new Date(publishStartAt) > now) return '公開予定';
-  if (publishEndAt && new Date(publishEndAt) <= now) return '公開終了';
-  return '公開中';
 };

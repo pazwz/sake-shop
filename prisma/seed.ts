@@ -134,9 +134,8 @@ const seed = async (): Promise<void> => {
     where: { slug: { startsWith: 'dev-' } },
     orderBy: { slug: 'asc' },
   });
-  // Development-only CMS records. SHOPKEEPER and GIFT each represent one
-  // homepage area with multiple products; HERO/EDITORIAL/STORY may have
-  // multiple content candidates.
+  // Development-only CMS records mirror the fixed homepage areas. Historical
+  // records may remain in an existing database, but are not required by seed.
   const collections: Array<{
     type: CollectionType;
     title: string;
@@ -147,13 +146,13 @@ const seed = async (): Promise<void> => {
     productCount?: number;
     useMobileOverride?: boolean;
   }> = [
-    ...['春の便り', '夏の涼酒', '秋の深まり'].map((title, index) => ({
+    {
       type: CollectionType.HERO,
-      title,
-      displayOrder: index + 1,
-      productStart: index * 2,
+      title: '春の便り',
+      displayOrder: 1,
+      productStart: 0,
       useMobileOverride: true,
-    })),
+    },
     ...[
       [Season.SPRING, '春の特集'],
       [Season.SUMMER, '夏の特集'],
@@ -183,12 +182,12 @@ const seed = async (): Promise<void> => {
       productStart: 0,
       productCount: 3,
     },
-    ...['九州の風土', '食卓の余白', '蔵元を訪ねて'].map((title, index) => ({
+    {
       type: CollectionType.EDITORIAL,
-      title,
-      displayOrder: index + 1,
-      productStart: index * 2,
-    })),
+      title: '九州の風土',
+      displayOrder: 1,
+      productStart: 0,
+    },
     ...['酒と人の物語', '季節を味わう'].map((title, index) => ({
       type: CollectionType.STORY,
       title,
@@ -222,6 +221,8 @@ const seed = async (): Promise<void> => {
           data: {
             ...collectionData,
             status: CollectionStatus.PUBLISHED,
+            publishStartAt: null,
+            publishEndAt: null,
             desktopImageUrl:
               'https://images.unsplash.com/photo-1527281400683-1aae777175f8?auto=format&fit=crop&w=1600&q=85',
             mobileImageUrl: collection.useMobileOverride
@@ -233,6 +234,8 @@ const seed = async (): Promise<void> => {
           data: {
             ...collectionData,
             status: CollectionStatus.PUBLISHED,
+            publishStartAt: null,
+            publishEndAt: null,
             desktopImageUrl:
               'https://images.unsplash.com/photo-1527281400683-1aae777175f8?auto=format&fit=crop&w=1600&q=85',
             mobileImageUrl: collection.useMobileOverride
@@ -264,6 +267,14 @@ const seed = async (): Promise<void> => {
         {
           type: CollectionType.GIFT,
           title: { in: ['贈り物 2', '贈り物 3'] },
+        },
+        {
+          type: CollectionType.HERO,
+          title: { in: ['夏の涼酒', '秋の深まり'] },
+        },
+        {
+          type: CollectionType.EDITORIAL,
+          title: { in: ['食卓の余白', '蔵元を訪ねて'] },
         },
       ],
     },

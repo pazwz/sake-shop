@@ -110,10 +110,10 @@ export default async function Home() {
   if (home.hero.length === 0) return <EmptyHome />;
 
   const hero = home.hero[0];
-  const shopkeeperProducts = productsFor(home.shopkeeper).slice(0, 3);
-  const giftProducts = productsFor(home.gift).slice(0, 3);
+  const shopkeeperProducts = productsFor(home.shopkeeper);
+  const giftProducts = productsFor(home.gift);
   const editorial = home.editorial[0];
-  const stories = home.story.slice(0, 2);
+  const stories = home.story;
   const seasonalCollections: SeasonalCollection[] = serializeForJson(
     home.seasonal.map((collection) => ({
       id: collection.id,

@@ -4,12 +4,8 @@ import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { CollectionImageUpload } from '@/components/admin/collection-image-upload';
-import {
-  collectionTypeLabels,
-  getCollectionAreaLabel,
-  seasonLabels,
-  statusLabels,
-} from '@/lib/collection-presentation';
+import { HOME_CONTENT_LIMITS } from '@/config/home';
+import { getCollectionAreaLabel } from '@/lib/collection-presentation';
 
 type Product = {
   id: string;
@@ -28,24 +24,16 @@ type Collection = {
   desktopImageUrl: string | null;
   mobileImageUrl: string | null;
   status: string;
-  publishStartAt: string | null;
-  publishEndAt: string | null;
   displayOrder: number;
   products: CollectionProduct[];
 };
 
-const collectionTypes = [
-  'HERO',
-  'SEASONAL',
-  'SHOPKEEPER',
-  'GIFT',
-  'EDITORIAL',
-  'STORY',
-];
 const statuses = ['DRAFT', 'PUBLISHED', 'ARCHIVED'];
-const seasons = ['SPRING', 'SUMMER', 'AUTUMN', 'WINTER'];
-
-const dateValue = (value: string | null) => (value ? value.slice(0, 16) : '');
+const statusLabels: Record<string, string> = {
+  DRAFT: '下書き（トップページに表示しない）',
+  PUBLISHED: 'トップページに表示する',
+  ARCHIVED: 'アーカイブ（トップページに表示しない）',
+};
 
 const getErrorDetail = async (response: Response, fallback: string) => {
   try {
@@ -75,22 +63,24 @@ export function CollectionForm({
     collection?.products.map(({ product }) => product.id) ?? [],
   );
   const [feedback, setFeedback] = useState<Feedback | null>(
-    initialSaved
-      ? { kind: 'success', text: '変更を保存しました。' }
-      : null,
+    initialSaved ? { kind: 'success', text: '変更を保存しました。' } : null,
   );
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(initialSaved);
-  const [deleting, setDeleting] = useState(false);
   const [desktopImageUploading, setDesktopImageUploading] = useState(false);
   const [mobileImageUploading, setMobileImageUploading] = useState(false);
   const savingRef = useRef(false);
-  const deletingRef = useRef(false);
   const feedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const imageUploading = desktopImageUploading || mobileImageUploading;
   const defaultType = collection?.type ?? initialType;
   const defaultSeason = collection?.season ?? initialSeason;
   const areaLabel = getCollectionAreaLabel(defaultType, defaultSeason);
+  const productLimit =
+    defaultType === 'SHOPKEEPER'
+      ? HOME_CONTENT_LIMITS.shopkeeperProducts
+      : defaultType === 'GIFT'
+        ? HOME_CONTENT_LIMITS.giftProducts
+        : null;
 
   const showSavedFeedback = () => {
     if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
@@ -143,7 +133,7 @@ export function CollectionForm({
   };
 
   const submit = async (formData: FormData) => {
-    if (savingRef.current || deletingRef.current) return;
+    if (savingRef.current) return;
     if (imageUploading) {
       setFeedback({
         kind: 'error',
@@ -167,12 +157,6 @@ export function CollectionForm({
         desktopImageUrl: String(formData.get('desktopImageUrl')) || null,
         mobileImageUrl: String(formData.get('mobileImageUrl')) || null,
         status: String(formData.get('status')),
-        publishStartAt: String(formData.get('publishStartAt'))
-          ? new Date(String(formData.get('publishStartAt'))).toISOString()
-          : null,
-        publishEndAt: String(formData.get('publishEndAt'))
-          ? new Date(String(formData.get('publishEndAt'))).toISOString()
-          : null,
         displayOrder: Number(formData.get('displayOrder')),
         productIds: selected,
       };
@@ -221,48 +205,6 @@ export function CollectionForm({
     }
   };
 
-  const remove = async () => {
-    if (
-      !collection ||
-      savingRef.current ||
-      deletingRef.current ||
-      !window.confirm('このホームページコンテンツを削除しますか？')
-    )
-      return;
-    deletingRef.current = true;
-    setDeleting(true);
-    setFeedback(null);
-    try {
-      const response = await fetch(
-        `/api/v1/admin/collections/${collection.id}`,
-        { method: 'DELETE' },
-      );
-      if (!response.ok) {
-        setFeedback({
-          kind: 'error',
-          text:
-            response.status === 409
-              ? '公開中のコンテンツは削除できません。先に下書きまたはアーカイブへ変更してください。'
-              : await getErrorDetail(
-                  response,
-                  'ホームページコンテンツを削除できませんでした。',
-                ),
-        });
-        return;
-      }
-      router.push('/admin/collections');
-      router.refresh();
-    } catch {
-      setFeedback({
-        kind: 'error',
-        text: '通信エラーが発生しました。もう一度お試しください。',
-      });
-    } finally {
-      deletingRef.current = false;
-      setDeleting(false);
-    }
-  };
-
   return (
     <form action={submit} className="mx-auto max-w-5xl space-y-8">
       <div className="flex items-center justify-between gap-4">
@@ -271,26 +213,14 @@ export function CollectionForm({
             ← ホームページ管理
           </Link>
           <h1 className="serif mt-3 text-4xl">
-            {collection
-              ? `${areaLabel}を編集`
-              : 'ホームページのコンテンツを追加'}
+            {collection ? `${areaLabel}を編集` : `${areaLabel}を設定`}
           </h1>
           <p className="mt-3 text-sm text-stone-600">
             {collection
               ? `${areaLabel}に表示する内容を設定します。`
-              : '追加するホームページのエリアを選び、内容を設定します。'}
+              : `${areaLabel}に現在表示する内容を設定します。`}
           </p>
         </div>
-        {collection ? (
-          <button
-            type="button"
-            onClick={remove}
-            disabled={saving || deleting || imageUploading}
-            className="text-xs text-[#6d2227] underline disabled:opacity-50"
-          >
-            {deleting ? '削除中…' : '削除'}
-          </button>
-        ) : null}
       </div>
       {feedback ? (
         <p
@@ -305,40 +235,18 @@ export function CollectionForm({
         </p>
       ) : null}
       <div className="grid gap-6 border-y line py-8 md:grid-cols-2">
+        <input type="hidden" name="type" value={defaultType} />
+        <input type="hidden" name="season" value={defaultSeason ?? ''} />
+        <input
+          type="hidden"
+          name="displayOrder"
+          value={collection?.displayOrder ?? 0}
+        />
         <label className="text-sm">
-          表示する場所
-          <select
-            name="type"
-            defaultValue={defaultType}
-            className="mt-2 w-full border line bg-white p-3"
-          >
-            {collectionTypes.map((type) => (
-              <option key={type} value={type}>
-                {collectionTypeLabels[type] ?? type}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="text-sm">
-          季節（「季節の特集」のみ）
-          <select
-            name="season"
-            defaultValue={defaultSeason ?? ''}
-            className="mt-2 w-full border line bg-white p-3"
-          >
-            <option value="">選択しない</option>
-            {seasons.map((season) => (
-              <option key={season} value={season}>
-                {seasonLabels[season] ?? season}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="text-sm">
-          公開状態
+          トップページへの表示
           <select
             name="status"
-            defaultValue={collection?.status ?? 'DRAFT'}
+            defaultValue={collection?.status ?? 'PUBLISHED'}
             className="mt-2 w-full border line bg-white p-3"
           >
             {statuses.map((status) => (
@@ -347,16 +255,6 @@ export function CollectionForm({
               </option>
             ))}
           </select>
-        </label>
-        <label className="text-sm">
-          表示順
-          <input
-            name="displayOrder"
-            type="number"
-            min="0"
-            defaultValue={collection?.displayOrder ?? 0}
-            className="mt-2 w-full border line bg-white p-3"
-          />
         </label>
         <label className="text-sm md:col-span-2">
           タイトル
@@ -399,30 +297,13 @@ export function CollectionForm({
           initialUrl={collection?.mobileImageUrl}
           onUploadingChange={setMobileImageUploading}
         />
-        <label className="text-sm">
-          公開開始
-          <input
-            name="publishStartAt"
-            type="datetime-local"
-            defaultValue={dateValue(collection?.publishStartAt ?? null)}
-            className="mt-2 w-full border line bg-white p-3"
-          />
-        </label>
-        <label className="text-sm">
-          公開終了
-          <input
-            name="publishEndAt"
-            type="datetime-local"
-            defaultValue={dateValue(collection?.publishEndAt ?? null)}
-            className="mt-2 w-full border line bg-white p-3"
-          />
-        </label>
       </div>
       <section>
         <p className="eyebrow">FEATURED PRODUCTS</p>
         <h2 className="serif mt-3 text-3xl">掲載商品</h2>
         <p className="mt-2 text-sm text-stone-600">
           チェックした商品がトップページに表示されます。矢印で表示順を調整できます。
+          {productLimit ? ` 最大${productLimit}件まで選択できます。` : ''}
         </p>
         <p className="mt-3 text-sm font-semibold text-[#6d2227]">
           {selected.length}件選択中
@@ -439,11 +320,14 @@ export function CollectionForm({
                   type="checkbox"
                   checked={isSelected}
                   onChange={() =>
-                    setSelected(
-                      isSelected
-                        ? selected.filter((id) => id !== product.id)
-                        : [...selected, product.id],
-                    )
+                    isSelected
+                      ? setSelected(selected.filter((id) => id !== product.id))
+                      : productLimit && selected.length >= productLimit
+                        ? setFeedback({
+                            kind: 'error',
+                            text: `掲載商品は${productLimit}件まで選択できます。`,
+                          })
+                        : setSelected([...selected, product.id])
                   }
                 />
                 <span className="flex-1 text-sm">
@@ -454,6 +338,9 @@ export function CollectionForm({
                 </span>
                 {isSelected ? (
                   <span className="flex gap-2">
+                    <span className="self-center text-xs text-stone-500">
+                      表示順 {selected.indexOf(product.id) + 1}
+                    </span>
                     <button
                       type="button"
                       onClick={() => move(product.id, -1)}
@@ -476,7 +363,7 @@ export function CollectionForm({
         </div>
       </section>
       <button
-        disabled={saving || deleting || imageUploading}
+        disabled={saving || imageUploading}
         className="btn bg-[#171412] text-white disabled:opacity-50"
       >
         {saving
