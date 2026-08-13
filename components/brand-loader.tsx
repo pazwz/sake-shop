@@ -17,26 +17,44 @@ export function BrandLoader({ label = '読み込み中' }: { label?: string }) {
       aria-live="polite"
     >
       <div className="pour-scene" aria-hidden="true">
-        <svg viewBox="0 0 180 120" className="h-28 w-44">
-          <g className="pour-bottle" fill="none" stroke="currentColor">
-            <path d="M30 22h19v12l7 8v44c0 6-4 10-10 10H27c-6 0-10-4-10-10V42l7-8V22h6Z" />
-            <path d="M25 35h23" />
+        <svg viewBox="0 0 220 150" className="kura-pour-mark" fill="none">
+          <g
+            className="pour-bottle"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M46 12h18v18c0 4 2 7 7 11 8 7 12 15 12 25v41c0 8-5 13-13 13H40c-8 0-13-5-13-13V66c0-10 4-18 12-25 5-4 7-7 7-11V12Z" />
+            <path d="M44 20h22M40 45h30" />
+            <rect x="36" y="70" width="38" height="27" rx="2" />
+            <path d="M43 79h24M47 87h16" opacity=".55" />
           </g>
           <path
             className="pour-stream"
-            d="M59 59c21 5 27 19 34 34"
-            fill="none"
-            stroke="currentColor"
+            d="M104 43c15 5 23 13 31 28"
+            stroke="var(--gold)"
+            strokeWidth="2.2"
+            strokeLinecap="round"
           />
-          <g fill="none" stroke="currentColor">
-            <path d="M101 59h45l-5 38c-.5 5-4 8-9 8h-17c-5 0-8.5-3-9-8l-5-38Z" />
-            <path d="M108 88h31" />
-            <path d="M123 105v10m-12 0h24" />
+          <g
+            className="tasting-glass"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M129 65h48c-1 18-4 31-10 38-4 5-9 7-14 7s-10-2-14-7c-6-7-9-20-10-38Z" />
+            <path d="M153 110v18M140 136h26" />
+            <path d="M132 72c12 2 30 2 42 0" opacity=".35" />
           </g>
-          <path className="glass-fill" d="M108 88h31l-1.2 9h-28.6Z" />
+          <path
+            className="glass-fill"
+            d="M135 88h36c-1.5 7-3.5 12-6 15-3 4-7 5.5-12 5.5s-9-1.5-12-5.5c-2.5-3-4.5-8-6-15Z"
+          />
         </svg>
       </div>
-      <p className="serif mt-1 tracking-[.24em]">KURA</p>
+      <p className="serif kura-loader-wordmark">KURA</p>
       <span className="sr-only">{label}</span>
     </div>
   );
