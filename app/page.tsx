@@ -69,13 +69,15 @@ function CollectionImage({
   mobileUrl,
   alt,
   sizes,
-  preload = false,
+  fetchPriority,
+  className = 'object-cover',
 }: {
   desktopUrl: string | null;
   mobileUrl?: string | null;
   alt: string;
   sizes: string;
-  preload?: boolean;
+  fetchPriority?: 'high';
+  className?: string;
 }) {
   const fallbackUrl = desktopUrl ?? mobileUrl;
   if (!fallbackUrl) return null;
@@ -90,15 +92,15 @@ function CollectionImage({
     : null;
 
   return (
-    <picture>
+    <picture className="absolute inset-0">
       {mobileSource ? (
         <source media="(max-width: 767px)" srcSet={mobileSource} />
       ) : null}
       <Image
         fill
         sizes={sizes}
-        preload={preload}
-        className="object-cover"
+        fetchPriority={fetchPriority}
+        className={className}
         src={fallbackUrl}
         alt={alt}
       />
@@ -113,7 +115,7 @@ export default async function Home() {
   const hero = home.hero[0];
   const shopkeeperProducts = productsFor(home.shopkeeper);
   const giftProducts = productsFor(home.gift);
-  const editorial = home.editorial[0];
+  const editorials = home.editorial;
   const stories = home.story;
   const seasonalCollections: SeasonalCollection[] = serializeForJson(
     home.seasonal.map((collection) => ({
@@ -125,17 +127,18 @@ export default async function Home() {
 
   return (
     <>
-      <section className="relative h-[82vh] min-h-[620px] overflow-hidden bg-[#3d3028]">
+      <section className="home-hero relative h-[82vh] min-h-[620px] overflow-hidden bg-[#3d3028]">
         <CollectionImage
           desktopUrl={hero.desktopImageUrl}
           mobileUrl={hero.mobileImageUrl}
           sizes="100vw"
-          preload
+          fetchPriority="high"
           alt={hero.title}
+          className="hero-media object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-r from-black/55 via-black/20 to-transparent" />
         <div className="wrap relative flex h-full items-end pb-20 text-white">
-          <div className="max-w-2xl">
+          <div className="hero-copy max-w-2xl">
             <p className="eyebrow text-[#eed9aa]">SEASONAL JOURNAL</p>
             <h1 className="serif mt-6 text-5xl leading-tight md:text-7xl">
               {hero.title}
@@ -162,7 +165,10 @@ export default async function Home() {
 
       <HomeCategoryGrid />
 
-      <section className="wrap grid gap-10 py-24 md:grid-cols-[.8fr_1.2fr]">
+      <section
+        className="wrap grid gap-10 py-24 md:grid-cols-[.8fr_1.2fr]"
+        data-reveal
+      >
         <div>
           <p className="eyebrow">SHOPKEEPER&apos;S CHOICE</p>
           <h2 className="serif mt-5 text-4xl">店主のおすすめ</h2>
@@ -171,9 +177,9 @@ export default async function Home() {
           </p>
           <Link
             href={COLLECTION_PATHS.shopkeeper}
-            className="mt-7 inline-block border-b border-[#171412] pb-1 text-xs"
+            className="brand-link mt-7 inline-flex"
           >
-            選び抜いた一本へ　→
+            選び抜いた一本へ <i aria-hidden="true">→</i>
           </Link>
         </div>
         <div className="grid gap-5 sm:grid-cols-3">
@@ -183,49 +189,70 @@ export default async function Home() {
         </div>
       </section>
 
-      {editorial ? (
-        <section className="grid min-h-[540px] md:grid-cols-2">
-          <div className="relative min-h-80 bg-stone-100">
-            <CollectionImage
-              desktopUrl={editorial.desktopImageUrl}
-              mobileUrl={editorial.mobileImageUrl}
-              sizes="(max-width: 767px) 100vw, 50vw"
-              alt={editorial.title}
-            />
-          </div>
-          <div className="flex items-center bg-[#3d3028] px-10 py-20 text-white md:px-20">
-            <div>
-              <p className="eyebrow text-[#e7cf9f]">EDITORIAL FEATURE</p>
-              <h2 className="serif mt-6 text-5xl leading-tight">
-                {editorial.title}
-              </h2>
-              {editorial.description ? (
-                <p className="mt-7 max-w-md text-sm leading-8 text-stone-200">
-                  {editorial.description}
-                </p>
-              ) : null}
-              <Link
-                className="mt-8 inline-block border-b border-[#e7cf9f] pb-1 text-xs text-[#e7cf9f]"
-                href={COLLECTION_PATHS.editorial}
-              >
-                特集へ　→
-              </Link>
+      {editorials.length ? (
+        <section
+          className="editorial-showcase bg-[#3d3028] py-20 text-white md:py-28"
+          data-reveal
+        >
+          <div className="wrap">
+            <p className="eyebrow text-[#e7cf9f]">EDITORIAL FEATURES</p>
+            <h2 className="serif mt-5 text-4xl md:text-5xl">今月の特集</h2>
+            <div
+              className={`editorial-layout editorial-layout-${editorials.length} mt-12`}
+            >
+              {editorials.map((editorial, index) => (
+                <article
+                  key={editorial.id}
+                  className={`editorial-item editorial-item-${index + 1}`}
+                >
+                  <Link
+                    href={COLLECTION_PATHS.editorial(editorial.id)}
+                    className="group block"
+                  >
+                    <div className="editorial-image relative overflow-hidden bg-stone-800">
+                      <CollectionImage
+                        desktopUrl={editorial.desktopImageUrl}
+                        mobileUrl={editorial.mobileImageUrl}
+                        sizes={
+                          index === 0
+                            ? '(max-width: 767px) 100vw, 66vw'
+                            : '(max-width: 767px) 100vw, 34vw'
+                        }
+                        alt={editorial.title}
+                      />
+                    </div>
+                    <p className="mt-6 text-[10px] font-semibold tracking-[.22em] text-[#e7cf9f]">
+                      FEATURE {String(index + 1).padStart(2, '0')}
+                    </p>
+                    <h3
+                      className={`serif mt-3 leading-tight ${index === 0 ? 'text-4xl md:text-5xl' : 'text-3xl'}`}
+                    >
+                      {editorial.title}
+                    </h3>
+                    {editorial.description ? (
+                      <p className="mt-5 max-w-xl text-sm leading-8 text-stone-200">
+                        {editorial.description}
+                      </p>
+                    ) : null}
+                    <span className="brand-link brand-link-light mt-6 inline-flex">
+                      特集を見る <i aria-hidden="true">→</i>
+                    </span>
+                  </Link>
+                </article>
+              ))}
             </div>
           </div>
         </section>
       ) : null}
 
-      <section className="wrap py-24">
+      <section className="wrap py-24" data-reveal>
         <div className="flex flex-wrap items-end justify-between gap-5">
           <div>
             <p className="eyebrow">GIFT RECOMMENDATIONS</p>
             <h2 className="serif mt-4 text-4xl">贈り物におすすめ</h2>
           </div>
-          <Link
-            href={COLLECTION_PATHS.gift}
-            className="inline-block border-b border-[#171412] pb-1 text-xs font-semibold"
-          >
-            ギフトの特集を見る　→
+          <Link href={COLLECTION_PATHS.gift} className="brand-link inline-flex">
+            ギフトの特集を見る <i aria-hidden="true">→</i>
           </Link>
         </div>
         <div className="mt-10 grid gap-5 sm:grid-cols-3">
@@ -235,7 +262,7 @@ export default async function Home() {
         </div>
       </section>
 
-      <section className="bg-[#f3f0ea]">
+      <section className="story-showcase bg-[#f3f0ea]" data-reveal>
         <div className="wrap py-24">
           <p className="eyebrow">STORIES</p>
           <div className="mt-5 grid gap-8 md:grid-cols-2">
@@ -260,8 +287,8 @@ export default async function Home() {
                       {story.description}
                     </p>
                   ) : null}
-                  <span className="mt-5 block text-xs text-[#6d2227]">
-                    特集を見る　→
+                  <span className="brand-link mt-5 inline-flex">
+                    物語を読む <i aria-hidden="true">→</i>
                   </span>
                 </div>
               </Link>

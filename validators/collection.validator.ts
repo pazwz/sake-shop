@@ -1,5 +1,6 @@
 import { CollectionStatus, CollectionType, Season } from '@prisma/client';
 import { z } from 'zod';
+import { HOME_CONTENT_LIMITS } from '@/config/home';
 
 const optionalText = z.string().trim().max(2000).optional().nullable();
 const optionalDate = z.string().datetime().optional().nullable();
@@ -50,6 +51,16 @@ export const collectionUpdateValidator = collectionFields.partial();
 
 export const collectionProductOrderValidator = z.object({
   productIds: productIds(1),
+});
+
+export const editorialOrderValidator = z.object({
+  collectionIds: z
+    .array(z.string().cuid())
+    .min(1)
+    .max(HOME_CONTENT_LIMITS.editorial)
+    .refine((ids) => new Set(ids).size === ids.length, {
+      message: 'Collection IDs must be unique.',
+    }),
 });
 
 export type CollectionInput = z.infer<typeof collectionInputValidator>;

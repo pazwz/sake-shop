@@ -6,7 +6,7 @@ export const COLLECTION_PATHS = {
   winter: '/collections/winter',
   shopkeeper: '/collections/shopkeeper-choice',
   gift: '/collections/gift',
-  editorial: '/collections/editorial',
+  editorial: (collectionId: string) => `/collections/editorial-${collectionId}`,
   story: (collectionId: string) => `/collections/story-${collectionId}`,
 } as const;
 

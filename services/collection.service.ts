@@ -1,7 +1,7 @@
 import { CollectionStatus, CollectionType, Season } from '@prisma/client';
 import { HOME_CONTENT_LIMITS } from '@/config/home';
 import type { SeasonCollectionSlug } from '@/config/collections';
-import { ConflictError, NotFoundError } from '@/lib/errors';
+import { ConflictError, NotFoundError, ValidationError } from '@/lib/errors';
 import { FeaturedCollectionRepository } from '@/repositories/collection.repository';
 import type {
   CollectionInput,
@@ -114,7 +114,14 @@ export class FeaturedCollectionService {
     }
     if (slug === 'shopkeeper-choice') return current.shopkeeper[0] ?? null;
     if (slug === 'gift') return current.gift[0] ?? null;
-    if (slug === 'editorial') return current.editorial[0] ?? null;
+    if (slug.startsWith('editorial-')) {
+      const collectionId = slug.slice('editorial-'.length);
+      return (
+        current.editorial.find(
+          (collection) => collection.id === collectionId,
+        ) ?? null
+      );
+    }
     if (slug.startsWith('story-')) {
       const collectionId = slug.slice('story-'.length);
       return (
@@ -190,6 +197,12 @@ export class FeaturedCollectionService {
     return collection;
   }
   async createCollection(input: CollectionInput) {
+    if (
+      input.type === CollectionType.EDITORIAL &&
+      input.status === CollectionStatus.PUBLISHED
+    ) {
+      await this.ensureEditorialCapacity();
+    }
     const { productIds, publishStartAt, publishEndAt, ...data } = input;
     return this.repository.create({
       ...data,
@@ -204,7 +217,19 @@ export class FeaturedCollectionService {
     });
   }
   async updateCollection(id: string, input: CollectionUpdate) {
-    await this.getAdminCollection(id);
+    const existing = await this.getAdminCollection(id);
+    const wasPublishedEditorial =
+      existing.type === CollectionType.EDITORIAL &&
+      existing.status === CollectionStatus.PUBLISHED;
+    const willBePublishedEditorial =
+      (input.type ?? existing.type) === CollectionType.EDITORIAL &&
+      (input.status ?? existing.status) === CollectionStatus.PUBLISHED;
+    if (!wasPublishedEditorial && willBePublishedEditorial) {
+      await this.ensureEditorialCapacity();
+    }
+    if (wasPublishedEditorial && !willBePublishedEditorial) {
+      await this.ensureEditorialMinimum();
+    }
     const { productIds, publishStartAt, publishEndAt, ...data } = input;
     const collection = await this.repository.update(id, {
       ...data,
@@ -221,6 +246,18 @@ export class FeaturedCollectionService {
   }
   async deleteCollection(id: string) {
     const collection = await this.getAdminCollection(id);
+    if (collection.type === CollectionType.EDITORIAL) {
+      if (
+        collection.status === CollectionStatus.PUBLISHED &&
+        (await this.repository.findByType(CollectionType.EDITORIAL)).length <= 1
+      ) {
+        throw new ConflictError('特集記事は1件以上必要です。');
+      }
+      await this.repository.update(id, {
+        status: CollectionStatus.ARCHIVED,
+      });
+      return;
+    }
     if (collection.status === CollectionStatus.PUBLISHED) {
       throw new ConflictError('Unpublish the collection before deleting it.');
     }
@@ -229,5 +266,41 @@ export class FeaturedCollectionService {
   async updateProductOrder(id: string, productIds: string[]) {
     await this.getAdminCollection(id);
     return this.repository.replaceProducts(id, productIds);
+  }
+  async updateEditorialOrder(ids: string[]) {
+    if (ids.length < 1 || ids.length > HOME_CONTENT_LIMITS.editorial) {
+      throw new ValidationError('特集記事は1件以上3件以下で設定してください。');
+    }
+    const currentIds = (
+      await this.repository.findByType(CollectionType.EDITORIAL)
+    )
+      .filter((collection) => collection.status === CollectionStatus.PUBLISHED)
+      .slice(0, HOME_CONTENT_LIMITS.editorial)
+      .map((collection) => collection.id);
+    if (
+      ids.length !== currentIds.length ||
+      ids.some((id) => !currentIds.includes(id))
+    ) {
+      throw new ConflictError('特集記事の状態が更新されています。');
+    }
+    return this.repository.updateDisplayOrder(ids);
+  }
+
+  private async ensureEditorialCapacity() {
+    const published = await this.repository.findByType(
+      CollectionType.EDITORIAL,
+    );
+    if (published.length >= HOME_CONTENT_LIMITS.editorial) {
+      throw new ConflictError('特集記事は3件まで設定できます。');
+    }
+  }
+
+  private async ensureEditorialMinimum() {
+    const published = await this.repository.findByType(
+      CollectionType.EDITORIAL,
+    );
+    if (published.length <= 1) {
+      throw new ConflictError('特集記事は1件以上必要です。');
+    }
   }
 }

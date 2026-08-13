@@ -95,4 +95,14 @@ export class FeaturedCollectionRepository {
       });
     });
   }
+  updateDisplayOrder(ids: string[]) {
+    return prisma.$transaction(
+      ids.map((id, index) =>
+        prisma.featuredCollection.update({
+          where: { id },
+          data: { displayOrder: index + 1 },
+        }),
+      ),
+    );
+  }
 }

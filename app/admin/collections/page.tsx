@@ -3,6 +3,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { HOME_CONTENT_LIMITS } from '@/config/home';
+import { EditorialManager } from '@/components/admin/editorial-manager';
 import { seasonLabels } from '@/lib/collection-presentation';
 import { getCurrentAdmin } from '@/services/admin-authorization.service';
 import { FeaturedCollectionService } from '@/services/collection.service';
@@ -318,14 +319,15 @@ export default async function AdminCollectionsPage() {
           />
         </div>
 
-        <FixedContentList
-          title="特集記事"
-          eyebrow="EDITORIAL"
-          description="トップページに表示する特集記事を編集します。"
-          collections={management.editorial}
+        <EditorialManager
+          items={management.editorial.map((collection) => ({
+            id: collection.id,
+            title: collection.title,
+            imageUrl: collection.desktopImageUrl ?? collection.mobileImageUrl,
+            productCount: collection.products.length,
+          }))}
           canEdit={canEdit}
-          type="EDITORIAL"
-          limit={HOME_CONTENT_LIMITS.editorial}
+          maximum={HOME_CONTENT_LIMITS.editorial}
         />
         <FixedContentList
           title="ストーリー"
