@@ -61,13 +61,15 @@ export function CollectionImageUpload({
   emptyMessage = '画像はまだ設定されていません',
   initialUrl,
   onUploadingChange,
+  onUrlChange,
 }: {
-  name: 'desktopImageUrl' | 'mobileImageUrl';
+  name: string;
   label: string;
   description: string;
   emptyMessage?: string;
   initialUrl?: string | null;
   onUploadingChange: (uploading: boolean) => void;
+  onUrlChange?: (url: string) => void;
 }) {
   const inputId = useId();
   const [url, setUrl] = useState(initialUrl ?? '');
@@ -94,6 +96,7 @@ export function CollectionImageUpload({
     try {
       const uploaded = await uploadImage(file, setProgress);
       setUrl(uploaded.url);
+      onUrlChange?.(uploaded.url);
       setProgress(100);
       setSuccess('画像をアップロードしました。変更を保存してください。');
     } catch (uploadError) {
@@ -150,6 +153,7 @@ export function CollectionImageUpload({
             type="button"
             onClick={() => {
               setUrl('');
+              onUrlChange?.('');
               setError('');
               setSuccess('画像の設定を解除しました。変更を保存してください。');
             }}

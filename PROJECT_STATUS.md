@@ -4,7 +4,7 @@ Project: Sake Shop EC Website
 
 Status: Active Development
 
-Last Updated: 2026-08-13
+Last Updated: 2026-08-14
 
 ---
 
@@ -92,6 +92,14 @@ All AI development agents must read `AGENTS.md`, `PROJECT_STATUS.md`, and `docs/
 
 ## Recent Maintenance
 
+- The approved minimum EditorialSection architecture is implemented. Editorial
+  collections can now manage ordered article sections with a title, body,
+  optional image, and optional featured product without changing the final
+  FeaturedCollectionProduct selection semantics.
+- Editorial detail pages render the article entirely through Server Components:
+  alternating desktop compositions become a single mobile column, and legacy
+  Editorials with no sections retain the existing description and product-grid
+  fallback.
 - Brand experience maintenance completed without changing the active sprint:
   Editorial CMS now supports one to three ordered entries, while OWNER/MANAGER
   write and STAFF read-only rules remain enforced at both page and API layers.

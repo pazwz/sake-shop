@@ -1,0 +1,1 @@
+export const EDITORIAL_SECTION_LIMIT = 24;

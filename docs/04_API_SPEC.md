@@ -2,7 +2,7 @@
 
 Version: 1.0
 
-Last Update: 2026-08-08
+Last Update: 2026-08-14
 
 ---
 
@@ -513,6 +513,34 @@ DELETE
 PATCH
 
 /api/v1/admin/collections/{id}/products/order
+
+---
+
+## Editorial 文章段落
+
+GET
+
+/api/v1/admin/collections/{id}/editorial-sections
+
+PUT
+
+/api/v1/admin/collections/{id}/editorial-sections
+
+PUT 使用固定字段的有序 Section 数组整体保存：
+
+- id（既有 Section 更新时）
+- title
+- body
+- imageUrl（任意）
+- productId（任意；每段最多一个）
+
+权限：
+
+- OWNER / MANAGER：读取与保存
+- STAFF：只读
+- 未登录：401
+
+该 API 仅允许父 Collection 类型为 EDITORIAL。Section 商品关联不修改 FeaturedCollectionProduct。
 
 ---
 

@@ -3,9 +3,11 @@ import { HOME_CONTENT_LIMITS } from '@/config/home';
 import type { SeasonCollectionSlug } from '@/config/collections';
 import { ConflictError, NotFoundError, ValidationError } from '@/lib/errors';
 import { FeaturedCollectionRepository } from '@/repositories/collection.repository';
+import { ProductRepository } from '@/repositories/product.repository';
 import type {
   CollectionInput,
   CollectionUpdate,
+  EditorialSectionInput,
 } from '@/validators/collection.validator';
 
 const createUniqueProductFilter = () => {
@@ -85,6 +87,7 @@ const selectCurrentCollections = <
 export class FeaturedCollectionService {
   constructor(
     private readonly repository = new FeaturedCollectionRepository(),
+    private readonly productRepository = new ProductRepository(),
   ) {}
   async getHome() {
     const all = await this.repository.findHomeCollections();
@@ -286,6 +289,50 @@ export class FeaturedCollectionService {
     return this.repository.updateDisplayOrder(ids);
   }
 
+  async getAdminEditorialSections(id: string) {
+    const collection = await this.getAdminCollection(id);
+    this.ensureEditorialCollection(collection.type);
+    return collection.editorialSections;
+  }
+
+  async replaceEditorialSections(
+    id: string,
+    sections: EditorialSectionInput[],
+  ) {
+    const collection = await this.getAdminCollection(id);
+    this.ensureEditorialCollection(collection.type);
+
+    const existingIds = collection.editorialSections.map(({ id }) => id);
+    const existingIdSet = new Set(existingIds);
+    if (
+      sections.some((section) => section.id && !existingIdSet.has(section.id))
+    ) {
+      throw new ConflictError('記事内容の状態が更新されています。');
+    }
+
+    const productIds = [
+      ...new Set(
+        sections.flatMap((section) =>
+          section.productId ? [section.productId] : [],
+        ),
+      ),
+    ];
+    if (productIds.length) {
+      const products = await this.productRepository.findForOrder(productIds);
+      if (products.length !== productIds.length) {
+        throw new ValidationError('選択された商品が見つかりません。');
+      }
+    }
+
+    const result = await this.repository.replaceEditorialSections(
+      id,
+      existingIds,
+      sections,
+    );
+    if (!result) throw new ConflictError('記事内容の状態が更新されています。');
+    return result;
+  }
+
   private async ensureEditorialCapacity() {
     const published = await this.repository.findByType(
       CollectionType.EDITORIAL,
@@ -301,6 +348,12 @@ export class FeaturedCollectionService {
     );
     if (published.length <= 1) {
       throw new ConflictError('特集記事は1件以上必要です。');
+    }
+  }
+
+  private ensureEditorialCollection(type: CollectionType) {
+    if (type !== CollectionType.EDITORIAL) {
+      throw new ValidationError('記事内容は特集記事にのみ設定できます。');
     }
   }
 }

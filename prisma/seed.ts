@@ -294,6 +294,49 @@ const seed = async (): Promise<void> => {
         displayOrder: index + 1,
       })),
     });
+
+    if (
+      collection.type === CollectionType.EDITORIAL &&
+      collection.title === '九州の風土'
+    ) {
+      const editorialSections = [
+        {
+          id: 'ceditorialkyushu0000000001',
+          title: '水が描く、酒の輪郭',
+          body: `山々に降った雨は、長い時間をかけて岩肌を通り、静かな仕込み水になります。\n\nやわらかな水が米の旨みをほどき、九州の酒に穏やかな丸みと、食卓に寄り添う余韻をもたらします。`,
+          imageUrl:
+            'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1400&q=85',
+          productId: collectionProducts[0]?.id ?? null,
+          displayOrder: 1,
+        },
+        {
+          id: 'ceditorialkyushu0000000002',
+          title: '土地を読む造り手',
+          body: `気温や湿度、米の状態は毎年少しずつ異なります。造り手は数字だけに頼らず、香りや手触り、発酵の小さな音から、その日の仕事を選び取ります。\n\n積み重ねた記憶と細やかな判断が、一本ごとの個性を形づくっています。`,
+          imageUrl:
+            'https://images.unsplash.com/photo-1498654896293-37aacf113fd9?auto=format&fit=crop&w=1400&q=85',
+          productId: collectionProducts[1]?.id ?? null,
+          displayOrder: 2,
+        },
+        {
+          id: 'ceditorialkyushu0000000003',
+          title: '食卓で完成する味わい',
+          body: `海と山の幸に恵まれた九州では、酒は料理とともに育まれてきました。豊かな旨みを受け止めながら、次のひと口を心地よく誘うこと。\n\n土地の料理と杯が重なるとき、その酒が持つ風景がいっそう鮮やかに立ち上がります。`,
+          imageUrl:
+            'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=1400&q=85',
+          productId: collectionProducts[0]?.id ?? null,
+          displayOrder: 3,
+        },
+      ];
+
+      for (const section of editorialSections) {
+        await prisma.editorialSection.upsert({
+          where: { id: section.id },
+          update: { ...section, collectionId: saved.id },
+          create: { ...section, collectionId: saved.id },
+        });
+      }
+    }
   }
 
   // Retire only the exact legacy development fixtures. No record is deleted,

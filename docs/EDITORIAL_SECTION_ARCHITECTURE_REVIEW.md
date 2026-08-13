@@ -2,7 +2,7 @@
 
 Date: 2026-08-13
 
-Status: Awaiting approval before Prisma schema or migration changes
+Status: Approved 2026-08-14
 
 ## 1. Current limitation
 
@@ -106,5 +106,5 @@ is explicitly out of scope.
 
 ## Approval boundary
 
-No Prisma schema, migration, repository, service, API, seed, or Editorial UI
-change described above will be implemented until this review is approved.
+Approved by the project owner on 2026-08-14. Implementation may proceed within
+the exact minimum scope documented above.

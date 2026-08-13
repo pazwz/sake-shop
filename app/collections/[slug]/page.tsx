@@ -5,6 +5,7 @@ import { ProductCard } from '@/components/product-card';
 import { BrandEmptyState } from '@/components/brand-empty-state';
 import { SEASON_COLLECTION_SLUGS } from '@/config/collections';
 import { seasonLabels } from '@/lib/collection-presentation';
+import { formatPrice } from '@/lib/products';
 import { FeaturedCollectionService } from '@/services/collection.service';
 
 const collectionService = new FeaturedCollectionService();
@@ -69,6 +70,112 @@ const productCardItem = ({
   category: { name: product.category.name },
   images: product.images.map(({ imageUrl }) => ({ imageUrl })),
 });
+
+function EditorialArticle({
+  sections,
+}: {
+  sections: PublicCollection['editorialSections'];
+}) {
+  if (sections.length === 0) return null;
+
+  return (
+    <section className="editorial-article border-t line py-20 md:py-32">
+      <div className="wrap">
+        <header className="mx-auto max-w-2xl text-center" data-reveal>
+          <p className="eyebrow text-[#6d2227]">THE ARTICLE</p>
+          <h2 className="serif mt-5 text-4xl md:text-5xl">蔵をめぐる読みもの</h2>
+        </header>
+
+        <div className="mt-20 space-y-24 md:mt-28 md:space-y-36">
+          {sections.map((section, index) => {
+            const imageOnRight = index % 2 === 1;
+            const productImage = section.product?.images[0]?.imageUrl;
+            return (
+              <article
+                key={section.id}
+                className="grid items-center gap-10 md:grid-cols-12 md:gap-14"
+                data-reveal
+              >
+                {section.imageUrl ? (
+                  <div
+                    className={`relative aspect-[4/5] overflow-hidden bg-[#eee9e0] md:col-span-7 ${
+                      imageOnRight ? 'md:order-2' : ''
+                    }`}
+                  >
+                    <Image
+                      fill
+                      src={section.imageUrl}
+                      alt={section.title}
+                      sizes="(max-width: 767px) 100vw, 58vw"
+                      className="object-cover"
+                    />
+                  </div>
+                ) : null}
+
+                <div
+                  className={`${
+                    section.imageUrl
+                      ? `md:col-span-5 ${imageOnRight ? 'md:order-1' : ''}`
+                      : 'mx-auto max-w-3xl md:col-span-8 md:col-start-3'
+                  }`}
+                >
+                  <p className="eyebrow text-[#9a7440]">
+                    Section {String(index + 1).padStart(2, '0')}
+                  </p>
+                  <h3 className="serif mt-5 text-4xl leading-tight md:text-5xl">
+                    {section.title}
+                  </h3>
+                  <p className="mt-7 whitespace-pre-line text-sm leading-8 text-stone-600 md:text-base md:leading-9">
+                    {section.body}
+                  </p>
+
+                  {section.product ? (
+                    <Link
+                      href={`/products/${section.product.slug}`}
+                      className="mt-10 grid grid-cols-[88px_1fr] gap-5 border-y line py-5 transition-colors hover:bg-white/60"
+                    >
+                      <div className="relative aspect-[3/4] overflow-hidden bg-white">
+                        {productImage ? (
+                          <Image
+                            fill
+                            src={productImage}
+                            alt={section.product.name}
+                            sizes="88px"
+                            className="object-contain p-2"
+                          />
+                        ) : null}
+                      </div>
+                      <div className="self-center">
+                        <p className="eyebrow text-[#6d2227]">FEATURED SAKE</p>
+                        <h4 className="serif mt-2 text-xl">
+                          {section.product.name}
+                        </h4>
+                        {section.product.producer ? (
+                          <p className="mt-1 text-xs text-stone-500">
+                            {section.product.producer}
+                          </p>
+                        ) : null}
+                        <p className="mt-3 text-sm">
+                          {formatPrice(Number(section.product.price))}
+                          <span className="ml-1 text-[10px] text-stone-500">
+                            税込
+                          </span>
+                        </p>
+                        <span className="mt-3 inline-block border-b border-[#171412] pb-1 text-xs font-semibold">
+                          この一本を見る　→
+                        </span>
+                      </div>
+                    </Link>
+                  ) : null}
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+}
 
 async function SeasonalIndex() {
   const collections = await collectionService.getPublicSeasonalCollections();
@@ -215,6 +322,10 @@ function CollectionDetail({ collection }: { collection: PublicCollection }) {
           </p>
         ) : null}
       </section>
+
+      {isEditorial ? (
+        <EditorialArticle sections={collection.editorialSections} />
+      ) : null}
 
       <section className="wrap border-t line py-16 md:py-24" data-reveal>
         <div className="flex items-end justify-between gap-5">

@@ -14,6 +14,17 @@ const include = {
     },
     orderBy: { displayOrder: 'asc' as const },
   },
+  editorialSections: {
+    include: {
+      product: {
+        include: {
+          category: true,
+          images: { orderBy: { displayOrder: 'asc' as const } },
+        },
+      },
+    },
+    orderBy: { displayOrder: 'asc' as const },
+  },
 };
 
 const visibleOnHomepage = {
@@ -104,5 +115,75 @@ export class FeaturedCollectionRepository {
         }),
       ),
     );
+  }
+  replaceEditorialSections(
+    collectionId: string,
+    expectedIds: string[],
+    sections: Array<{
+      id?: string;
+      title: string;
+      body: string;
+      imageUrl?: string | null;
+      productId?: string | null;
+    }>,
+  ) {
+    return prisma.$transaction(async (transaction) => {
+      const current = await transaction.editorialSection.findMany({
+        where: { collectionId },
+        select: { id: true },
+        orderBy: { id: 'asc' },
+      });
+      const currentIds = current.map(({ id }) => id);
+      const expected = [...expectedIds].sort();
+      if (
+        currentIds.length !== expected.length ||
+        currentIds.some((id, index) => id !== expected[index])
+      ) {
+        return null;
+      }
+
+      const retainedIds = sections.flatMap((section) =>
+        section.id ? [section.id] : [],
+      );
+      await transaction.editorialSection.deleteMany({
+        where: {
+          collectionId,
+          ...(retainedIds.length ? { id: { notIn: retainedIds } } : {}),
+        },
+      });
+
+      for (const [index, section] of sections.entries()) {
+        const data = {
+          title: section.title,
+          body: section.body,
+          imageUrl: section.imageUrl ?? null,
+          productId: section.productId ?? null,
+          displayOrder: index + 1,
+        };
+        if (section.id) {
+          await transaction.editorialSection.update({
+            where: { id: section.id },
+            data,
+          });
+        } else {
+          await transaction.editorialSection.create({
+            data: { ...data, collectionId },
+          });
+        }
+      }
+
+      return transaction.editorialSection.findMany({
+        where: { collectionId },
+        include: {
+          product: {
+            include: {
+              category: true,
+              images: { orderBy: { displayOrder: 'asc' } },
+            },
+          },
+        },
+        orderBy: { displayOrder: 'asc' },
+      });
+    });
   }
 }

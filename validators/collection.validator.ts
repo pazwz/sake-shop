@@ -1,6 +1,7 @@
 import { CollectionStatus, CollectionType, Season } from '@prisma/client';
 import { z } from 'zod';
 import { HOME_CONTENT_LIMITS } from '@/config/home';
+import { EDITORIAL_SECTION_LIMIT } from '@/config/editorial';
 
 const optionalText = z.string().trim().max(2000).optional().nullable();
 const optionalDate = z.string().datetime().optional().nullable();
@@ -63,5 +64,29 @@ export const editorialOrderValidator = z.object({
     }),
 });
 
+const editorialSectionValidator = z.object({
+  id: z.string().cuid().optional(),
+  title: z.string().trim().min(1).max(200),
+  body: z.string().trim().min(1).max(10000),
+  imageUrl: z.string().url().optional().nullable(),
+  productId: z.string().cuid().optional().nullable(),
+});
+
+export const editorialSectionsValidator = z.object({
+  sections: z
+    .array(editorialSectionValidator)
+    .max(EDITORIAL_SECTION_LIMIT)
+    .refine(
+      (sections) => {
+        const ids = sections.flatMap((section) =>
+          section.id ? [section.id] : [],
+        );
+        return new Set(ids).size === ids.length;
+      },
+      { message: 'Section IDs must be unique.' },
+    ),
+});
+
 export type CollectionInput = z.infer<typeof collectionInputValidator>;
 export type CollectionUpdate = z.infer<typeof collectionUpdateValidator>;
+export type EditorialSectionInput = z.infer<typeof editorialSectionValidator>;

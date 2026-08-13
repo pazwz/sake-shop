@@ -1,5 +1,6 @@
 import { notFound, redirect } from 'next/navigation';
 import { CollectionForm } from '@/components/admin/collection-form';
+import { EditorialSectionEditor } from '@/components/admin/editorial-section-editor';
 import { NotFoundError } from '@/lib/errors';
 import {
   cmsAdminRoles,
@@ -54,6 +55,18 @@ export default async function CollectionDetailPage({
           })),
         }}
       />
+      {collection.type === 'EDITORIAL' ? (
+        <EditorialSectionEditor
+          collectionId={collection.id}
+          initialSections={collection.editorialSections.map((section) => ({
+            id: section.id,
+            title: section.title,
+            body: section.body,
+            imageUrl: section.imageUrl,
+            productId: section.productId,
+          }))}
+        />
+      ) : null}
     </main>
   );
 }

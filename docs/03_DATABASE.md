@@ -2,7 +2,7 @@
 
 Version: 1.0
 
-Last Update: 2026-08-08
+Last Update: 2026-08-14
 
 ---
 
@@ -65,6 +65,7 @@ Last Update: 2026-08-08
 | shipments | 配送 |
 | featured_collections | 专题 |
 | featured_collection_products | 专题商品 |
+| editorial_sections | Editorial 专题文章段落 |
 | admin_users | 后台用户 |
 | audit_logs | 操作日志 |
 | sync_logs | API同步日志 |
@@ -665,6 +666,41 @@ product_id
 display_order
 
 created_at
+
+---
+
+## editorial_sections
+
+用途：
+
+仅保存 EDITORIAL Collection 的有序文章段落。
+
+字段：
+
+id
+
+collection_id
+
+product_id（任意；每段最多一个重点商品）
+
+title
+
+body
+
+image_url（任意）
+
+display_order
+
+created_at
+
+updated_at
+
+规则：
+
+- Section 只能由 Service 关联到 EDITORIAL 类型的 FeaturedCollection。
+- Section 的重点商品不改变 FeaturedCollectionProduct；专题末尾商品列表仍只使用 FeaturedCollectionProduct。
+- Product 删除时 product_id 设为 null，文章正文和图片保留。
+- 没有 Section 的旧 Editorial 继续使用 description 与 FeaturedCollectionProduct。
 
 ---
 
