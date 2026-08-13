@@ -4,7 +4,7 @@ Project: Sake Shop EC Website
 
 Status: Active Development
 
-Last Updated: 2026-08-12
+Last Updated: 2026-08-13
 
 ---
 
@@ -92,6 +92,19 @@ All AI development agents must read `AGENTS.md`, `PROJECT_STATUS.md`, and `docs/
 
 ## Recent Maintenance
 
+- Brand experience maintenance completed without changing the active sprint:
+  Editorial CMS now supports one to three ordered entries, while OWNER/MANAGER
+  write and STAFF read-only rules remain enforced at both page and API layers.
+- Homepage Editorial presentation now adapts to one, two, or three magazine
+  features. Editorial and Story detail pages use deliberately different visual
+  hierarchies while preserving SSR and ordered collection products.
+- Added a delayed KURA loading illustration, reduced-motion-safe scroll
+  reveals, restrained product/link motion, a repeated-action-safe cart toast,
+  and branded empty states.
+- Responsive art-directed images retain main/mobile fallback. The mobile header
+  overlap and Next Image fill-parent warning were corrected.
+- Footer social configuration is limited to Instagram and Xiaohongshu. Links
+  remain non-clickable until approved customer URLs are supplied.
 - Public collection pages now provide server-rendered detail views for each
   seasonal feature, Shopkeeper, Gift, the current Editorial, and current Story
   entries. Homepage feature links lead to their content instead of the generic
@@ -105,8 +118,9 @@ All AI development agents must read `AGENTS.md`, `PROJECT_STATUS.md`, and `docs/
 - Publication scheduling was removed from the operator UI. Homepage selection
   now uses direct `PUBLISHED` state and fixed content limits instead of future
   start/end times.
-- Hero and Editorial show one current item, Story shows two, and Shopkeeper and
-  Gift each manage one ordered list of at most three products.
+- Hero shows one current item, Editorial shows one to three, Story shows two,
+  and Shopkeeper and Gift each manage one ordered list of at most three
+  products.
 - The development seed now defaults to one Hero, four seasonal slots, one
   Shopkeeper, one Gift, one Editorial, and two Story records. Exact old seed
   fixtures are archived without deleting data.
