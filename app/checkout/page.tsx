@@ -1,10 +1,16 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCart } from '@/components/cart-provider';
 import { useAuth } from '@/components/auth-provider';
 import { formatPrice } from '@/lib/products';
+import { FormFieldError } from '@/components/form-field-error';
+import {
+  focusFormField,
+  invalidFieldClass,
+  isValidEmail,
+} from '@/lib/form-validation';
 
 const fields = [
   ['name', '氏名'],
@@ -16,13 +22,18 @@ const fields = [
   ['email', 'メールアドレス'],
 ] as const;
 
+type FieldName = (typeof fields)[number][0];
+type CheckoutErrors = Partial<Record<FieldName | 'age', string>>;
+
 export default function Checkout() {
   const { items, clear } = useCart();
   const { member, ready } = useAuth();
   const router = useRouter();
+  const formRef = useRef<HTMLFormElement>(null);
   const [age, setAge] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'card' | 'paypay'>('card');
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<CheckoutErrors>({});
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({
     name: '',
@@ -41,8 +52,25 @@ export default function Checkout() {
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
+    const nextErrors: CheckoutErrors = {};
+    fields.forEach(([key, label]) => {
+      if (!form[key].trim()) nextErrors[key] = `${label}を入力してください。`;
+    });
+    if (form.email.trim() && !isValidEmail(form.email)) {
+      nextErrors.email = 'メールアドレスの形式が正しくありません。';
+    }
+    if (!age) nextErrors.age = '年齢確認に同意してください。';
+    const firstField =
+      fields.find(([key]) => nextErrors[key])?.[0] ??
+      (nextErrors.age ? 'age' : null);
+    if (firstField) {
+      setFieldErrors(nextErrors);
+      if (formRef.current) focusFormField(formRef.current, firstField);
+      return;
+    }
     setSubmitting(true);
     setError('');
+    setFieldErrors({});
     try {
       const orderResponse = await fetch('/api/v1/orders', {
         method: 'POST',
@@ -110,9 +138,11 @@ export default function Checkout() {
       router.push(`/orders/${orderPayload.data.orderNumber}`);
     } catch (submissionError) {
       setError(
-        submissionError instanceof Error
-          ? submissionError.message
-          : '注文を処理できませんでした。',
+        submissionError instanceof TypeError
+          ? '通信に失敗しました。時間をおいてもう一度お試しください。'
+          : submissionError instanceof Error
+            ? submissionError.message
+            : '注文を処理できませんでした。',
       );
     } finally {
       setSubmitting(false);
@@ -124,6 +154,8 @@ export default function Checkout() {
       <p className="eyebrow">CHECKOUT</p>
       <h1 className="serif mt-4 text-5xl">お届け先</h1>
       <form
+        ref={formRef}
+        noValidate
         onSubmit={submit}
         className="mt-10 grid gap-10 lg:grid-cols-[1.2fr_.7fr]"
       >
@@ -141,11 +173,27 @@ export default function Checkout() {
                 <span className="text-xs">{label}</span>
                 <input
                   required
-                  className="input mt-2"
-                  value={form[key]}
-                  onChange={(event) =>
-                    setForm({ ...form, [key]: event.target.value })
+                  name={key}
+                  type={
+                    key === 'email' ? 'email' : key === 'phone' ? 'tel' : 'text'
                   }
+                  aria-invalid={Boolean(fieldErrors[key])}
+                  aria-describedby={
+                    fieldErrors[key] ? `checkout-${key}-error` : undefined
+                  }
+                  className={`input mt-2 ${fieldErrors[key] ? invalidFieldClass : ''}`}
+                  value={form[key]}
+                  onChange={(event) => {
+                    setForm({ ...form, [key]: event.target.value });
+                    setFieldErrors((current) => ({
+                      ...current,
+                      [key]: undefined,
+                    }));
+                  }}
+                />
+                <FormFieldError
+                  id={`checkout-${key}-error`}
+                  message={fieldErrors[key]}
                 />
               </label>
             ))}
@@ -176,14 +224,28 @@ export default function Checkout() {
           <label className="flex gap-3 border-t line pt-8 text-sm">
             <input
               type="checkbox"
+              name="age"
               checked={age}
-              onChange={(event) => setAge(event.target.checked)}
+              aria-invalid={Boolean(fieldErrors.age)}
+              aria-describedby={
+                fieldErrors.age ? 'checkout-age-error' : undefined
+              }
+              onChange={(event) => {
+                setAge(event.target.checked);
+                setFieldErrors((current) => ({ ...current, age: undefined }));
+              }}
             />
-            私は20歳以上です。
+            <span>
+              私は20歳以上です。
+              <FormFieldError
+                id="checkout-age-error"
+                message={fieldErrors.age}
+              />
+            </span>
           </label>
           {error && <p className="text-sm text-red-700">{error}</p>}
           <button
-            disabled={!age || submitting}
+            disabled={submitting}
             className="btn disabled:cursor-not-allowed disabled:bg-stone-400"
           >
             {submitting ? '処理中…' : '注文とデモ決済を確定する'}

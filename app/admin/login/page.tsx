@@ -1,34 +1,67 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { FormFieldError } from '@/components/form-field-error';
+import {
+  focusFormField,
+  invalidFieldClass,
+  isValidEmail,
+} from '@/lib/form-validation';
+
+type LoginErrors = { email?: string; password?: string };
 
 export default function AdminLoginPage() {
   const router = useRouter();
+  const formRef = useRef<HTMLFormElement>(null);
   const [message, setMessage] = useState('');
+  const [errors, setErrors] = useState<LoginErrors>({});
   const [submitting, setSubmitting] = useState(false);
-  const login = async (formData: FormData) => {
-    setSubmitting(true);
-    setMessage('');
-    const response = await fetch('/api/v1/admin/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        email: formData.get('email'),
-        password: formData.get('password'),
-      }),
-    });
-    if (!response.ok) {
-      setMessage('メールアドレスまたはパスワードが正しくありません。');
-      setSubmitting(false);
+  const login = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    const email = String(formData.get('email') ?? '');
+    const password = String(formData.get('password') ?? '');
+    const nextErrors: LoginErrors = {};
+    if (!email.trim()) nextErrors.email = 'メールアドレスを入力してください。';
+    else if (!isValidEmail(email))
+      nextErrors.email = 'メールアドレスの形式が正しくありません。';
+    if (!password) nextErrors.password = 'パスワードを入力してください。';
+    if (nextErrors.email || nextErrors.password) {
+      setErrors(nextErrors);
+      const firstField = nextErrors.email ? 'email' : 'password';
+      if (formRef.current) focusFormField(formRef.current, firstField);
       return;
     }
-    router.push('/admin');
-    router.refresh();
+    setSubmitting(true);
+    setMessage('');
+    setErrors({});
+    try {
+      const response = await fetch('/api/v1/admin/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim(), password }),
+      });
+      if (!response.ok) {
+        setMessage('メールアドレスまたはパスワードが正しくありません。');
+        return;
+      }
+      router.push('/admin');
+      router.refresh();
+    } catch {
+      setMessage('通信に失敗しました。時間をおいてもう一度お試しください。');
+    } finally {
+      setSubmitting(false);
+    }
   };
   return (
     <main className="wrap flex min-h-[70vh] items-center justify-center py-16">
-      <form action={login} className="w-full max-w-md border line bg-white p-8">
+      <form
+        ref={formRef}
+        noValidate
+        onSubmit={login}
+        className="w-full max-w-md border line bg-white p-8"
+      >
         <p className="eyebrow">KURA ADMIN</p>
         <h1 className="serif mt-4 text-4xl">管理者ログイン</h1>
         <p className="mt-4 text-sm leading-7 text-stone-600">
@@ -45,8 +78,14 @@ export default function AdminLoginPage() {
             required
             type="email"
             name="email"
-            className="mt-2 w-full border line p-3"
+            aria-invalid={Boolean(errors.email)}
+            aria-describedby={errors.email ? 'admin-email-error' : undefined}
+            className={`mt-2 w-full border line p-3 ${errors.email ? invalidFieldClass : ''}`}
+            onChange={() =>
+              setErrors((current) => ({ ...current, email: undefined }))
+            }
           />
+          <FormFieldError id="admin-email-error" message={errors.email} />
         </label>
         <label className="mt-5 block text-sm">
           パスワード
@@ -55,8 +94,16 @@ export default function AdminLoginPage() {
             type="password"
             name="password"
             minLength={8}
-            className="mt-2 w-full border line p-3"
+            aria-invalid={Boolean(errors.password)}
+            aria-describedby={
+              errors.password ? 'admin-password-error' : undefined
+            }
+            className={`mt-2 w-full border line p-3 ${errors.password ? invalidFieldClass : ''}`}
+            onChange={() =>
+              setErrors((current) => ({ ...current, password: undefined }))
+            }
           />
+          <FormFieldError id="admin-password-error" message={errors.password} />
         </label>
         <button
           disabled={submitting}

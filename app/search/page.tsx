@@ -49,6 +49,7 @@ function SearchCollection() {
       <p className="eyebrow">SEARCH THE COLLECTION</p>
       <h1 className="serif mt-4 text-5xl">商品を探す</h1>
       <form
+        noValidate
         className="mt-12 flex gap-3 border-y line py-7"
         onSubmit={(event) => {
           event.preventDefault();

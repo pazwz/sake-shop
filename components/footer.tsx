@@ -2,7 +2,16 @@
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { SITE_SOCIAL_LINKS } from '@/config/site';
+import { FormFieldError } from '@/components/form-field-error';
+import {
+  focusFormField,
+  invalidFieldClass,
+  isValidEmail,
+} from '@/lib/form-validation';
 type IconName = 'instagram' | 'xiaohongshu';
+type NewsletterErrors = Partial<
+  Record<'email' | 'lastName' | 'firstName' | 'lastKana' | 'firstKana', string>
+>;
 const socialLinks: { label: string; href: string; icon: IconName }[] = [
   { label: 'Instagram', href: SITE_SOCIAL_LINKS.instagram, icon: 'instagram' },
   { label: '小紅書', href: SITE_SOCIAL_LINKS.xiaohongshu, icon: 'xiaohongshu' },
@@ -110,7 +119,9 @@ function NewsletterDrawer({
   onClose: () => void;
 }) {
   const closeRef = useRef<HTMLButtonElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
   const [submitted, setSubmitted] = useState(false);
+  const [errors, setErrors] = useState<NewsletterErrors>({});
   const [form, setForm] = useState({
     email: '',
     gender: '',
@@ -136,6 +147,27 @@ function NewsletterDrawer({
   if (!open) return null;
   const submit = (event: React.FormEvent) => {
     event.preventDefault();
+    const nextErrors: NewsletterErrors = {};
+    if (!form.email.trim())
+      nextErrors.email = 'メールアドレスを入力してください。';
+    else if (!isValidEmail(form.email))
+      nextErrors.email = 'メールアドレスの形式が正しくありません。';
+    if (!form.lastName.trim()) nextErrors.lastName = '姓を入力してください。';
+    if (!form.firstName.trim()) nextErrors.firstName = '名を入力してください。';
+    const kanaPattern = /^[ァ-ヶー　]+$/;
+    if (form.lastKana && !kanaPattern.test(form.lastKana))
+      nextErrors.lastKana = '姓は全角カナで入力してください。';
+    if (form.firstKana && !kanaPattern.test(form.firstKana))
+      nextErrors.firstKana = '名は全角カナで入力してください。';
+    const firstField = (
+      ['email', 'lastName', 'firstName', 'lastKana', 'firstKana'] as const
+    ).find((field) => nextErrors[field]);
+    if (firstField) {
+      setErrors(nextErrors);
+      if (formRef.current) focusFormField(formRef.current, firstField);
+      return;
+    }
+    setErrors({});
     setSubmitted(true);
     setForm({
       email: '',
@@ -195,16 +227,31 @@ function NewsletterDrawer({
             <p className="mt-5 text-sm leading-8 text-stone-600">
               季節のおすすめ、新入荷商品、蔵元の物語などをお届けします。
             </p>
-            <form onSubmit={submit} className="mt-9 space-y-6">
-              <Field label="Eメールアドレス（必須）">
+            <form
+              ref={formRef}
+              noValidate
+              onSubmit={submit}
+              className="mt-9 space-y-6"
+            >
+              <Field
+                label="Eメールアドレス（必須）"
+                errorId="newsletter-email-error"
+                error={errors.email}
+              >
                 <input
                   required
                   type="email"
+                  name="email"
                   value={form.email}
-                  onChange={(event) =>
-                    setForm({ ...form, email: event.target.value })
+                  aria-invalid={Boolean(errors.email)}
+                  aria-describedby={
+                    errors.email ? 'newsletter-email-error' : undefined
                   }
-                  className="input"
+                  onChange={(event) => {
+                    setForm({ ...form, email: event.target.value });
+                    setErrors((current) => ({ ...current, email: undefined }));
+                  }}
+                  className={`input ${errors.email ? invalidFieldClass : ''}`}
                 />
               </Field>
               <Field label="性別（任意）">
@@ -222,46 +269,102 @@ function NewsletterDrawer({
                 </select>
               </Field>
               <div className="grid grid-cols-2 gap-5">
-                <Field label="姓（必須）">
+                <Field
+                  label="姓（必須）"
+                  errorId="newsletter-last-name-error"
+                  error={errors.lastName}
+                >
                   <input
                     required
+                    name="lastName"
                     value={form.lastName}
-                    onChange={(event) =>
-                      setForm({ ...form, lastName: event.target.value })
+                    aria-invalid={Boolean(errors.lastName)}
+                    aria-describedby={
+                      errors.lastName ? 'newsletter-last-name-error' : undefined
                     }
-                    className="input"
+                    onChange={(event) => {
+                      setForm({ ...form, lastName: event.target.value });
+                      setErrors((current) => ({
+                        ...current,
+                        lastName: undefined,
+                      }));
+                    }}
+                    className={`input ${errors.lastName ? invalidFieldClass : ''}`}
                   />
                 </Field>
-                <Field label="名（必須）">
+                <Field
+                  label="名（必須）"
+                  errorId="newsletter-first-name-error"
+                  error={errors.firstName}
+                >
                   <input
                     required
+                    name="firstName"
                     value={form.firstName}
-                    onChange={(event) =>
-                      setForm({ ...form, firstName: event.target.value })
+                    aria-invalid={Boolean(errors.firstName)}
+                    aria-describedby={
+                      errors.firstName
+                        ? 'newsletter-first-name-error'
+                        : undefined
                     }
-                    className="input"
+                    onChange={(event) => {
+                      setForm({ ...form, firstName: event.target.value });
+                      setErrors((current) => ({
+                        ...current,
+                        firstName: undefined,
+                      }));
+                    }}
+                    className={`input ${errors.firstName ? invalidFieldClass : ''}`}
                   />
                 </Field>
               </div>
               <div className="grid grid-cols-2 gap-5">
-                <Field label="姓（全角カナ）">
+                <Field
+                  label="姓（全角カナ）"
+                  errorId="newsletter-last-kana-error"
+                  error={errors.lastKana}
+                >
                   <input
                     pattern="[ァ-ヶー　]+"
+                    name="lastKana"
                     value={form.lastKana}
-                    onChange={(event) =>
-                      setForm({ ...form, lastKana: event.target.value })
+                    aria-invalid={Boolean(errors.lastKana)}
+                    aria-describedby={
+                      errors.lastKana ? 'newsletter-last-kana-error' : undefined
                     }
-                    className="input"
+                    onChange={(event) => {
+                      setForm({ ...form, lastKana: event.target.value });
+                      setErrors((current) => ({
+                        ...current,
+                        lastKana: undefined,
+                      }));
+                    }}
+                    className={`input ${errors.lastKana ? invalidFieldClass : ''}`}
                   />
                 </Field>
-                <Field label="名（全角カナ）">
+                <Field
+                  label="名（全角カナ）"
+                  errorId="newsletter-first-kana-error"
+                  error={errors.firstKana}
+                >
                   <input
                     pattern="[ァ-ヶー　]+"
+                    name="firstKana"
                     value={form.firstKana}
-                    onChange={(event) =>
-                      setForm({ ...form, firstKana: event.target.value })
+                    aria-invalid={Boolean(errors.firstKana)}
+                    aria-describedby={
+                      errors.firstKana
+                        ? 'newsletter-first-kana-error'
+                        : undefined
                     }
-                    className="input"
+                    onChange={(event) => {
+                      setForm({ ...form, firstKana: event.target.value });
+                      setErrors((current) => ({
+                        ...current,
+                        firstKana: undefined,
+                      }));
+                    }}
+                    className={`input ${errors.firstKana ? invalidFieldClass : ''}`}
                   />
                 </Field>
               </div>
@@ -279,14 +382,19 @@ function NewsletterDrawer({
 function Field({
   label,
   children,
+  errorId,
+  error,
 }: {
   label: string;
   children: React.ReactNode;
+  errorId?: string;
+  error?: string;
 }) {
   return (
     <label className="block text-xs font-semibold">
       {label}
       <span className="mt-2 block">{children}</span>
+      {errorId ? <FormFieldError id={errorId} message={error} /> : null}
     </label>
   );
 }

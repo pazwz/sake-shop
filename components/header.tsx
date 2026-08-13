@@ -151,7 +151,11 @@ export function Header() {
                 閉じる　×
               </button>
             </div>
-            <form onSubmit={submit} className="mx-auto mt-[18vh] max-w-3xl">
+            <form
+              noValidate
+              onSubmit={submit}
+              className="mx-auto mt-[18vh] max-w-3xl"
+            >
               <input
                 autoFocus
                 value={query}
