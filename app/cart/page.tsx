@@ -6,6 +6,7 @@ import { useAuth } from '@/components/auth-provider';
 import { formatPrice } from '@/lib/products';
 import { QuantitySelector } from '@/components/quantity-selector';
 import { DEVELOPMENT_SHIPPING_FEE } from '@/config/order';
+import { BrandEmptyState } from '@/components/brand-empty-state';
 export default function Cart() {
   const { items, subtotal, update, remove } = useCart();
   const { member } = useAuth();
@@ -15,12 +16,12 @@ export default function Cart() {
       <p className="eyebrow">Shopping bag</p>
       <h1 className="serif mt-4 text-5xl">ショッピングバッグ</h1>
       {!items.length ? (
-        <div className="py-20 text-center">
-          <p>バッグに商品がありません。</p>
-          <Link href="/products" className="btn mt-7">
-            商品を探す
-          </Link>
-        </div>
+        <BrandEmptyState
+          title="バッグはまだ空です"
+          description="季節の一本や、店主が選んだお酒をご覧ください。"
+          href="/products"
+          linkLabel="商品を探す"
+        />
       ) : (
         <div className="mt-12 grid gap-12 lg:grid-cols-[1.5fr_.7fr]">
           <div>

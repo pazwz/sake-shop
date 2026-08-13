@@ -10,6 +10,8 @@ import { useCart } from '@/components/cart-provider';
 import { formatPrice } from '@/lib/products';
 import { getProduct, getProducts } from '@/lib/product-api';
 import type { ProductRecord } from '@/types/product';
+import { BrandLoader } from '@/components/brand-loader';
+import { BrandEmptyState } from '@/components/brand-empty-state';
 
 export default function ProductDetailPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -50,16 +52,16 @@ export default function ProductDetailPage() {
   );
   const imageUrl = product?.images[0]?.imageUrl;
 
-  if (isLoading)
-    return (
-      <div className="wrap py-28 text-center text-sm text-stone-500">
-        商品を読み込んでいます。
-      </div>
-    );
+  if (isLoading) return <BrandLoader label="商品を読み込んでいます" />;
   if (notFound || !product)
     return (
-      <div className="wrap py-28 text-center text-sm text-stone-500">
-        商品が見つかりませんでした。
+      <div className="wrap">
+        <BrandEmptyState
+          title="商品が見つかりませんでした"
+          description="季節のおすすめや、ほかの一本をご覧ください。"
+          href="/products"
+          linkLabel="商品一覧を見る"
+        />
       </div>
     );
 

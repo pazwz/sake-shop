@@ -5,6 +5,8 @@ import { useSearchParams } from 'next/navigation';
 import { ProductCard } from '@/components/product-card';
 import { getCategories, getProducts } from '@/lib/product-api';
 import type { CategoryRecord, ProductListResult } from '@/types/product';
+import { BrandLoader } from '@/components/brand-loader';
+import { BrandEmptyState } from '@/components/brand-empty-state';
 
 const INITIAL_RESULT: ProductListResult = {
   items: [],
@@ -96,23 +98,19 @@ function ProductsCollection() {
       <p className="mt-8 text-xs text-stone-500">
         {result.pagination.total} ITEMS
       </p>
-      {isLoading ? (
-        <p className="py-20 text-center text-sm text-stone-500">
-          商品を読み込んでいます。
-        </p>
-      ) : null}
+      {isLoading ? <BrandLoader label="商品を読み込んでいます" /> : null}
       {hasError ? (
         <p className="py-20 text-center text-sm text-stone-500">
           商品を読み込めませんでした。時間をおいて再度お試しください。
         </p>
       ) : null}
       {!isLoading && !hasError && result.items.length === 0 ? (
-        <div className="border-y line py-20 text-center">
-          <p className="serif text-2xl">該当する商品がありません</p>
-          <p className="mt-3 text-sm text-stone-500">
-            検索条件を変更して、もう一度お試しください。
-          </p>
-        </div>
+        <BrandEmptyState
+          title="該当する商品がありません"
+          description="検索条件を少し変えて、もう一度お試しください。"
+          href="/products"
+          linkLabel="条件をリセット"
+        />
       ) : null}
       {!isLoading && !hasError && result.items.length > 0 ? (
         <div className="mt-8 grid gap-x-5 gap-y-12 sm:grid-cols-2 lg:grid-cols-3">
