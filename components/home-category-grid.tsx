@@ -8,7 +8,7 @@ export function HomeCategoryGrid() {
   const { categoryLabel } = useLanguage();
 
   return (
-    <section className="border-y line bg-[#faf8f4]">
+    <section className="border-y line bg-[#faf8f4]" data-reveal>
       <div className="wrap py-20">
         <p className="eyebrow">Explore by category</p>
         <div className="mt-10 grid grid-cols-2 border-l line md:grid-cols-3">
@@ -22,9 +22,7 @@ export function HomeCategoryGrid() {
               <p className="serif mt-10 text-2xl group-hover:text-[#6d2227]">
                 {categoryLabel(category)}
               </p>
-              <span className="mt-3 block text-xs text-[#6d2227]">
-                選ぶ　→
-              </span>
+              <span className="mt-3 block text-xs text-[#6d2227]">選ぶ　→</span>
             </Link>
           ))}
         </div>

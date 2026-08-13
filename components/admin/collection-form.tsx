@@ -290,7 +290,7 @@ export function CollectionForm({
         <CollectionImageUpload
           name="mobileImageUrl"
           label="スマートフォン用画像（任意）"
-          description="未設定の場合はメイン画像をスマートフォンでも自動的に使用します。スマートフォンで構図を変えたい場合のみ設定してください。"
+          description="通常はメイン画像のみで問題ありません。スマートフォンで構図を変えたい場合のみ設定してください。"
           emptyMessage="未設定（メイン画像を使用）"
           initialUrl={collection?.mobileImageUrl}
           onUploadingChange={setMobileImageUploading}

@@ -2,6 +2,7 @@ import Image, { getImageProps } from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ProductCard } from '@/components/product-card';
+import { BrandEmptyState } from '@/components/brand-empty-state';
 import { SEASON_COLLECTION_SLUGS } from '@/config/collections';
 import { seasonLabels } from '@/lib/collection-presentation';
 import { FeaturedCollectionService } from '@/services/collection.service';
@@ -18,6 +19,7 @@ function CollectionImage({
   collection,
   sizes,
   className = 'object-cover',
+  fetchPriority,
 }: {
   collection: Pick<
     PublicCollection,
@@ -25,6 +27,7 @@ function CollectionImage({
   >;
   sizes: string;
   className?: string;
+  fetchPriority?: 'high';
 }) {
   const imageUrl = collection.desktopImageUrl ?? collection.mobileImageUrl;
   if (!imageUrl) return null;
@@ -39,7 +42,7 @@ function CollectionImage({
     : null;
 
   return (
-    <picture>
+    <picture className="absolute inset-0">
       {mobileSource ? (
         <source media="(max-width: 767px)" srcSet={mobileSource} />
       ) : null}
@@ -49,6 +52,7 @@ function CollectionImage({
         className={className}
         src={imageUrl}
         alt={collection.title}
+        fetchPriority={fetchPriority}
       />
     </picture>
   );
@@ -70,7 +74,7 @@ async function SeasonalIndex() {
   const collections = await collectionService.getPublicSeasonalCollections();
 
   return (
-    <main>
+    <div>
       <section className="bg-[#3d3028] text-white">
         <div className="wrap py-24 md:py-36">
           <p className="eyebrow text-[#e7cf9f]">SEASONAL JOURNAL</p>
@@ -91,6 +95,7 @@ async function SeasonalIndex() {
                 key={collection.id}
                 href={`/collections/${slug}`}
                 className="group block"
+                data-reveal
               >
                 <div className="relative aspect-[16/10] overflow-hidden bg-[#f3f0ea]">
                   <CollectionImage
@@ -121,55 +126,101 @@ async function SeasonalIndex() {
           </p>
         ) : null}
       </section>
-    </main>
+    </div>
   );
 }
 
 function CollectionDetail({ collection }: { collection: PublicCollection }) {
   const products = collection.products.map(productCardItem);
   const hasImage = collection.desktopImageUrl ?? collection.mobileImageUrl;
+  const isEditorial = collection.type === 'EDITORIAL';
+  const isStory = collection.type === 'STORY';
+  const eyebrow = isEditorial
+    ? 'KURA EDITORIAL'
+    : isStory
+      ? 'KURA STORY'
+      : 'KURA COLLECTION';
+  const selectionTitle = isStory
+    ? '物語に寄り添うお酒'
+    : isEditorial
+      ? '編集部が選んだお酒'
+      : 'この特集のお酒';
 
   return (
-    <main>
+    <div
+      className={
+        isStory ? 'story-detail' : isEditorial ? 'editorial-detail' : ''
+      }
+    >
       <section
-        className={`relative overflow-hidden ${
+        className={`collection-hero relative overflow-hidden ${
           hasImage
-            ? 'h-[58vh] min-h-[440px] bg-stone-200'
+            ? isStory
+              ? 'mx-auto mt-12 h-[54vh] min-h-[400px] max-w-[1120px] bg-stone-200 md:mt-20'
+              : 'h-[64vh] min-h-[480px] bg-stone-200'
             : 'bg-[#3d3028] py-28 text-white'
         }`}
       >
         {hasImage ? (
           <>
-            <CollectionImage collection={collection} sizes="100vw" />
-            <div className="absolute inset-0 bg-black/20" />
+            <CollectionImage
+              collection={collection}
+              sizes={isStory ? '(max-width: 1120px) 100vw, 1120px' : '100vw'}
+              className={`collection-hero-media object-cover ${isEditorial ? 'object-[center_42%]' : 'object-center'}`}
+              fetchPriority="high"
+            />
+            {isEditorial ? (
+              <div className="absolute inset-0 bg-black/25" />
+            ) : null}
+            {isEditorial ? (
+              <div className="wrap relative flex h-full items-end pb-14 text-white md:pb-20">
+                <div className="max-w-4xl" data-reveal>
+                  <p className="eyebrow text-[#e7cf9f]">{eyebrow}</p>
+                  <h1 className="serif mt-5 text-5xl leading-tight md:text-7xl">
+                    {collection.title}
+                  </h1>
+                </div>
+              </div>
+            ) : null}
           </>
         ) : (
           <div className="wrap">
-            <p className="eyebrow text-[#e7cf9f]">KURA COLLECTION</p>
+            <p className="eyebrow text-[#e7cf9f]">{eyebrow}</p>
           </div>
         )}
       </section>
 
-      <section className="wrap py-16 text-center md:py-24">
-        <p className="eyebrow text-[#6d2227]">KURA COLLECTION</p>
+      <section
+        className={`wrap py-16 md:py-24 ${isStory ? 'max-w-4xl text-left' : 'text-center'}`}
+        data-reveal
+      >
+        <p className="eyebrow text-[#6d2227]">{eyebrow}</p>
         {collection.subtitle ? (
           <p className="mt-5 text-xs tracking-[.18em] text-stone-500">
             {collection.subtitle}
           </p>
         ) : null}
-        <h1 className="serif mt-5 text-5xl md:text-6xl">{collection.title}</h1>
+        {!isEditorial || !hasImage ? (
+          <h1
+            className={`serif mt-5 text-5xl md:text-6xl ${isStory ? 'leading-tight' : ''}`}
+          >
+            {collection.title}
+          </h1>
+        ) : null}
         {collection.description ? (
-          <p className="mx-auto mt-8 max-w-2xl whitespace-pre-line text-sm leading-8 text-stone-600">
+          <p
+            className={`${isStory ? 'mr-auto max-w-3xl text-base leading-9' : 'mx-auto max-w-2xl text-sm leading-8'} mt-8 whitespace-pre-line text-stone-600`}
+          >
             {collection.description}
           </p>
         ) : null}
       </section>
 
-      <section className="wrap border-t line py-16 md:py-24">
+      <section className="wrap border-t line py-16 md:py-24" data-reveal>
         <div className="flex items-end justify-between gap-5">
           <div>
             <p className="eyebrow">SELECTION</p>
-            <h2 className="serif mt-4 text-4xl">この特集のお酒</h2>
+            <h2 className="serif mt-4 text-4xl">{selectionTitle}</h2>
           </div>
           <p className="text-xs text-stone-500">{products.length} items</p>
         </div>
@@ -180,21 +231,21 @@ function CollectionDetail({ collection }: { collection: PublicCollection }) {
             ))}
           </div>
         ) : (
-          <p className="py-24 text-center text-sm text-stone-500">
-            現在掲載できる商品はありません
-          </p>
+          <BrandEmptyState
+            title="現在掲載できる商品はありません"
+            description="次の一本をご紹介できるまで、もうしばらくお待ちください。"
+            href="/products"
+            linkLabel="商品一覧を見る"
+          />
         )}
       </section>
 
       <div className="wrap pb-20 text-center">
-        <Link
-          href="/"
-          className="inline-block border-b border-[#171412] pb-1 text-xs"
-        >
-          トップページへ戻る　→
+        <Link href="/" className="brand-link inline-flex">
+          トップページへ戻る <i aria-hidden="true">→</i>
         </Link>
       </div>
-    </main>
+    </div>
   );
 }
 

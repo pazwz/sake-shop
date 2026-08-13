@@ -95,7 +95,10 @@ export function Header() {
             <option value="zh">中文</option>
             <option value="ko">한국어</option>
           </select>
-          <Link href={member ? '/mypage' : '/login'}>
+          <Link
+            href={member ? '/mypage' : '/login'}
+            className="hidden sm:inline"
+          >
             {member ? 'MY PAGE' : 'LOGIN'}
           </Link>
           <Link href="/cart">BAG ({count})</Link>
@@ -130,6 +133,12 @@ export function Header() {
             ))}
             <Link href="/products">商品一覧</Link>
             <Link href="/about">私たちについて</Link>
+            <Link
+              href={member ? '/mypage' : '/login'}
+              onClick={() => setMobile(false)}
+            >
+              {member ? 'マイページ' : 'ログイン'}
+            </Link>
           </nav>
         </div>
       )}

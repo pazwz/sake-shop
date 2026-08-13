@@ -43,7 +43,7 @@ export function HomeSeasonalSection({
   );
 
   return (
-    <section className="wrap py-20 md:py-28">
+    <section className="wrap py-20 md:py-28" data-reveal>
       <div className="flex flex-wrap items-end justify-between gap-6">
         <div>
           <p className="eyebrow">SEASONAL RECOMMENDATIONS</p>
@@ -71,9 +71,10 @@ export function HomeSeasonalSection({
           </div>
           <Link
             href={`/collections/${SEASON_COLLECTION_SLUGS[activeSeason]}`}
-            className="mt-8 inline-block border-b border-[#171412] pb-1 text-xs font-bold"
+            className="brand-link mt-8 inline-flex"
           >
-            {seasonLabels[activeSeason]}のおすすめをすべて見る　→
+            {seasonLabels[activeSeason]}のおすすめをすべて見る{' '}
+            <i aria-hidden="true">→</i>
           </Link>
         </>
       ) : (

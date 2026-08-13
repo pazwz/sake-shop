@@ -22,13 +22,17 @@ export function ProductCard({ product }: { product: ProductCardItem }) {
       : product.category.name;
 
   return (
-    <Link href={`/products/${product.slug}`} className="group block">
-      <div className="relative aspect-[4/5] overflow-hidden bg-[#f3f0ea]">
+    <Link
+      href={`/products/${product.slug}`}
+      className="product-card group block"
+      data-reveal
+    >
+      <div className="product-card-image relative aspect-[4/5] overflow-hidden bg-[#f3f0ea]">
         {imageUrl ? (
           <Image
             fill
             sizes="(max-width: 639px) 100vw, (max-width: 1023px) 50vw, 33vw"
-            className="object-cover transition duration-500 group-hover:scale-[1.03]"
+            className="object-cover"
             src={imageUrl}
             alt={product.name}
           />
@@ -42,7 +46,7 @@ export function ProductCard({ product }: { product: ProductCardItem }) {
       <p className="mt-4 text-[10px] tracking-[.15em] text-[#6d2227]">
         {categoryName} / {product.producer ?? 'KURA'}
       </p>
-      <h3 className="mt-1 text-sm">{product.name}</h3>
+      <h3 className="product-card-title mt-1 text-sm">{product.name}</h3>
       <p className="mt-2 text-sm">
         {formatPrice(product.price)}{' '}
         <span className="text-[10px] text-stone-500">税込</span>
