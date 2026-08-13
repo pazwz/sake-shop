@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { ProductCard } from '@/components/product-card';
+import { SEASON_COLLECTION_SLUGS } from '@/config/collections';
 
 export type SeasonKey = 'SPRING' | 'SUMMER' | 'AUTUMN' | 'WINTER';
 
@@ -69,7 +70,7 @@ export function HomeSeasonalSection({
             ))}
           </div>
           <Link
-            href="/products"
+            href={`/collections/${SEASON_COLLECTION_SLUGS[activeSeason]}`}
             className="mt-8 inline-block border-b border-[#171412] pb-1 text-xs font-bold"
           >
             {seasonLabels[activeSeason]}のおすすめをすべて見る　→

@@ -1,6 +1,7 @@
 import { CollectionStatus, CollectionType, Season } from '@prisma/client';
 import { HOME_CONTENT_LIMITS } from '@/config/home';
-import { ConflictError, NotFoundError, ValidationError } from '@/lib/errors';
+import type { SeasonCollectionSlug } from '@/config/collections';
+import { ConflictError, NotFoundError } from '@/lib/errors';
 import { FeaturedCollectionRepository } from '@/repositories/collection.repository';
 import type {
   CollectionInput,
@@ -35,7 +36,14 @@ const getCurrentSeason = () =>
     Math.floor(new Date().getMonth() / 3)
   ];
 
-const selectHomepageContent = <
+const seasonBySlug: Record<SeasonCollectionSlug, Season> = {
+  spring: Season.SPRING,
+  summer: Season.SUMMER,
+  autumn: Season.AUTUMN,
+  winter: Season.WINTER,
+};
+
+const selectCurrentCollections = <
   T extends {
     type: CollectionType;
     season: Season | null;
@@ -64,14 +72,8 @@ const selectHomepageContent = <
   return {
     hero: by(CollectionType.HERO).slice(0, HOME_CONTENT_LIMITS.hero),
     seasonal,
-    shopkeeper: limitCollectionProducts(
-      by(CollectionType.SHOPKEEPER).slice(0, 1),
-      HOME_CONTENT_LIMITS.shopkeeperProducts,
-    ),
-    gift: limitCollectionProducts(
-      by(CollectionType.GIFT).slice(0, 1),
-      HOME_CONTENT_LIMITS.giftProducts,
-    ),
+    shopkeeper: by(CollectionType.SHOPKEEPER).slice(0, 1),
+    gift: by(CollectionType.GIFT).slice(0, 1),
     editorial: by(CollectionType.EDITORIAL).slice(
       0,
       HOME_CONTENT_LIMITS.editorial,
@@ -86,18 +88,63 @@ export class FeaturedCollectionService {
   ) {}
   async getHome() {
     const all = await this.repository.findHomeCollections();
-    const current = selectHomepageContent(all);
+    const current = selectCurrentCollections(all);
     return {
       ...current,
+      shopkeeper: limitCollectionProducts(
+        current.shopkeeper,
+        HOME_CONTENT_LIMITS.shopkeeperProducts,
+      ),
+      gift: limitCollectionProducts(
+        current.gift,
+        HOME_CONTENT_LIMITS.giftProducts,
+      ),
       currentSeason: getCurrentSeason(),
     };
+  }
+  async getPublicCollectionDetail(slug: string) {
+    const all = await this.repository.findHomeCollections();
+    const current = selectCurrentCollections(all);
+    if (slug in seasonBySlug) {
+      const season = seasonBySlug[slug as SeasonCollectionSlug];
+      return (
+        current.seasonal.find((collection) => collection.season === season) ??
+        null
+      );
+    }
+    if (slug === 'shopkeeper-choice') return current.shopkeeper[0] ?? null;
+    if (slug === 'gift') return current.gift[0] ?? null;
+    if (slug === 'editorial') return current.editorial[0] ?? null;
+    if (slug.startsWith('story-')) {
+      const collectionId = slug.slice('story-'.length);
+      return (
+        current.story.find((collection) => collection.id === collectionId) ??
+        null
+      );
+    }
+    return null;
+  }
+  async getPublicSeasonalCollections() {
+    const all = await this.repository.findHomeCollections();
+    return selectCurrentCollections(all).seasonal;
   }
   async getAdminCollections() {
     return this.repository.findAdminCollections();
   }
   async getAdminHomeManagement() {
     const all = await this.repository.findAdminCollections();
-    const current = selectHomepageContent(all);
+    const selected = selectCurrentCollections(all);
+    const current = {
+      ...selected,
+      shopkeeper: limitCollectionProducts(
+        selected.shopkeeper,
+        HOME_CONTENT_LIMITS.shopkeeperProducts,
+      ),
+      gift: limitCollectionProducts(
+        selected.gift,
+        HOME_CONTENT_LIMITS.giftProducts,
+      ),
+    };
 
     return {
       currentSeason: getCurrentSeason(),
@@ -143,7 +190,6 @@ export class FeaturedCollectionService {
     return collection;
   }
   async createCollection(input: CollectionInput) {
-    this.validateProductLimit(input.type, input.productIds);
     const { productIds, publishStartAt, publishEndAt, ...data } = input;
     return this.repository.create({
       ...data,
@@ -158,11 +204,7 @@ export class FeaturedCollectionService {
     });
   }
   async updateCollection(id: string, input: CollectionUpdate) {
-    const existing = await this.getAdminCollection(id);
-    this.validateProductLimit(
-      input.type ?? existing.type,
-      input.productIds ?? existing.products.map(({ product }) => product.id),
-    );
+    await this.getAdminCollection(id);
     const { productIds, publishStartAt, publishEndAt, ...data } = input;
     const collection = await this.repository.update(id, {
       ...data,
@@ -185,20 +227,7 @@ export class FeaturedCollectionService {
     return this.repository.delete(id);
   }
   async updateProductOrder(id: string, productIds: string[]) {
-    const collection = await this.getAdminCollection(id);
-    this.validateProductLimit(collection.type, productIds);
+    await this.getAdminCollection(id);
     return this.repository.replaceProducts(id, productIds);
-  }
-
-  private validateProductLimit(type: CollectionType, productIds: string[]) {
-    const maximum =
-      type === CollectionType.SHOPKEEPER
-        ? HOME_CONTENT_LIMITS.shopkeeperProducts
-        : type === CollectionType.GIFT
-          ? HOME_CONTENT_LIMITS.giftProducts
-          : null;
-    if (maximum !== null && productIds.length > maximum) {
-      throw new ValidationError(`掲載商品は${maximum}件まで選択できます。`);
-    }
   }
 }

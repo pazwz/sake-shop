@@ -92,6 +92,13 @@ All AI development agents must read `AGENTS.md`, `PROJECT_STATUS.md`, and `docs/
 
 ## Recent Maintenance
 
+- Public collection pages now provide server-rendered detail views for each
+  seasonal feature, Shopkeeper, Gift, the current Editorial, and current Story
+  entries. Homepage feature links lead to their content instead of the generic
+  product list.
+- `/collections/seasonal` provides the four-season feature index. Collection
+  detail products come only from ordered FeaturedCollectionProduct relations;
+  homepage product limits do not truncate detail pages.
 - Homepage CMS simplification completed without starting a new sprint.
 - `/admin/collections` now shows only the content that the homepage actually
   renders, organized by business area rather than FeaturedCollection records.

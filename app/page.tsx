@@ -8,6 +8,7 @@ import {
   type SeasonalCollection,
 } from '@/components/home-seasonal-section';
 import { ProductCard } from '@/components/product-card';
+import { COLLECTION_PATHS } from '@/config/collections';
 import { serializeForJson } from '@/lib/serialization';
 import { FeaturedCollectionService } from '@/services/collection.service';
 
@@ -146,7 +147,7 @@ export default async function Home() {
             ) : null}
             <Link
               className="btn mt-9 bg-white text-[#171412] hover:bg-[#ead9b7]"
-              href="/products"
+              href={COLLECTION_PATHS.seasonal}
             >
               季節を味わう
             </Link>
@@ -169,7 +170,7 @@ export default async function Home() {
             造り手の哲学と、食卓の時間まで想像しながら選びました。
           </p>
           <Link
-            href="/products"
+            href={COLLECTION_PATHS.shopkeeper}
             className="mt-7 inline-block border-b border-[#171412] pb-1 text-xs"
           >
             選び抜いた一本へ　→
@@ -205,7 +206,7 @@ export default async function Home() {
               ) : null}
               <Link
                 className="mt-8 inline-block border-b border-[#e7cf9f] pb-1 text-xs text-[#e7cf9f]"
-                href="/products"
+                href={COLLECTION_PATHS.editorial}
               >
                 特集へ　→
               </Link>
@@ -215,8 +216,18 @@ export default async function Home() {
       ) : null}
 
       <section className="wrap py-24">
-        <p className="eyebrow">GIFT RECOMMENDATIONS</p>
-        <h2 className="serif mt-4 text-4xl">贈り物におすすめ</h2>
+        <div className="flex flex-wrap items-end justify-between gap-5">
+          <div>
+            <p className="eyebrow">GIFT RECOMMENDATIONS</p>
+            <h2 className="serif mt-4 text-4xl">贈り物におすすめ</h2>
+          </div>
+          <Link
+            href={COLLECTION_PATHS.gift}
+            className="inline-block border-b border-[#171412] pb-1 text-xs font-semibold"
+          >
+            ギフトの特集を見る　→
+          </Link>
+        </div>
         <div className="mt-10 grid gap-5 sm:grid-cols-3">
           {giftProducts.map((product) => (
             <ProductCard key={product.id} product={product} />
@@ -231,7 +242,7 @@ export default async function Home() {
             {stories.map((story) => (
               <Link
                 key={story.id}
-                href="/products"
+                href={COLLECTION_PATHS.story(story.id)}
                 className="grid gap-6 sm:grid-cols-2"
               >
                 <div className="relative aspect-[4/3] bg-stone-100">

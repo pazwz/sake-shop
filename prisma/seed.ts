@@ -139,7 +139,8 @@ const seed = async (): Promise<void> => {
   const collections: Array<{
     type: CollectionType;
     title: string;
-    legacyTitle?: string;
+    legacyTitles?: string[];
+    description: string;
     season?: Season;
     displayOrder: number;
     productStart: number;
@@ -149,48 +150,87 @@ const seed = async (): Promise<void> => {
     {
       type: CollectionType.HERO,
       title: '春の便り',
+      description:
+        '季節の移ろいとともに、今だからこそ味わいたい一本をご紹介します。',
       displayOrder: 1,
       productStart: 0,
       useMobileOverride: true,
     },
     ...[
-      [Season.SPRING, '春の特集'],
-      [Season.SUMMER, '夏の特集'],
-      [Season.AUTUMN, '秋の特集'],
-      [Season.WINTER, '冬の特集'],
-    ].map(([season, title], index) => ({
+      [
+        Season.SPRING,
+        '春の便り',
+        '花ひらく季節に似合う、軽やかで華やかな香りのお酒を集めました。',
+        '春の特集',
+      ],
+      [
+        Season.SUMMER,
+        '夏の涼酒',
+        '涼やかな口当たりと清々しい余韻を楽しむ、夏の一本をご紹介します。',
+        '夏の特集',
+      ],
+      [
+        Season.AUTUMN,
+        '秋の深まり',
+        '秋の夜に楽しむ、香り豊かで奥行きのある一本を集めました。',
+        '秋の特集',
+      ],
+      [
+        Season.WINTER,
+        '冬の贈り物',
+        '静かな冬の食卓を豊かにする、滋味深い味わいをご紹介します。',
+        '冬の特集',
+      ],
+    ].map(([season, title, description, previousTitle], index) => ({
       type: CollectionType.SEASONAL,
       season: season as Season,
       title,
-      legacyTitle: `${season} collection`,
+      description,
+      legacyTitles: [previousTitle, `${season} collection`],
       displayOrder: index + 1,
       productStart: index * 2,
     })),
     {
       type: CollectionType.SHOPKEEPER,
       title: '店主のおすすめ',
-      legacyTitle: '店主のおすすめ 1',
+      legacyTitles: ['店主のおすすめ 1'],
+      description:
+        '造り手の哲学と、食卓で過ごす時間まで想像しながら店主が選びました。',
       displayOrder: 1,
       productStart: 0,
-      productCount: 3,
+      productCount: 5,
     },
     {
       type: CollectionType.GIFT,
       title: 'ギフトにおすすめ',
-      legacyTitle: '贈り物 1',
+      legacyTitles: ['贈り物 1'],
+      description:
+        '大切な方へ気持ちを届ける、品格と物語を備えたお酒を集めました。',
       displayOrder: 1,
       productStart: 0,
-      productCount: 3,
+      productCount: 5,
     },
     {
       type: CollectionType.EDITORIAL,
       title: '九州の風土',
+      description:
+        '水、土、気候、そして造り手。九州の風土から生まれる味わいを訪ねます。',
       displayOrder: 1,
       productStart: 0,
     },
-    ...['酒と人の物語', '季節を味わう'].map((title, index) => ({
+    ...[
+      [
+        '酒と人の物語',
+        '一本のお酒の向こう側にいる、造り手と土地の物語をご紹介します。',
+      ],
+      [
+        '季節を味わう',
+        '旬の料理とともに楽しみたい、季節の酒時間をご提案します。',
+      ],
+    ].map(([title, description], index) => ({
       type: CollectionType.STORY,
       title,
+      description,
       displayOrder: index + 1,
       productStart: index * 2,
     })),
@@ -204,14 +244,15 @@ const seed = async (): Promise<void> => {
     const existing = await prisma.featuredCollection.findFirst({
       where: {
         type: collection.type,
-        title: collection.legacyTitle
-          ? { in: [collection.title, collection.legacyTitle] }
+        title: collection.legacyTitles
+          ? { in: [collection.title, ...collection.legacyTitles] }
           : collection.title,
       },
     });
     const collectionData = {
       type: collection.type,
       title: collection.title,
+      description: collection.description,
       season: collection.season,
       displayOrder: collection.displayOrder,
     };

@@ -76,11 +76,9 @@ export function CollectionForm({
   const defaultSeason = collection?.season ?? initialSeason;
   const areaLabel = getCollectionAreaLabel(defaultType, defaultSeason);
   const productLimit =
-    defaultType === 'SHOPKEEPER'
+    defaultType === 'SHOPKEEPER' || defaultType === 'GIFT'
       ? HOME_CONTENT_LIMITS.shopkeeperProducts
-      : defaultType === 'GIFT'
-        ? HOME_CONTENT_LIMITS.giftProducts
-        : null;
+      : null;
 
   const showSavedFeedback = () => {
     if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
@@ -302,8 +300,10 @@ export function CollectionForm({
         <p className="eyebrow">FEATURED PRODUCTS</p>
         <h2 className="serif mt-3 text-3xl">掲載商品</h2>
         <p className="mt-2 text-sm text-stone-600">
-          チェックした商品がトップページに表示されます。矢印で表示順を調整できます。
-          {productLimit ? ` 最大${productLimit}件まで選択できます。` : ''}
+          チェックした商品をこの特集に掲載します。矢印で表示順を調整できます。
+          {productLimit
+            ? ` トップページには先頭${productLimit}件、特集ページには選択した商品をすべて表示します。`
+            : ''}
         </p>
         <p className="mt-3 text-sm font-semibold text-[#6d2227]">
           {selected.length}件選択中
@@ -322,12 +322,7 @@ export function CollectionForm({
                   onChange={() =>
                     isSelected
                       ? setSelected(selected.filter((id) => id !== product.id))
-                      : productLimit && selected.length >= productLimit
-                        ? setFeedback({
-                            kind: 'error',
-                            text: `掲載商品は${productLimit}件まで選択できます。`,
-                          })
-                        : setSelected([...selected, product.id])
+                      : setSelected([...selected, product.id])
                   }
                 />
                 <span className="flex-1 text-sm">
