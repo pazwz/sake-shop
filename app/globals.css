@@ -280,88 +280,56 @@ aside[aria-labelledby='newsletter-title'] {
 .brand-loader-visible {
   opacity: 1;
 }
-.pour-scene {
-  transform-origin: center;
-}
-.kura-pour-mark {
+.linxas-loading-animation {
   width: 152px;
-  height: auto;
-  overflow: visible;
+  height: 152px;
+  overflow: hidden;
 }
-.pour-bottle {
-  transform-origin: 78px 112px;
-  animation: pour-bottle 1.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+.linxas-loading-animation > div {
+  width: 100%;
+  height: 100%;
 }
-.pour-stream {
-  opacity: 0;
-  stroke-dasharray: 38;
-  stroke-dashoffset: 38;
-  animation: pour-stream 1.5s ease-in-out infinite;
-}
-.glass-fill {
-  fill: var(--gold);
-  opacity: 0;
-  transform-box: fill-box;
-  transform-origin: center bottom;
-  animation: glass-fill 1.5s ease-in-out infinite;
-}
-.kura-loader-wordmark {
-  margin-top: -0.15rem;
-  font-size: 0.72rem;
-  letter-spacing: 0.42em;
+.brand-logo {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
   color: var(--ink);
+  line-height: 1;
+  white-space: nowrap;
 }
-@keyframes pour-bottle {
-  0% {
-    opacity: 0.55;
-    transform: translateX(-5px) rotate(0deg);
-  }
-  14% {
-    opacity: 1;
-  }
-  32%,
-  71% {
-    opacity: 1;
-    transform: translateX(0) rotate(38deg);
-  }
-  77% {
-    transform: translateX(0) rotate(38deg);
-  }
-  94%,
-  100% {
-    opacity: 0.55;
-    transform: translateX(-5px) rotate(0deg);
-  }
+.brand-logo-name {
+  font-family: Arial, Helvetica, sans-serif;
+  font-weight: 800;
+  letter-spacing: 0.18em;
 }
-@keyframes pour-stream {
-  0%,
-  35%,
-  78%,
-  100% {
-    opacity: 0;
-    stroke-dashoffset: 45;
-  }
-  41%,
-  70% {
-    opacity: 0.9;
-    stroke-dashoffset: 0;
-  }
+.brand-logo-header .brand-logo-name {
+  font-size: 1.75rem;
 }
-@keyframes glass-fill {
-  0%,
-  34% {
-    opacity: 0;
-    transform: scaleY(0.18);
-  }
-  70%,
-  84% {
-    opacity: 0.52;
-    transform: scaleY(1);
-  }
-  100% {
-    opacity: 0;
-    transform: scaleY(1);
-  }
+.brand-logo-footer {
+  align-items: flex-start;
+}
+.brand-logo-footer .brand-logo-name {
+  font-size: 1.85rem;
+}
+.brand-logo-loading {
+  margin-top: 0.2rem;
+}
+.brand-logo-loading .brand-logo-name {
+  font-size: 0.75rem;
+  letter-spacing: 0.4em;
+}
+.brand-logo-admin {
+  align-items: flex-start;
+}
+.brand-logo-admin .brand-logo-name {
+  font-size: 0.8rem;
+}
+.brand-logo-location {
+  margin-top: 0.45rem;
+  font-size: 0.48rem;
+  font-weight: 600;
+  letter-spacing: 0.34em;
+  color: var(--accent);
 }
 
 .brand-empty-state svg {
@@ -418,8 +386,13 @@ aside[aria-labelledby='newsletter-title'] {
     bottom: 1rem;
     width: calc(100vw - 2rem);
   }
-  .kura-pour-mark {
+  .linxas-loading-animation {
     width: 132px;
+    height: 132px;
+  }
+  .brand-logo-header .brand-logo-name {
+    font-size: 1.05rem;
+    letter-spacing: 0.13em;
   }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -437,16 +410,5 @@ aside[aria-labelledby='newsletter-title'] {
   [data-reveal] {
     opacity: 1;
     transform: none;
-  }
-  .pour-bottle {
-    opacity: 1;
-    transform: rotate(31deg);
-  }
-  .pour-stream {
-    display: none;
-  }
-  .glass-fill {
-    opacity: 0.42;
-    transform: scaleY(0.62);
   }
 }

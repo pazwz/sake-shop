@@ -83,7 +83,9 @@ function EditorialArticle({
       <div className="wrap">
         <header className="mx-auto max-w-2xl text-center" data-reveal>
           <p className="eyebrow text-[#6d2227]">THE ARTICLE</p>
-          <h2 className="serif mt-5 text-4xl md:text-5xl">蔵をめぐる読みもの</h2>
+          <h2 className="serif mt-5 text-4xl md:text-5xl">
+            蔵をめぐる読みもの
+          </h2>
         </header>
 
         <div className="mt-20 space-y-24 md:mt-28 md:space-y-36">
@@ -243,10 +245,10 @@ function CollectionDetail({ collection }: { collection: PublicCollection }) {
   const isEditorial = collection.type === 'EDITORIAL';
   const isStory = collection.type === 'STORY';
   const eyebrow = isEditorial
-    ? 'KURA EDITORIAL'
+    ? 'LINXAS EDITORIAL'
     : isStory
-      ? 'KURA STORY'
-      : 'KURA COLLECTION';
+      ? 'LINXAS STORY'
+      : 'LINXAS COLLECTION';
   const selectionTitle = isStory
     ? '物語に寄り添うお酒'
     : isEditorial

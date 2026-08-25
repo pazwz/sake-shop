@@ -70,7 +70,7 @@ export class OrderService {
     const shippingFee = getTemporaryShippingQuote().fee;
     const discountAmount = DEVELOPMENT_DISCOUNT_AMOUNT;
     return this.orders.create({
-      orderNumber: `KURA-${new Date().toISOString().slice(0, 10).replaceAll('-', '')}-${randomUUID().replaceAll('-', '').slice(0, 6).toUpperCase()}`,
+      orderNumber: `LINXAS-${new Date().toISOString().slice(0, 10).replaceAll('-', '')}-${randomUUID().replaceAll('-', '').slice(0, 6).toUpperCase()}`,
       customer: { connect: { id: customer.id } },
       subtotal,
       shippingFee,

@@ -2,6 +2,7 @@
 
 import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { BrandLogo } from '@/components/brand-logo';
 import { FormFieldError } from '@/components/form-field-error';
 import {
   focusFormField,
@@ -62,7 +63,9 @@ export default function AdminLoginPage() {
         onSubmit={login}
         className="w-full max-w-md border line bg-white p-8"
       >
-        <p className="eyebrow">KURA ADMIN</p>
+        <p className="flex items-center gap-2 text-xs tracking-[.18em] text-[#6d2227]">
+          <BrandLogo variant="admin" /> ADMIN
+        </p>
         <h1 className="serif mt-4 text-4xl">管理者ログイン</h1>
         <p className="mt-4 text-sm leading-7 text-stone-600">
           許可された管理者のみがコンテンツを管理できます。

@@ -44,7 +44,7 @@ export function ProductCard({ product }: { product: ProductCardItem }) {
         ) : null}
       </div>
       <p className="mt-4 text-[10px] tracking-[.15em] text-[#6d2227]">
-        {categoryName} / {product.producer ?? 'KURA'}
+        {categoryName} / {product.producer ?? 'LINXAS'}
       </p>
       <h3 className="product-card-title mt-1 text-sm">{product.name}</h3>
       <p className="mt-2 text-sm">

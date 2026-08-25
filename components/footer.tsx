@@ -1,21 +1,17 @@
 'use client';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
-import { SITE_SOCIAL_LINKS } from '@/config/site';
+import { siteConfig } from '@/config/site';
+import { BrandLogo } from '@/components/brand-logo';
 import { FormFieldError } from '@/components/form-field-error';
 import {
   focusFormField,
   invalidFieldClass,
   isValidEmail,
 } from '@/lib/form-validation';
-type IconName = 'instagram' | 'xiaohongshu';
 type NewsletterErrors = Partial<
   Record<'email' | 'lastName' | 'firstName' | 'lastKana' | 'firstKana', string>
 >;
-const socialLinks: { label: string; href: string; icon: IconName }[] = [
-  { label: 'Instagram', href: SITE_SOCIAL_LINKS.instagram, icon: 'instagram' },
-  { label: '小紅書', href: SITE_SOCIAL_LINKS.xiaohongshu, icon: 'xiaohongshu' },
-];
 export function Footer() {
   const [open, setOpen] = useState(false);
   return (
@@ -23,11 +19,15 @@ export function Footer() {
       <footer className="border-t line bg-[#f3f0ea]">
         <div className="wrap grid gap-12 py-16 md:grid-cols-2 lg:grid-cols-[1.1fr_.8fr_1fr_1fr]">
           <div>
-            <p className="serif text-3xl tracking-[.2em]">KURA</p>
+            <BrandLogo variant="footer" showLocation />
             <p className="mt-5 text-xs leading-6 text-stone-600">
               つくり手の美意識を、食卓へ。
               <br />
-              東京都新宿区神楽坂 3-12
+              {siteConfig.storeName}
+              <br />
+              {siteConfig.address.line1}
+              <br />
+              {siteConfig.address.line2}
             </p>
             <p className="mt-5 text-[10px] leading-5 text-stone-500">
               通信販売酒類小売業免許取得済
@@ -65,45 +65,30 @@ export function Footer() {
           <div>
             <p className="eyebrow">SUPPORT</p>
             <p className="mt-4 text-sm leading-8 text-stone-600">
-              TEL　00-0000-0000
+              TEL　
+              <a href={siteConfig.phone.href}>{siteConfig.phone.display}</a>
               <br />
-              MAIL　info@example.com
-              <br />
-              営業時間　10:00–18:00
+              営業時間　{siteConfig.businessHours}
             </p>
             <p className="mt-7 text-xs font-bold">フォローする</p>
             <div className="mt-4 flex flex-wrap gap-3">
-              {socialLinks.map((link) =>
-                link.href ? (
-                  <a
-                    key={link.label}
-                    href={link.href}
-                    target="_blank"
-                    rel="noreferrer"
-                    aria-label={`${link.label}を新しいタブで開く`}
-                    className="social-link"
-                  >
-                    <SocialIcon name={link.icon} />
-                    <span>{link.label}</span>
-                  </a>
-                ) : (
-                  <span
-                    key={link.label}
-                    aria-label={`${link.label}（リンク準備中）`}
-                    className="social-link cursor-default opacity-60"
-                  >
-                    <SocialIcon name={link.icon} />
-                    <span>{link.label}</span>
-                  </span>
-                ),
-              )}
+              <a
+                href={siteConfig.instagramUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Instagram"
+                className="social-link"
+              >
+                <InstagramIcon />
+                <span>Instagram</span>
+              </a>
             </div>
           </div>
         </div>
         <div className="border-t line">
           <div className="wrap flex flex-wrap justify-between gap-4 py-6 text-[10px] text-stone-500">
             <span>20歳未満の飲酒は法律で禁止されています。</span>
-            <span>© 2026 KURA SELECT SHOP</span>
+            <span>© 2026 LINXAS FUKUOKA</span>
           </div>
         </div>
       </footer>
@@ -220,7 +205,7 @@ function NewsletterDrawer({
           </div>
         ) : (
           <>
-            <p className="eyebrow">KURA NEWSLETTER</p>
+            <p className="eyebrow">LINXAS NEWSLETTER</p>
             <h2 id="newsletter-title" className="serif mt-5 text-4xl">
               ニュースレター
             </h2>
@@ -398,25 +383,19 @@ function Field({
     </label>
   );
 }
-function SocialIcon({ name }: { name: IconName }) {
-  if (name === 'instagram')
-    return (
-      <svg
-        viewBox="0 0 24 24"
-        className="h-4 w-4"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        aria-hidden="true"
-      >
-        <rect x="3" y="3" width="18" height="18" rx="5" />
-        <circle cx="12" cy="12" r="4" />
-        <circle cx="17.5" cy="6.5" r=".8" fill="currentColor" />
-      </svg>
-    );
+function InstagramIcon() {
   return (
-    <span className="text-[9px] font-bold tracking-[.08em]" aria-hidden="true">
-      RED
-    </span>
+    <svg
+      viewBox="0 0 24 24"
+      className="h-4 w-4"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      aria-hidden="true"
+    >
+      <rect x="3" y="3" width="18" height="18" rx="5" />
+      <circle cx="12" cy="12" r="4" />
+      <circle cx="17.5" cy="6.5" r=".8" fill="currentColor" />
+    </svg>
   );
 }

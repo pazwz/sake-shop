@@ -52,7 +52,7 @@ const productsFor = (collections: HomeCollection[]): HomeProductCardItem[] =>
 function EmptyHome() {
   return (
     <section className="wrap py-32 text-center">
-      <p className="eyebrow">KURA</p>
+      <p className="eyebrow">LINXAS</p>
       <h1 className="serif mt-5 text-4xl">現在ご案内できる特集はありません</h1>
       <p className="mt-5 text-sm text-stone-600">
         新しい特集を準備しています。商品一覧からお酒をお選びください。

@@ -1,4 +1,6 @@
 import Image from 'next/image';
+import { siteConfig } from '@/config/site';
+
 export default function About() {
   return (
     <>
@@ -18,24 +20,24 @@ export default function About() {
               sizes="(max-width: 767px) 100vw, 50vw"
               className="object-cover"
               src="https://images.unsplash.com/photo-1528823872057-9c018a7a7553?auto=format&fit=crop&w=1200&q=80"
-              alt="KURAの店内"
+              alt="リンクサス福岡の店舗イメージ"
             />
           </div>
         </div>
       </section>
       <section className="wrap grid gap-10 py-24 md:grid-cols-[.7fr_1.3fr] md:py-32">
-        <p className="eyebrow">Since 1998 / Kagurazaka</p>
+        <p className="eyebrow">Fukuoka / Daimyo</p>
         <div>
           <h2 className="serif text-4xl leading-tight">
-            街の酒屋から、
+            福岡・大名から、
             <br />
-            一杯の案内人へ。
+            一本との出会いを。
           </h2>
           <p className="mt-8 max-w-xl text-sm leading-8 text-stone-600">
-            KURAの始まりは、神楽坂の路地裏にあった小さな酒屋です。棚に並ぶ一本一本の向こうに、土地の気候、蔵の空気、つくり手の判断があります。その物語を手渡すように酒を選んできました。
+            リンクサス福岡は、福岡・大名に店舗を構える酒のセレクトショップです。棚に並ぶ一本一本の向こうにある、土地の気候、蔵の空気、つくり手の判断まで丁寧にお伝えします。
           </p>
           <p className="mt-5 max-w-xl text-sm leading-8 text-stone-600">
-            オンラインでも変わらないのは、数ではなく、確信で選ぶこと。飲む人の時間まで想像しながら、私たちは今日も生産者を訪ねます。
+            店舗でもオンラインでも変わらないのは、数ではなく、確信で選ぶこと。飲む人の時間まで想像しながら、食卓に寄り添う一本をご案内します。
           </p>
         </div>
       </section>
@@ -61,6 +63,20 @@ export default function About() {
         <p className="eyebrow">Store information</p>
         <h2 className="serif mt-4 text-3xl">店舗情報</h2>
         <div className="mt-8 border-y line">
+          {[
+            ['店名', siteConfig.storeName],
+            ['所在地', siteConfig.address.full],
+            ['電話番号', siteConfig.phone.display],
+            ['営業時間', siteConfig.businessHours],
+          ].map(([label, value]) => (
+            <div
+              className="grid gap-2 border-b line py-5 text-sm last:border-b-0 md:grid-cols-[240px_1fr]"
+              key={label}
+            >
+              <span className="text-stone-500">{label}</span>
+              <span>{value}</span>
+            </div>
+          ))}
           <div className="grid gap-2 py-5 text-sm md:grid-cols-[240px_1fr]">
             <span className="text-stone-500">通信販売酒類小売業免許取得済</span>
             <span>免許情報はお客様承認後に掲載予定です。</span>

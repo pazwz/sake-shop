@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { categories } from '@/lib/products';
+import { BrandLogo } from './brand-logo';
 import { useCart } from './cart-provider';
 import { useAuth } from './auth-provider';
 import { useLanguage } from './language-provider';
@@ -79,9 +80,10 @@ export function Header() {
         </button>
         <Link
           href="/"
-          className="serif absolute left-1/2 -translate-x-1/2 text-3xl tracking-[.2em]"
+          aria-label="LINXAS ホーム"
+          className="absolute left-1/2 -translate-x-1/2"
         >
-          KURA
+          <BrandLogo variant="header" />
         </Link>
         <div className="ml-auto flex items-center gap-4 text-xs font-semibold">
           <select

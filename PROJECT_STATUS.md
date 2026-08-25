@@ -4,7 +4,7 @@ Project: Sake Shop EC Website
 
 Status: Active Development
 
-Last Updated: 2026-08-14
+Last Updated: 2026-08-25
 
 ---
 
@@ -92,6 +92,18 @@ All AI development agents must read `AGENTS.md`, `PROJECT_STATUS.md`, and `docs/
 
 ## Recent Maintenance
 
+- Customer-facing branding has been formally updated from KURA to LINXAS. A
+  shared HTML/CSS wordmark now keeps the Header, Footer, Admin entry, and
+  loading states consistent while an official production logo asset remains
+  pending from the customer.
+- Official store details for リンクサス福岡 are centralized in `config/site.ts`:
+  福岡県福岡市中央区大名1-1-7 gest22 1-B, 092-285-8022, and 11:00-20:00.
+  The placeholder email, Tokyo address, dummy telephone number, and unavailable
+  Xiaohongshu link have been removed from customer-facing views.
+- The Footer now links only to the approved LINXAS Fukuoka Instagram account.
+  The delayed loading state uses the local `wine-loading.json` Lottie asset,
+  retains the 280 ms display threshold, and stops animation when reduced motion
+  is requested.
 - The approved minimum EditorialSection architecture is implemented. Editorial
   collections can now manage ordered article sections with a title, body,
   optional image, and optional featured product without changing the final
@@ -106,13 +118,12 @@ All AI development agents must read `AGENTS.md`, `PROJECT_STATUS.md`, and `docs/
 - Homepage Editorial presentation now adapts to one, two, or three magazine
   features. Editorial and Story detail pages use deliberately different visual
   hierarchies while preserving SSR and ordered collection products.
-- Added a delayed KURA loading illustration, reduced-motion-safe scroll
+- Added a delayed branded loading illustration, reduced-motion-safe scroll
   reveals, restrained product/link motion, a repeated-action-safe cart toast,
   and branded empty states.
 - Responsive art-directed images retain main/mobile fallback. The mobile header
   overlap and Next Image fill-parent warning were corrected.
-- Footer social configuration is limited to Instagram and Xiaohongshu. Links
-  remain non-clickable until approved customer URLs are supplied.
+- Footer social configuration is limited to the approved Instagram account.
 - Public collection pages now provide server-rendered detail views for each
   seasonal feature, Shopkeeper, Gift, the current Editorial, and current Story
   entries. Homepage feature links lead to their content instead of the generic

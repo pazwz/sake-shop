@@ -9,7 +9,7 @@ import { BackToTop } from '@/components/back-to-top';
 import { ScrollReveal } from '@/components/scroll-reveal';
 
 export const metadata: Metadata = {
-  title: 'KURA｜季節と愉しむ酒のセレクトショップ',
+  title: 'リンクサス福岡 | LINXAS',
   description: 'つくり手の美意識を、食卓へ。',
   icons: { icon: '/icon.svg' },
 };

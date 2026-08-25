@@ -26,6 +26,7 @@
     "autoprefixer": "latest",
     "bcryptjs": "^3.0.3",
     "jose": "^6.2.8",
+    "lottie-react": "3.1.0",
     "next": "latest",
     "postcss": "latest",
     "react": "latest",
