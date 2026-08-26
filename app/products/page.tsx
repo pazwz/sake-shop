@@ -7,6 +7,7 @@ import { getCategories, getProducts } from '@/lib/product-api';
 import type { CategoryRecord, ProductListResult } from '@/types/product';
 import { BrandLoader } from '@/components/brand-loader';
 import { BrandEmptyState } from '@/components/brand-empty-state';
+import { AgeNotice } from '@/components/age-notice';
 
 const INITIAL_RESULT: ProductListResult = {
   items: [],
@@ -98,6 +99,7 @@ function ProductsCollection() {
       <p className="mt-8 text-xs text-stone-500">
         {result.pagination.total} ITEMS
       </p>
+      <AgeNotice className="mt-3" />
       {isLoading ? <BrandLoader label="商品を読み込んでいます" /> : null}
       {hasError ? (
         <p className="py-20 text-center text-sm text-stone-500">

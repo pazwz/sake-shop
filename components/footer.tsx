@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { siteConfig } from '@/config/site';
 import { BrandLogo } from '@/components/brand-logo';
+import { AgeNotice } from '@/components/age-notice';
 import { FormFieldError } from '@/components/form-field-error';
 import {
   focusFormField,
@@ -31,8 +32,6 @@ export function Footer() {
             </p>
             <p className="mt-5 text-[10px] leading-5 text-stone-500">
               通信販売酒類小売業免許取得済
-              <br />
-              免許情報はお客様承認後に掲載予定です。
             </p>
           </div>
           <div className="text-sm leading-9">
@@ -87,7 +86,7 @@ export function Footer() {
         </div>
         <div className="border-t line">
           <div className="wrap flex flex-wrap justify-between gap-4 py-6 text-[10px] text-stone-500">
-            <span>20歳未満の飲酒は法律で禁止されています。</span>
+            <AgeNotice />
             <span>© 2026 LINXAS FUKUOKA</span>
           </div>
         </div>

@@ -4,3 +4,17 @@ node_modules/
 *.tsbuildinfo
 .env*
 !.env.example
+.DS_Store
+**/.DS_Store
+package-lock.json
+# Local/private files
+sake-shop-admin_accessKeys.csv
+Instagram.html
+memo
+test.txt
+*.pdf
+"# 线上商店开发进度汇报.md"
+
+# Client/local docs
+# 线上商店开发进度汇报.md
+\# 线上商店开发进度汇报.md

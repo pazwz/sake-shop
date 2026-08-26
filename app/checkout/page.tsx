@@ -6,6 +6,7 @@ import { useCart } from '@/components/cart-provider';
 import { useAuth } from '@/components/auth-provider';
 import { formatPrice } from '@/lib/products';
 import { FormFieldError } from '@/components/form-field-error';
+import { AgeNotice } from '@/components/age-notice';
 import {
   focusFormField,
   invalidFieldClass,
@@ -221,28 +222,31 @@ export default function Checkout() {
               </label>
             </div>
           </section>
-          <label className="flex gap-3 border-t line pt-8 text-sm">
-            <input
-              type="checkbox"
-              name="age"
-              checked={age}
-              aria-invalid={Boolean(fieldErrors.age)}
-              aria-describedby={
-                fieldErrors.age ? 'checkout-age-error' : undefined
-              }
-              onChange={(event) => {
-                setAge(event.target.checked);
-                setFieldErrors((current) => ({ ...current, age: undefined }));
-              }}
-            />
-            <span>
-              私は20歳以上です。
-              <FormFieldError
-                id="checkout-age-error"
-                message={fieldErrors.age}
+          <div className="border-t line pt-8">
+            <label className="flex gap-3 text-sm">
+              <input
+                type="checkbox"
+                name="age"
+                checked={age}
+                aria-invalid={Boolean(fieldErrors.age)}
+                aria-describedby={
+                  fieldErrors.age ? 'checkout-age-error' : undefined
+                }
+                onChange={(event) => {
+                  setAge(event.target.checked);
+                  setFieldErrors((current) => ({ ...current, age: undefined }));
+                }}
               />
-            </span>
-          </label>
+              <span>
+                私は20歳以上です。
+                <FormFieldError
+                  id="checkout-age-error"
+                  message={fieldErrors.age}
+                />
+              </span>
+            </label>
+            <AgeNotice className="mt-3 pl-7" />
+          </div>
           {error && <p className="text-sm text-red-700">{error}</p>}
           <button
             disabled={submitting}

@@ -12,6 +12,7 @@ import { getProduct, getProducts } from '@/lib/product-api';
 import type { ProductRecord } from '@/types/product';
 import { BrandLoader } from '@/components/brand-loader';
 import { BrandEmptyState } from '@/components/brand-empty-state';
+import { AgeNotice } from '@/components/age-notice';
 
 export default function ProductDetailPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -103,6 +104,7 @@ export default function ProductDetailPage() {
             {formatPrice(product.price)}{' '}
             <span className="text-xs text-stone-500">税込</span>
           </p>
+          <AgeNotice className="mt-3" />
           <p
             className={`mt-5 text-xs ${inventory > 0 ? 'text-[#c7a463]' : 'text-red-400'}`}
           >

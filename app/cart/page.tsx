@@ -1,6 +1,7 @@
 'use client';
 import Image from 'next/image';
 import Link from 'next/link';
+import { AgeNotice } from '@/components/age-notice';
 import { useCart } from '@/components/cart-provider';
 import { useAuth } from '@/components/auth-provider';
 import { formatPrice } from '@/lib/products';
@@ -85,9 +86,7 @@ export default function Cart() {
             >
               {member ? '購入手続きへ' : 'ログインして購入手続きへ'}
             </Link>
-            <p className="mt-5 text-[10px] leading-5 text-stone-500">
-              20歳未満の方への酒類販売は行っておりません。
-            </p>
+            <AgeNotice className="mt-5" />
           </aside>
         </div>
       )}

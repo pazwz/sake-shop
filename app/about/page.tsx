@@ -78,8 +78,8 @@ export default function About() {
             </div>
           ))}
           <div className="grid gap-2 py-5 text-sm md:grid-cols-[240px_1fr]">
-            <span className="text-stone-500">通信販売酒類小売業免許取得済</span>
-            <span>免許情報はお客様承認後に掲載予定です。</span>
+            <span className="text-stone-500">酒類販売免許</span>
+            <span>通信販売酒類小売業免許取得済</span>
           </div>
         </div>
       </section>
