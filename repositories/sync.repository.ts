@@ -1,7 +1,34 @@
 import { Prisma, SyncDirection, SyncStatus } from '@prisma/client';
+import { SMAREGI_CONTRACT_ENTITY_TYPE, SMAREGI_SYSTEM } from '@/config/smaregi';
 import { prisma } from '@/lib/prisma';
+import type { SmaregiContractNotification } from '@/types/smaregi';
 
 export class SyncRepository {
+  public recordContractNotification(
+    notification: Pick<
+      SmaregiContractNotification,
+      'contractId' | 'event' | 'action' | 'date'
+    >,
+  ) {
+    const receivedAt = new Date();
+    return prisma.syncLog.create({
+      data: {
+        system: SMAREGI_SYSTEM,
+        entityType: SMAREGI_CONTRACT_ENTITY_TYPE,
+        entityId: notification.contractId,
+        direction: SyncDirection.SMAREGI_TO_WEBSITE,
+        action: notification.action,
+        status: SyncStatus.SUCCESS,
+        requestPayload: {
+          event: notification.event,
+          date: notification.date,
+        },
+        startedAt: receivedAt,
+        completedAt: receivedAt,
+      },
+    });
+  }
+
   public start(
     entityType: string,
     entityId: string,

@@ -2,6 +2,16 @@ import { AppError } from '@/lib/errors';
 import { smaregiEnvironmentSchema } from '@/config/env';
 
 export const SMAREGI_SYSTEM = 'SMAREGI';
+export const SMAREGI_CONTRACT_EVENT = 'AppSubscription';
+export const SMAREGI_CONTRACT_ENTITY_TYPE = 'APP_SUBSCRIPTION';
+export const SMAREGI_CONTRACT_ACTIONS = [
+  'start',
+  'end',
+  'change-plan',
+  'change-options',
+  'force-stop',
+  'cancel-force-stop',
+] as const;
 export const SMAREGI_READ_SCOPES = [
   'pos.products:read',
   'pos.stock:read',

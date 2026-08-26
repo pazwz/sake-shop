@@ -760,6 +760,39 @@ POST
 
 # 五、Smaregi Integration API
 
+## 利用者契約通知
+
+POST
+
+/api/v1/integrations/smaregi/contract
+
+Smaregi Developers の「利用者契約通知先URL」専用の受信エンドポイント。
+
+Request headers：
+
+- `Content-Type: application/json`
+- `Smaregi-Contract-Id`: 通知対象の契約ID
+- `Smaregi-Event: AppSubscription`
+
+Request body：
+
+- `event`: `AppSubscription`
+- `action`: `start` / `end` / `change-plan` / `change-options` / `force-stop` / `cancel-force-stop`
+- `date`: `yyyy-mm-dd`
+- `contractId`: Header の契約IDと一致すること
+- `clientId`
+- `plan`
+- `options`
+
+正常な通知は必要最小限の非機密情報だけを SyncLog に記録し、3秒以内に空の
+response body で HTTP 200 を返す。不正な JSON、Header、payload、または契約ID
+の不一致は HTTP 400 を返す。
+
+このエンドポイントはアクセストークンを発行せず、Smaregi API を呼び出さず、
+商品・カテゴリ・在庫・注文データを変更しない。
+
+---
+
 网站调用：
 
 商品同步

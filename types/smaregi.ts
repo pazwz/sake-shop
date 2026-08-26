@@ -1,4 +1,28 @@
 import { z } from 'zod';
+import type { SMAREGI_CONTRACT_ACTIONS } from '@/config/smaregi';
+
+export type SmaregiContractAction = (typeof SMAREGI_CONTRACT_ACTIONS)[number];
+
+export type SmaregiContractNotification = {
+  event: 'AppSubscription';
+  action: SmaregiContractAction;
+  date: string;
+  contractId: string;
+  clientId: string;
+  plan: {
+    trial_days: number;
+    price: number;
+    unit_price: number;
+    quantity: number;
+    name: string;
+  };
+  options: Array<{
+    price: number;
+    unit_price: number;
+    quantity: number;
+    name: string;
+  }>;
+};
 
 export const smaregiStoreSchema = z.object({
   storeId: z.string().min(1),
