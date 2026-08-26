@@ -1,6 +1,10 @@
 import { prisma } from '@/lib/prisma';
 
 export class AdminRepository {
+  findByUsername(username: string) {
+    return prisma.adminUser.findUnique({ where: { username } });
+  }
+
   findByEmail(email: string) {
     return prisma.adminUser.findUnique({ where: { email } });
   }

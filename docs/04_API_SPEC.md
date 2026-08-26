@@ -362,6 +362,28 @@ STAFF
 
 ---
 
+## 管理员认证
+
+### 登录
+
+POST
+
+/api/v1/admin/auth/login
+
+Request：
+
+```json
+{
+  "username": "admin_linxas",
+  "password": "********"
+}
+```
+
+正式后台使用 username 作为登录 ID。过渡期间，包含 `@` 的登录 ID 可以按
+现有 email 查询，以保证历史管理员账号继续可用。
+
+---
+
 ## Dashboard
 
 GET

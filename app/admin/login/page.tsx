@@ -4,13 +4,9 @@ import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { BrandLogo } from '@/components/brand-logo';
 import { FormFieldError } from '@/components/form-field-error';
-import {
-  focusFormField,
-  invalidFieldClass,
-  isValidEmail,
-} from '@/lib/form-validation';
+import { focusFormField, invalidFieldClass } from '@/lib/form-validation';
 
-type LoginErrors = { email?: string; password?: string };
+type LoginErrors = { username?: string; password?: string };
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -21,16 +17,15 @@ export default function AdminLoginPage() {
   const login = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
-    const email = String(formData.get('email') ?? '');
+    const username = String(formData.get('username') ?? '');
     const password = String(formData.get('password') ?? '');
     const nextErrors: LoginErrors = {};
-    if (!email.trim()) nextErrors.email = 'メールアドレスを入力してください。';
-    else if (!isValidEmail(email))
-      nextErrors.email = 'メールアドレスの形式が正しくありません。';
+    if (!username.trim())
+      nextErrors.username = 'ログインIDを入力してください。';
     if (!password) nextErrors.password = 'パスワードを入力してください。';
-    if (nextErrors.email || nextErrors.password) {
+    if (nextErrors.username || nextErrors.password) {
       setErrors(nextErrors);
-      const firstField = nextErrors.email ? 'email' : 'password';
+      const firstField = nextErrors.username ? 'username' : 'password';
       if (formRef.current) focusFormField(formRef.current, firstField);
       return;
     }
@@ -41,10 +36,10 @@ export default function AdminLoginPage() {
       const response = await fetch('/api/v1/admin/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim(), password }),
+        body: JSON.stringify({ username: username.trim(), password }),
       });
       if (!response.ok) {
-        setMessage('メールアドレスまたはパスワードが正しくありません。');
+        setMessage('ログインIDまたはパスワードが正しくありません。');
         return;
       }
       router.push('/admin');
@@ -76,19 +71,26 @@ export default function AdminLoginPage() {
           </p>
         ) : null}
         <label className="mt-7 block text-sm">
-          メールアドレス
+          ログインID
           <input
             required
-            type="email"
-            name="email"
-            aria-invalid={Boolean(errors.email)}
-            aria-describedby={errors.email ? 'admin-email-error' : undefined}
-            className={`mt-2 w-full border line p-3 ${errors.email ? invalidFieldClass : ''}`}
+            type="text"
+            name="username"
+            autoComplete="username"
+            placeholder="admin_linxas"
+            aria-invalid={Boolean(errors.username)}
+            aria-describedby={
+              errors.username ? 'admin-username-error' : undefined
+            }
+            className={`mt-2 w-full border line p-3 ${errors.username ? invalidFieldClass : ''}`}
             onChange={() =>
-              setErrors((current) => ({ ...current, email: undefined }))
+              setErrors((current) => ({ ...current, username: undefined }))
             }
           />
-          <FormFieldError id="admin-email-error" message={errors.email} />
+          <FormFieldError
+            id="admin-username-error"
+            message={errors.username}
+          />
         </label>
         <label className="mt-5 block text-sm">
           パスワード
@@ -96,6 +98,7 @@ export default function AdminLoginPage() {
             required
             type="password"
             name="password"
+            autoComplete="current-password"
             minLength={8}
             aria-invalid={Boolean(errors.password)}
             aria-describedby={

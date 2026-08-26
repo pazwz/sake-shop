@@ -92,6 +92,9 @@ All AI development agents must read `AGENTS.md`, `PROJECT_STATUS.md`, and `docs/
 
 ## Recent Maintenance
 
+- Admin authentication now uses a unique login ID (`AdminUser.username`) while
+  retaining email lookup as a transition fallback for historical accounts.
+  Session cookies and OWNER/MANAGER/STAFF authorization rules are unchanged.
 - Customer-facing branding has been formally updated from KURA to LINXAS. A
   shared HTML/CSS wordmark now keeps the Header, Footer, Admin entry, and
   loading states consistent while an official production logo asset remains

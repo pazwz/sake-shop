@@ -20,14 +20,14 @@ import { adminLoginValidator } from '@/validators/admin-auth.validator';
 
 const adminService = new AdminService();
 
-const getAttemptKey = (request: Request, email: string) =>
-  `${request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'}:${email}`;
+const getAttemptKey = (request: Request, identifier: string) =>
+  `${request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'}:${identifier.toLowerCase()}`;
 
 export const POST = async (request: Request) => {
   let attemptKey: string | null = null;
   try {
     const input = adminLoginValidator.parse(await request.json());
-    attemptKey = getAttemptKey(request, input.email);
+    attemptKey = getAttemptKey(request, input.username);
     if (!canAttemptAdminLogin(attemptKey)) {
       return createErrorResponse(
         'LOGIN_RATE_LIMITED',
@@ -35,7 +35,10 @@ export const POST = async (request: Request) => {
         429,
       );
     }
-    const admin = await adminService.authenticate(input.email, input.password);
+    const admin = await adminService.authenticate(
+      input.username,
+      input.password,
+    );
     clearAdminLoginAttempts(attemptKey);
     const response = createSuccessResponse({
       id: admin.id,

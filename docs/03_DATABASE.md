@@ -334,6 +334,11 @@ id
 
 email
 
+username（任意、unique）
+
+后台正式登录优先使用 username。为兼容现有管理员，username 暂时允许为空，
+历史 email 登录仅作为过渡 fallback。
+
 password_hash
 
 name

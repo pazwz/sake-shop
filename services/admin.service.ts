@@ -11,8 +11,10 @@ export const CMS_ADMIN_ROLES: AdminRole[] = [
 export class AdminService {
   public constructor(private readonly repository = new AdminRepository()) {}
 
-  async authenticate(email: string, password: string) {
-    const admin = await this.repository.findByEmail(email);
+  async authenticate(identifier: string, password: string) {
+    const admin = identifier.includes('@')
+      ? await this.repository.findByEmail(identifier)
+      : await this.repository.findByUsername(identifier);
     if (!admin?.isActive || !admin.passwordHash) {
       throw new UnauthorizedError('Invalid administrator credentials.');
     }
