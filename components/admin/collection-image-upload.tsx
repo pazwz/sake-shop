@@ -1,58 +1,8 @@
 'use client';
 
-import { useId, useState } from 'react';
-
-type MediaUploadResponse = {
-  data?: { url: string; key: string };
-  error?: { detail: string };
-};
-
-const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
-
-const uploadImage = (file: File, onProgress: (progress: number) => void) =>
-  new Promise<{ url: string; key: string }>((resolve, reject) => {
-    const request = new XMLHttpRequest();
-    const formData = new FormData();
-    formData.set('file', file);
-
-    request.open('POST', '/api/v1/admin/media/upload');
-    request.timeout = 120_000;
-    request.upload.addEventListener('progress', (event) => {
-      if (event.lengthComputable) {
-        onProgress(Math.round((event.loaded / event.total) * 100));
-      }
-    });
-    request.addEventListener('load', () => {
-      let payload: MediaUploadResponse = {};
-      try {
-        payload = JSON.parse(request.responseText) as MediaUploadResponse;
-      } catch {
-        reject(new Error('アップロード結果を読み取れませんでした。'));
-        return;
-      }
-
-      if (request.status >= 200 && request.status < 300 && payload.data) {
-        resolve(payload.data);
-        return;
-      }
-      reject(
-        new Error(
-          payload.error?.detail ?? '画像をアップロードできませんでした。',
-        ),
-      );
-    });
-    request.addEventListener('error', () => {
-      reject(new Error('画像をアップロードできませんでした。'));
-    });
-    request.addEventListener('timeout', () => {
-      reject(
-        new Error(
-          '画像のアップロードがタイムアウトしました。通信環境を確認してください。',
-        ),
-      );
-    });
-    request.send(formData);
-  });
+import { useId, useRef, useState } from 'react';
+import { MAX_ADMIN_MEDIA_FILE_SIZE } from '@/config/media';
+import { uploadAdminImage } from '@/lib/admin-media-upload';
 
 export function CollectionImageUpload({
   name,
@@ -72,13 +22,14 @@ export function CollectionImageUpload({
   onUrlChange?: (url: string) => void;
 }) {
   const inputId = useId();
+  const uploadingRef = useRef(false);
   const [url, setUrl] = useState(initialUrl ?? '');
-  const [progress, setProgress] = useState<number | null>(null);
+  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
   const selectFile = async (file: File | undefined) => {
-    if (!file) return;
+    if (!file || uploadingRef.current) return;
     setError('');
     setSuccess('');
 
@@ -86,28 +37,29 @@ export function CollectionImageUpload({
       setError('画像ファイルを選択してください。');
       return;
     }
-    if (file.size > MAX_IMAGE_SIZE) {
+    if (file.size > MAX_ADMIN_MEDIA_FILE_SIZE) {
       setError('画像サイズは10MB以下にしてください。');
       return;
     }
 
-    setProgress(0);
+    uploadingRef.current = true;
+    setUploading(true);
     onUploadingChange(true);
     try {
-      const uploaded = await uploadImage(file, setProgress);
+      const uploaded = await uploadAdminImage(file);
       setUrl(uploaded.url);
       onUrlChange?.(uploaded.url);
-      setProgress(100);
       setSuccess('画像をアップロードしました。変更を保存してください。');
     } catch (uploadError) {
       setError(
         uploadError instanceof Error
           ? uploadError.message
-          : '画像をアップロードできませんでした。',
+          : '画像のアップロードに失敗しました。もう一度お試しください。',
       );
     } finally {
+      uploadingRef.current = false;
       onUploadingChange(false);
-      setProgress(null);
+      setUploading(false);
     }
   };
 
@@ -141,14 +93,14 @@ export function CollectionImageUpload({
           id={inputId}
           type="file"
           accept="image/*"
-          disabled={progress !== null}
+          disabled={uploading}
           className="sr-only"
           onChange={(event) => {
             void selectFile(event.currentTarget.files?.[0]);
             event.currentTarget.value = '';
           }}
         />
-        {url && progress === null ? (
+        {url && !uploading ? (
           <button
             type="button"
             onClick={() => {
@@ -162,9 +114,9 @@ export function CollectionImageUpload({
             画像を解除
           </button>
         ) : null}
-        {progress !== null ? (
+        {uploading ? (
           <span className="text-xs text-stone-600" aria-live="polite">
-            アップロード中… {progress}%
+            アップロード中…
           </span>
         ) : null}
       </div>

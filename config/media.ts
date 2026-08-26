@@ -1,0 +1,3 @@
+export const MAX_ADMIN_MEDIA_FILE_SIZE = 10 * 1024 * 1024;
+
+export const ADMIN_MEDIA_UPLOAD_TIMEOUT_MS = 120_000;

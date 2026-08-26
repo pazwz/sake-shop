@@ -92,6 +92,11 @@ All AI development agents must read `AGENTS.md`, `PROJECT_STATUS.md`, and `docs/
 
 ## Recent Maintenance
 
+- Admin Collection and Editorial images now use short-lived presigned URLs for
+  direct browser-to-S3 PUT uploads. The 10 MB limit and OWNER/MANAGER checks are
+  enforced without sending image bodies through Vercel Functions.
+- Production S3 CORS still requires an AWS-side rule for the Vercel origin;
+  the current deployment credential cannot read or change Bucket CORS.
 - Admin authentication now uses a unique login ID (`AdminUser.username`) while
   retaining email lookup as a transition fallback for historical accounts.
   Session cookies and OWNER/MANAGER/STAFF authorization rules are unchanged.

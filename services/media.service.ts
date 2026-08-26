@@ -1,7 +1,8 @@
 import 'server-only';
 
 import { randomUUID } from 'node:crypto';
-import { uploadFile } from '@/lib/aws/s3';
+import { createPresignedUpload } from '@/lib/aws/s3';
+import type { AdminMediaPresignInput } from '@/validators/admin-media.validator';
 
 const MAX_FILENAME_LENGTH = 120;
 
@@ -18,14 +19,16 @@ const sanitizeFilename = (filename: string) => {
 };
 
 export class MediaService {
-  public async uploadImage(file: File) {
+  public async createPresignedImageUpload({
+    fileName,
+    contentType,
+  }: AdminMediaPresignInput) {
     const now = new Date();
     const year = now.getUTCFullYear();
     const month = String(now.getUTCMonth() + 1).padStart(2, '0');
-    const key = `uploads/${year}/${month}/${randomUUID()}-${sanitizeFilename(file.name)}`;
-    const buffer = Buffer.from(await file.arrayBuffer());
-    const url = await uploadFile(buffer, key, file.type);
+    const key = `uploads/${year}/${month}/${randomUUID()}-${sanitizeFilename(fileName)}`;
+    const { uploadUrl, url } = await createPresignedUpload(key, contentType);
 
-    return { url, key };
+    return { uploadUrl, key, url };
   }
 }

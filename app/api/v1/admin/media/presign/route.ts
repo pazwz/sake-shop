@@ -10,7 +10,7 @@ import {
   requireAdmin,
 } from '@/services/admin-authorization.service';
 import { MediaService } from '@/services/media.service';
-import { adminMediaFileValidator } from '@/validators/admin-media.validator';
+import { adminMediaPresignValidator } from '@/validators/admin-media.validator';
 
 export const runtime = 'nodejs';
 
@@ -19,23 +19,18 @@ const mediaService = new MediaService();
 export const POST = async (request: Request) => {
   try {
     await requireAdmin(cmsAdminRoles);
-
-    const contentType = request.headers.get('content-type');
-    if (!contentType?.toLowerCase().startsWith('multipart/form-data')) {
-      throw new ValidationError('multipart/form-data is required.');
-    }
-
-    let formData: FormData;
+    let body: unknown;
     try {
-      formData = await request.formData();
+      body = await request.json();
     } catch {
-      throw new ValidationError('Invalid multipart/form-data payload.');
+      throw new ValidationError('Invalid JSON payload.');
     }
-    const file = adminMediaFileValidator.parse(
-      formData.get('file') ?? formData.get('image'),
-    );
+    const input = adminMediaPresignValidator.parse(body);
 
-    return createSuccessResponse(await mediaService.uploadImage(file), 201);
+    return createSuccessResponse(
+      await mediaService.createPresignedImageUpload(input),
+      201,
+    );
   } catch (error) {
     if (error instanceof AppError) return createAppErrorResponse(error);
     if (error instanceof ZodError) {
@@ -44,8 +39,8 @@ export const POST = async (request: Request) => {
       );
     }
     return createErrorResponse(
-      'MEDIA_UPLOAD_FAILED',
-      'Unable to upload media.',
+      'MEDIA_PRESIGN_FAILED',
+      'Unable to prepare media upload.',
       500,
     );
   }

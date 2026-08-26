@@ -5,6 +5,9 @@ import {
   PutObjectCommand,
   S3Client,
 } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+
+const PRESIGNED_UPLOAD_EXPIRES_IN_SECONDS = 5 * 60;
 
 type AwsS3Configuration = {
   region: string;
@@ -85,6 +88,27 @@ export const uploadFile = async (
     }),
   );
   return getCloudFrontUrl(configuration.cloudFrontDomain, normalizedKey);
+};
+
+export const createPresignedUpload = async (
+  key: string,
+  contentType: string,
+): Promise<{ uploadUrl: string; url: string }> => {
+  const configuration = getConfiguration();
+  const normalizedKey = normalizeKey(key);
+  const command = new PutObjectCommand({
+    Bucket: configuration.bucket,
+    Key: normalizedKey,
+    ContentType: contentType,
+  });
+  const uploadUrl = await getSignedUrl(getS3Client(configuration), command, {
+    expiresIn: PRESIGNED_UPLOAD_EXPIRES_IN_SECONDS,
+  });
+
+  return {
+    uploadUrl,
+    url: getCloudFrontUrl(configuration.cloudFrontDomain, normalizedKey),
+  };
 };
 
 export const deleteFile = async (key: string): Promise<void> => {

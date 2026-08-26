@@ -384,6 +384,45 @@ Request：
 
 ---
 
+## 管理员媒体上传
+
+### S3 直传准备
+
+POST
+
+/api/v1/admin/media/presign
+
+Role：OWNER / MANAGER
+
+Request：
+
+```json
+{
+  "fileName": "collection.jpg",
+  "contentType": "image/jpeg",
+  "fileSize": 9437184
+}
+```
+
+`contentType` 必须为 `image/*`，`fileSize` 必须大于 0 且不超过 10 MB。
+对象 key 由服务器按 `uploads/yyyy/mm/uuid-filename` 生成，客户端不能指定
+Bucket 或 key。返回的 S3 PUT URL 有效期为 5 分钟。
+
+Response data：
+
+```json
+{
+  "uploadUrl": "https://signed-s3-url",
+  "key": "uploads/2026/08/uuid-collection.jpg",
+  "url": "https://cloudfront-domain/uploads/2026/08/uuid-collection.jpg"
+}
+```
+
+浏览器使用相同 `Content-Type` 直接 PUT 到 S3。图片二进制不经过本 API 或
+Vercel Function。旧 multipart media upload Route 不再使用。
+
+---
+
 ## Dashboard
 
 GET
@@ -993,3 +1032,4 @@ HTTP 200
   "error": null
 }
 本文件作为整个项目 API 开发唯一标准，所有后续开发必须遵循本规范。
+```

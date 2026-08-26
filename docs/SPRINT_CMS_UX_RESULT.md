@@ -51,8 +51,11 @@ explains that the checked order is the homepage order.
 - If the optional mobile image is empty, the main image is used on smartphones.
 - The optional image is only needed when a different smartphone composition is
   desired.
-- Upload progress, timeout, errors, preview, replace, remove, and explicit
-  upload-complete feedback are shown.
+- Upload loading, timeout/error recovery, preview, replace, remove, and explicit
+  upload-complete feedback are shown. A small authenticated presign request is
+  followed by a browser-to-S3 PUT, so image bytes do not pass through Vercel.
+- Both browser and presign API enforce the 10 MB image limit. The server alone
+  generates the private S3 key and returns the corresponding CloudFront URL.
 - Upload completion is clearly distinguished from saving the collection.
 - Removing an image only clears the URL after the collection is saved.
 
