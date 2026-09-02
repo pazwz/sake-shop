@@ -461,6 +461,14 @@ GET
 
 /api/v1/admin/products
 
+Role：OWNER / MANAGER / STAFF
+
+Query：`q`（商品名、商品代码或 Smaregi Product ID）、`category`、`ecStatus`、
+`source`、`page`、`limit`。默认 `limit=25`。
+
+返回 Smaregi 只读字段、LINXAS EC 字段、四店库存、ACTIVE reservation、统一 EC
+可售量、图片与公开检查结果。该列表包含非公开商品。
+
 ---
 
 ### 商品详情
@@ -468,6 +476,8 @@ GET
 GET
 
 /api/v1/admin/products/{id}
+
+Role：OWNER / MANAGER / STAFF
 
 ---
 
@@ -479,21 +489,16 @@ PATCH
 
 允许：
 
-描述
-
-推荐
-
-上下架
-
-图片
+`slug`、`producer`、`origin`、`volume`、`alcoholPercentage`、`description`、
+`tastingNotes`、`isEcAvailable`
 
 禁止：
 
-Smaregi 商品编码
+`smaregiProductId`、`productCode`、`name`、`categoryId`、`price`、`taxRate`、
+`isActive`、`lastSyncedAt`、库存及其他未列入白名单的字段。
 
-库存
-
-价格
+Role：OWNER / MANAGER。Request 使用 strict validation。`isEcAvailable` 从 false
+改为 true 时必须通过统一 publication validation；true 改为 false 可直接执行。
 
 ---
 
@@ -506,6 +511,14 @@ POST
 DELETE
 
 /api/v1/admin/products/{id}/images/{imageId}
+
+PATCH
+
+/api/v1/admin/products/{id}/images/order
+
+Role：OWNER / MANAGER。图片文件先通过 `/api/v1/admin/media/presign` 直传 S3，
+上述 API 只保存 CloudFront URL、删除数据库关联或更新显示顺序。公开商品不能删除
+最后一张图片。
 
 ---
 

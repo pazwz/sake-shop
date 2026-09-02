@@ -127,6 +127,21 @@ Checkout
 
 ## 商品
 
+### Admin 商品管理
+
+后台商品列表必须同时显示 Smaregi 同步商品与既有商品，并支持商品名、商品代码、
+Smaregi Product ID、Category、EC 公開状态及数据来源筛选。默认每页 25 件。
+
+Smaregi 管理的商品名、商品代码、Category、价格、有效状态、同步时间和四店库存为
+只读。LINXAS Admin 只可编辑 slug、商品说明、tasting notes、生产者、产地、容量、
+酒精度、商品图片和 EC 公開状态。OWNER / MANAGER 可修改；STAFF 只可查看列表。
+
+非公開商品只有在 Smaregi 商品有效、价格大于 0、slug 合法且唯一、至少有一张图片、
+且同步来源有效时才可公开。说明和库存为 0 只显示 warning，不阻止公开。
+
+公开商品查询、搜索、直接详情、首页及 Collection 均必须同时满足
+`isActive=true` 与 `isEcAvailable=true`。
+
 支持：
 
 大分类

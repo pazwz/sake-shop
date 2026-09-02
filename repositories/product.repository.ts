@@ -24,6 +24,11 @@ export type ProductWithRelations = Prisma.ProductGetPayload<{
   include: typeof productInclude;
 }>;
 
+export const PUBLIC_PRODUCT_VISIBILITY = {
+  isActive: true,
+  isEcAvailable: true,
+} as const;
+
 export class ProductRepository {
   public async findForOrder(ids: string[]) {
     return prisma.product.findMany({
@@ -137,8 +142,7 @@ export class ProductRepository {
       : {};
 
     return {
-      isActive: true,
-      isEcAvailable: true,
+      ...PUBLIC_PRODUCT_VISIBILITY,
       AND: [categoryFilter, subcategoryFilter, keywordFilter, seasonFilter],
     };
   }

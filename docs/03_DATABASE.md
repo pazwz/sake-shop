@@ -251,6 +251,16 @@ created_at
 
 updated_at
 
+字段所有权：
+
+- Smaregi-owned：smaregi_product_id、category_id、product_code、jan_code、name、
+  price、tax_rate、is_active、last_synced_at、InventoryMirror。
+- LINXAS-owned：slug、producer、origin、volume、alcohol_percentage、description、
+  tasting_notes、is_ec_available、ProductImage 及 CMS 关联。
+
+Admin 编辑必须保护 Smaregi-owned 字段。现有结构已覆盖商品 CMS，不为此功能新增表或
+Migration。
+
 Index
 
 smaregi_product_id

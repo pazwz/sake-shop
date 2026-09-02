@@ -8,6 +8,7 @@
     "build": "next build",
     "lint": "eslint . --max-warnings=0 && tsc --noEmit",
     "test:smaregi": "tsx --test tests/smaregi/*.test.ts",
+    "test:products": "tsx --test tests/products/*.test.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "prisma:generate": "prisma generate",

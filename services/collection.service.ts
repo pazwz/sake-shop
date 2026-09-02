@@ -19,6 +19,32 @@ const createUniqueProductFilter = () => {
   };
 };
 
+export const sanitizePublicCollections = <
+  T extends {
+    products: Array<{
+      product: { isActive: boolean; isEcAvailable: boolean };
+    }>;
+    editorialSections: Array<{
+      product: { isActive: boolean; isEcAvailable: boolean } | null;
+    }>;
+  },
+>(
+  collections: T[],
+) =>
+  collections.map((collection) => ({
+    ...collection,
+    products: collection.products.filter(
+      ({ product }) => product.isActive && product.isEcAvailable,
+    ),
+    editorialSections: collection.editorialSections.map((section) => ({
+      ...section,
+      product:
+        section.product?.isActive && section.product.isEcAvailable
+          ? section.product
+          : null,
+    })),
+  }));
+
 const limitCollectionProducts = <
   T extends { products: Array<{ product: { id: string } }> },
 >(
@@ -90,7 +116,9 @@ export class FeaturedCollectionService {
     private readonly productRepository = new ProductRepository(),
   ) {}
   async getHome() {
-    const all = await this.repository.findHomeCollections();
+    const all = sanitizePublicCollections(
+      await this.repository.findHomeCollections(),
+    );
     const current = selectCurrentCollections(all);
     return {
       ...current,
@@ -106,7 +134,9 @@ export class FeaturedCollectionService {
     };
   }
   async getPublicCollectionDetail(slug: string) {
-    const all = await this.repository.findHomeCollections();
+    const all = sanitizePublicCollections(
+      await this.repository.findHomeCollections(),
+    );
     const current = selectCurrentCollections(all);
     if (slug in seasonBySlug) {
       const season = seasonBySlug[slug as SeasonCollectionSlug];
@@ -135,7 +165,9 @@ export class FeaturedCollectionService {
     return null;
   }
   async getPublicSeasonalCollections() {
-    const all = await this.repository.findHomeCollections();
+    const all = sanitizePublicCollections(
+      await this.repository.findHomeCollections(),
+    );
     return selectCurrentCollections(all).seasonal;
   }
   async getAdminCollections() {

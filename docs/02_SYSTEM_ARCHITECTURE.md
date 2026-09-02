@@ -212,6 +212,17 @@ Members
 
 Settings
 
+商品管理继续使用 `Route → Service → Repository → Prisma`。Admin Product Service
+集中维护 Smaregi-owned / LINXAS-owned 字段边界，并在 `isEcAvailable` 从 false
+变为 true 时调用统一 publication validation。Admin Route 使用严格白名单，不能接收
+价格、库存、名称、商品代码、Category 或 Smaregi 状态更新。
+
+商品图片沿用 Admin media presign 流程，由浏览器直接 PUT 私有 S3；数据库只保存
+CloudFront URL。ProductImage.displayOrder 决定主图和显示顺序。
+
+公开商品 Repository 强制 `isActive=true AND isEcAvailable=true`。首页和 Collection
+Service 对关联商品再执行相同的防御性过滤，避免历史关联泄露非公开商品。
+
 ---
 
 # 六、同步
