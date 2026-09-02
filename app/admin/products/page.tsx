@@ -2,6 +2,7 @@ import { AdminRole } from '@prisma/client';
 import Image from 'next/image';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import { createAdminProductEditHref } from '@/lib/admin-product-navigation';
 import { formatPrice } from '@/lib/products';
 import { getCurrentAdmin } from '@/services/admin-authorization.service';
 import { AdminProductService } from '@/services/admin-product.service';
@@ -42,6 +43,7 @@ export default async function AdminProductsPage({
     scalarParams(await searchParams),
   );
   const result = await service.getProducts(query);
+  const returnTo = pageHref(query, query.page);
 
   return (
     <main className="wrap py-16">
@@ -197,7 +199,7 @@ export default async function AdminProductsPage({
                   <td className="w-28 p-3 text-right">
                     {canEdit ? (
                       <Link
-                        href={`/admin/products/${product.id}`}
+                        href={createAdminProductEditHref(product.id, returnTo)}
                         className="btn btn-outline min-h-10 min-w-20 whitespace-nowrap px-4 text-xs focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#171412]"
                       >
                         編集 →

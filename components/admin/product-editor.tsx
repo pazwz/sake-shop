@@ -29,10 +29,31 @@ const errorDetail = async (response: Response, fallback: string) => {
   }
 };
 
+type Feedback = {
+  kind: 'success' | 'error';
+  text: string;
+};
+
+const FeedbackMessage = ({ feedback }: { feedback: Feedback | null }) =>
+  feedback ? (
+    <p
+      role={feedback.kind === 'error' ? 'alert' : 'status'}
+      className={`mt-3 whitespace-pre-line border p-3 text-sm ${
+        feedback.kind === 'error'
+          ? 'border-red-200 bg-red-50 text-[#6d2227]'
+          : 'border-emerald-200 bg-emerald-50 text-emerald-800'
+      }`}
+    >
+      {feedback.text}
+    </p>
+  ) : null;
+
 export function ProductEditor({
   initialProduct,
+  returnTo,
 }: {
   initialProduct: AdminProductRecord;
+  returnTo: string;
 }) {
   const router = useRouter();
   const [images, setImages] = useState(initialProduct.images);
@@ -42,10 +63,10 @@ export function ProductEditor({
   );
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [feedback, setFeedback] = useState<{
-    kind: 'success' | 'error';
-    text: string;
-  } | null>(null);
+  const [settingsFeedback, setSettingsFeedback] = useState<Feedback | null>(
+    null,
+  );
+  const [imageFeedback, setImageFeedback] = useState<Feedback | null>(null);
   const busyRef = useRef(false);
 
   const refreshProduct = async () => {
@@ -65,7 +86,7 @@ export function ProductEditor({
     if (busyRef.current || uploading) return;
     busyRef.current = true;
     setSaving(true);
-    setFeedback(null);
+    setSettingsFeedback(null);
     const alcohol = String(formData.get('alcoholPercentage')).trim();
     const payload = {
       slug: String(formData.get('slug')),
@@ -87,7 +108,7 @@ export function ProductEditor({
         },
       );
       if (!response.ok) {
-        setFeedback({
+        setSettingsFeedback({
           kind: 'error',
           text: await errorDetail(
             response,
@@ -102,10 +123,13 @@ export function ProductEditor({
       if (!result.data) throw new Error('Invalid response');
       setPublished(result.data.isEcAvailable);
       setPublication(result.data.publication);
-      setFeedback({ kind: 'success', text: 'EC掲載設定を保存しました。' });
+      setSettingsFeedback({
+        kind: 'success',
+        text: 'EC掲載設定を保存しました。',
+      });
       router.refresh();
     } catch {
-      setFeedback({
+      setSettingsFeedback({
         kind: 'error',
         text: '保存に失敗しました。通信環境を確認してください。',
       });
@@ -117,13 +141,16 @@ export function ProductEditor({
 
   const upload = async (file: File | undefined) => {
     if (!file || busyRef.current) return;
-    setFeedback(null);
+    setImageFeedback(null);
     if (!file.type.startsWith('image/')) {
-      setFeedback({ kind: 'error', text: '画像ファイルを選択してください。' });
+      setImageFeedback({
+        kind: 'error',
+        text: '画像ファイルを選択してください。',
+      });
       return;
     }
     if (file.size > MAX_ADMIN_MEDIA_FILE_SIZE) {
-      setFeedback({
+      setImageFeedback({
         kind: 'error',
         text: '画像サイズは10MB以下にしてください。',
       });
@@ -152,10 +179,10 @@ export function ProductEditor({
       if (!result.data) throw new Error('商品画像を登録できませんでした。');
       setImages((current) => [...current, result.data as AdminProductImage]);
       await refreshProduct();
-      setFeedback({ kind: 'success', text: '商品画像を登録しました。' });
+      setImageFeedback({ kind: 'success', text: '商品画像を登録しました。' });
       router.refresh();
     } catch (error) {
-      setFeedback({
+      setImageFeedback({
         kind: 'error',
         text:
           error instanceof Error
@@ -190,14 +217,17 @@ export function ProductEditor({
     const target = index + direction;
     if (busyRef.current || target < 0 || target >= images.length) return;
     busyRef.current = true;
-    setFeedback(null);
+    setImageFeedback(null);
     const next = [...images];
     [next[index], next[target]] = [next[target], next[index]];
     try {
       await saveOrder(next);
-      setFeedback({ kind: 'success', text: '画像の順序を更新しました。' });
+      setImageFeedback({
+        kind: 'success',
+        text: '画像の順序を更新しました。',
+      });
     } catch (error) {
-      setFeedback({
+      setImageFeedback({
         kind: 'error',
         text: error instanceof Error ? error.message : '更新に失敗しました。',
       });
@@ -209,7 +239,7 @@ export function ProductEditor({
   const deleteImage = async (imageId: string) => {
     if (busyRef.current) return;
     busyRef.current = true;
-    setFeedback(null);
+    setImageFeedback(null);
     try {
       const response = await fetch(
         `/api/v1/admin/products/${initialProduct.id}/images/${imageId}`,
@@ -221,10 +251,10 @@ export function ProductEditor({
         );
       setImages((current) => current.filter(({ id }) => id !== imageId));
       await refreshProduct();
-      setFeedback({ kind: 'success', text: '商品画像を削除しました。' });
+      setImageFeedback({ kind: 'success', text: '商品画像を削除しました。' });
       router.refresh();
     } catch (error) {
-      setFeedback({
+      setImageFeedback({
         kind: 'error',
         text: error instanceof Error ? error.message : '削除に失敗しました。',
       });
@@ -235,7 +265,7 @@ export function ProductEditor({
 
   return (
     <main className="wrap py-16">
-      <Link href="/admin/products" className="text-xs text-stone-500">
+      <Link href={returnTo} className="text-xs text-stone-500">
         ← 商品管理
       </Link>
       <div className="mt-5 flex flex-wrap items-end justify-between gap-5">
@@ -253,19 +283,6 @@ export function ProductEditor({
           {published ? 'EC公開中' : 'EC非公開'}
         </span>
       </div>
-
-      {feedback ? (
-        <p
-          role={feedback.kind === 'error' ? 'alert' : 'status'}
-          className={`mt-8 whitespace-pre-line border p-4 text-sm ${
-            feedback.kind === 'error'
-              ? 'border-red-300 bg-red-50 text-[#6d2227]'
-              : 'border-emerald-300 bg-emerald-50 text-emerald-800'
-          }`}
-        >
-          {feedback.text}
-        </p>
-      ) : null}
 
       <section className="mt-10 border line bg-[#faf8f4] p-6 md:p-8">
         <p className="eyebrow">スマレジ商品情報</p>
@@ -367,6 +384,7 @@ export function ProductEditor({
           </label>
         </div>
         <p className="mt-2 text-xs text-stone-500">画像形式・最大10MB</p>
+        <FeedbackMessage feedback={imageFeedback} />
         <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {images.map((image, index) => (
             <div key={image.id} className="border line p-3">
@@ -538,6 +556,7 @@ export function ProductEditor({
         >
           {saving ? '保存中…' : 'EC掲載設定を保存'}
         </button>
+        <FeedbackMessage feedback={settingsFeedback} />
       </form>
     </main>
   );

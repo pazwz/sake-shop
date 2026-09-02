@@ -1,5 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import {
+  createAdminProductEditHref,
+  sanitizeAdminProductsReturnTo,
+} from '@/lib/admin-product-navigation';
 import { Prisma } from '@prisma/client';
 import { AdminProductService } from '@/services/admin-product.service';
 import {
@@ -65,6 +69,29 @@ const fixture = (isEcAvailable = false) => ({
     createdAt: now,
     updatedAt: now,
   })),
+});
+
+test('admin product edit link preserves the current list URL', () => {
+  const returnTo =
+    '/admin/products?q=moet&category=champagne&ecStatus=unpublished&source=smaregi&page=3';
+  const href = createAdminProductEditHref('product-1', returnTo);
+  const url = new URL(href, 'https://example.test');
+
+  assert.equal(url.pathname, '/admin/products/product-1');
+  assert.equal(url.searchParams.get('returnTo'), returnTo);
+  assert.equal(sanitizeAdminProductsReturnTo(returnTo), returnTo);
+});
+
+test('admin product return URL rejects open redirects and unrelated paths', () => {
+  for (const unsafe of [
+    'https://evil.example.com/admin/products',
+    '//evil.example.com/admin/products',
+    '/admin/products/product-1',
+    '/admin/products?next=https://evil.example.com',
+    '/admin/products#unexpected',
+  ]) {
+    assert.equal(sanitizeAdminProductsReturnTo(unsafe), '/admin/products');
+  }
 });
 
 test('strict update validation rejects Smaregi-owned fields', () => {
