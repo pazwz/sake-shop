@@ -3,9 +3,12 @@ import { OrderStatus } from '@prisma/client';
 import { DEVELOPMENT_DISCOUNT_AMOUNT } from '@/config/order';
 import { getTemporaryShippingQuote } from '@/config/shipping';
 import { AppError, NotFoundError } from '@/lib/errors';
-import { CustomerRepository } from '@/repositories/customer.repository';
+import { InventoryReservationRepository } from '@/repositories/inventory-reservation.repository';
 import { OrderRepository } from '@/repositories/order.repository';
-import { ProductRepository } from '@/repositories/product.repository';
+import {
+  projectApprovedInventory,
+  requiresTransferForQuantity,
+} from '@/services/inventory-projection.service';
 import type { OrderInput } from '@/validators/order.validator';
 
 const transitions: Record<OrderStatus, OrderStatus[]> = {
@@ -21,79 +24,107 @@ const transitions: Record<OrderStatus, OrderStatus[]> = {
 export class OrderService {
   constructor(
     private readonly orders = new OrderRepository(),
-    private readonly products = new ProductRepository(),
-    private readonly customers = new CustomerRepository(),
+    private readonly reservations = new InventoryReservationRepository(),
   ) {}
   async create(input: OrderInput) {
-    const products = await this.products.findForOrder(
-      input.items.map((item) => item.productId),
-    );
-    if (products.length !== input.items.length)
+    const requestedProductIds = input.items.map((item) => item.productId);
+    if (new Set(requestedProductIds).size !== requestedProductIds.length)
       throw new AppError(
-        'One or more products could not be found.',
-        'PRODUCT_NOT_FOUND',
-        404,
+        'Each product may appear only once in an order.',
+        'DUPLICATE_ORDER_PRODUCT',
+        422,
       );
-    const lines = input.items.map((item) => {
-      const product = products.find((entry) => entry.id === item.productId)!;
-      if (!product.isActive || !product.isEcAvailable)
-        throw new AppError(
-          'This product is not available for online purchase.',
-          'PRODUCT_NOT_AVAILABLE',
-          409,
+    const sortedProductIds = [...requestedProductIds].sort();
+    return this.reservations.withLockedProducts(
+      sortedProductIds,
+      async (transaction) => {
+        const products = await transaction.findProducts(sortedProductIds);
+        if (products.length !== sortedProductIds.length)
+          throw new AppError(
+            'One or more products could not be found.',
+            'PRODUCT_NOT_FOUND',
+            404,
+          );
+        const activeReservations =
+          await transaction.getActiveReservedQuantities(sortedProductIds);
+        const productById = new Map(
+          products.map((product) => [product.id, product]),
         );
-      const available = product.inventoryMirrors.reduce(
-        (sum, inventory) => sum + inventory.availableQuantity,
-        0,
-      );
-      if (available < item.quantity)
-        throw new AppError(
-          'The requested quantity is not available.',
-          'INSUFFICIENT_INVENTORY',
-          409,
-        );
-      const unitPrice = Number(product.price);
-      const subtotal = unitPrice * item.quantity;
-      return {
-        product,
-        item,
-        unitPrice,
-        subtotal,
-        tax:
-          (subtotal * Number(product.taxRate)) /
-          (100 + Number(product.taxRate)),
-      };
-    });
-    const customer = await this.customers.upsertForOrder(input.customer);
-    const subtotal = lines.reduce((sum, line) => sum + line.subtotal, 0);
-    const taxAmount = lines.reduce((sum, line) => sum + line.tax, 0);
-    const shippingFee = getTemporaryShippingQuote().fee;
-    const discountAmount = DEVELOPMENT_DISCOUNT_AMOUNT;
-    return this.orders.create({
-      orderNumber: `LINXAS-${new Date().toISOString().slice(0, 10).replaceAll('-', '')}-${randomUUID().replaceAll('-', '').slice(0, 6).toUpperCase()}`,
-      customer: { connect: { id: customer.id } },
-      subtotal,
-      shippingFee,
-      taxAmount,
-      discountAmount,
-      totalAmount: subtotal + shippingFee - discountAmount,
-      paymentMethod: input.paymentMethod,
-      shippingAddressSnapshot: input.address,
-      ageConfirmedAt: new Date(),
-      items: {
-        create: lines.map(
-          ({ product, item, unitPrice, subtotal: lineSubtotal }) => ({
-            productId: product.id,
-            productName: product.name,
-            productCode: product.productCode,
+        const lines = input.items.map((item) => {
+          const product = productById.get(item.productId)!;
+          if (!product.isActive || !product.isEcAvailable)
+            throw new AppError(
+              'This product is not available for online purchase.',
+              'PRODUCT_NOT_AVAILABLE',
+              409,
+            );
+          const projection = projectApprovedInventory(
+            product.inventoryMirrors,
+            activeReservations.get(product.id) ?? 0,
+          );
+          const requiresTransfer = requiresTransferForQuantity(
+            projection,
+            item.quantity,
+          );
+          const unitPrice = Number(product.price);
+          const subtotal = unitPrice * item.quantity;
+          return {
+            product,
+            item,
             unitPrice,
-            quantity: item.quantity,
-            taxRate: product.taxRate,
-            subtotal: lineSubtotal,
-          }),
-        ),
+            subtotal,
+            requiresTransfer,
+            tax:
+              (subtotal * Number(product.taxRate)) /
+              (100 + Number(product.taxRate)),
+          };
+        });
+        const customer = await transaction.upsertCustomer(input.customer);
+        const subtotal = lines.reduce((sum, line) => sum + line.subtotal, 0);
+        const taxAmount = lines.reduce((sum, line) => sum + line.tax, 0);
+        const shippingFee = getTemporaryShippingQuote().fee;
+        const discountAmount = DEVELOPMENT_DISCOUNT_AMOUNT;
+        const orderId = randomUUID();
+        const now = new Date();
+        return transaction.createOrderWithReservations({
+          id: orderId,
+          orderNumber: `LINXAS-${now.toISOString().slice(0, 10).replaceAll('-', '')}-${randomUUID().replaceAll('-', '').slice(0, 6).toUpperCase()}`,
+          customerId: customer.id,
+          subtotal,
+          shippingFee,
+          taxAmount,
+          discountAmount,
+          totalAmount: subtotal + shippingFee - discountAmount,
+          paymentMethod: input.paymentMethod,
+          shippingAddressSnapshot: {
+            ...input.address,
+            addressLine2: input.address.addressLine2 ?? null,
+          },
+          ageConfirmedAt: now,
+          items: lines.map(
+            ({
+              product,
+              item,
+              unitPrice,
+              subtotal: lineSubtotal,
+              requiresTransfer,
+            }) => ({
+              id: randomUUID(),
+              reservationId: randomUUID(),
+              productId: product.id,
+              productName: product.name,
+              productCode: product.productCode,
+              unitPrice,
+              quantity: item.quantity,
+              taxRate: product.taxRate,
+              subtotal: lineSubtotal,
+              requiresTransfer,
+              expiresAt: null,
+            }),
+          ),
+        });
       },
-    });
+    );
   }
   async getByOrderNumber(orderNumber: string) {
     const order = await this.orders.findByOrderNumber(orderNumber);

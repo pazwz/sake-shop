@@ -9,7 +9,19 @@ export const orderValidator = z.object({
         quantity: z.number().int().positive().max(99),
       }),
     )
-    .min(1),
+    .min(1)
+    .superRefine((items, context) => {
+      const seen = new Set<string>();
+      items.forEach((item, index) => {
+        if (seen.has(item.productId))
+          context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Each product may appear only once.',
+            path: [index, 'productId'],
+          });
+        seen.add(item.productId);
+      });
+    }),
   customer: z.object({
     email: z.string().email(),
     name: z.string().trim().min(1).max(100),

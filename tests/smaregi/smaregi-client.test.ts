@@ -30,13 +30,12 @@ test('caches the OAuth token and sends the minimum read scopes', async () => {
   };
   const client = new SmaregiClient(fetcher, async () => undefined);
 
-  await client.getStores();
-  await client.getCategories();
+  await Promise.all([client.getStores(), client.getCategories()]);
 
   assert.equal(requests.filter(({ url }) => url.includes('/token')).length, 1);
   assert.equal(
     String(requests[0].init?.body),
-    'grant_type=client_credentials&scope=pos.products%3Aread+pos.stock%3Aread+pos.stores%3Aread',
+    'grant_type=client_credentials&scope=pos.products%3Aread+pos.stock%3Aread+pos.stores%3Aread+pos.transactions%3Aread+pos.suppliers%3Aread',
   );
   assert.match(
     String(new Headers(requests[1].init?.headers).get('authorization')),

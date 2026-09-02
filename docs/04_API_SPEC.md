@@ -278,6 +278,18 @@ POST
 
 /api/v1/orders
 
+订单创建会在单一数据库 transaction 内对全部 Product 按稳定顺序加行锁，校验：
+
+```text
+availableQuantity = max(0, approvedPhysicalTotal - activeReservedQuantity)
+```
+
+库存充足时同时创建 Order、OrderItem 和 ACTIVE InventoryReservation。任一商品不足时
+返回 `INSUFFICIENT_INVENTORY`，整单不创建。响应中的每个 OrderItem 包含
+`requiresTransfer`；Store `1` 的保守可履约量不足时为 true。
+
+订单创建不会修改 Smaregi inventory，也不会自动调拨。
+
 ---
 
 ### 我的订单
@@ -641,6 +653,9 @@ PATCH
 
 /api/v1/admin/orders/{id}
 
+订单详情中的 OrderItem 返回 `requiresTransfer`。Reservation release / consume 由
+Service 提供幂等基础操作；支付超时和订单状态自动接线不在本阶段范围内。
+
 ---
 
 ## 发货
@@ -790,6 +805,56 @@ response body で HTTP 200 を返す。不正な JSON、Header、payload、ま�
 
 このエンドポイントはアクセストークンを発行せず、Smaregi API を呼び出さず、
 商品・カテゴリ・在庫・注文データを変更しない。
+
+---
+
+## Read-only dry-run
+
+Smaregi 同步预演当前只作为 Service-level 功能，不提供公开 API。
+它使用 OAuth client credentials 自动取得短期 Access Token，并在同一
+server-side client instance 内缓存 Token。Token 和凭证不进入响应或日志。
+
+Read scope 限定为：
+
+- `pos.stores:read`
+- `pos.products:read`
+- `pos.stock:read`
+- `pos.transactions:read`
+- `pos.suppliers:read`
+
+Smaregi 输入：Stores、Categories、Products、Stock。Neon 输入：
+Category、Product、InventoryMirror 的必要字段。Repository 只执行
+`findMany`，dry-run 不写入 Neon 或 SyncLog。
+
+输出分组：
+
+- categories: `toCreate` / `toUpdate` / `unchanged` / `toDeactivate`
+- products: `toCreate` / `toUpdate` / `unchanged` / `toDeactivate`
+- inventory: `toCreate` / `toUpdate` / `toZero` / `unchanged`
+- storesUsed: 固定批准 Store `1` / `2` / `3` / `6` 中实际存在的 Store
+- anomalies: orphan Stock、negative Stock、缺失的批准 Store
+
+差异只包含 Smaregi ID、商品代码、字段名和 before/after 值，
+不返回完整数据库对象。
+
+Product dry-run 同时返回 `taxDivision`、`resolvedTaxRate`、
+`priceMeaning` 和 `taxResolutionSource`。标准税率来自
+`consumption_tax_rates`，轻减税率来自 `reduce_tax_rates`。
+不允许固定税率或 silent fallback。
+
+Category 税区分为 null 且 Product 使用 Category 税设置时，Product 以
+`CATEGORY_TAX_DIVISION_MISSING` 标记 blocked。客户明确批准暂缓的 6 个箱代金
+Product 在原因完全一致时单独进入 `approvedDeferredProducts`，不进入 Product 或
+InventoryMirror write plan，也不计入未知 blocker；其他税异常继续 fail closed。
+orphan Stock 不进入 inventory plan；negative Stock 保留 raw quantity 并进入 warning，
+不能静默改写为 0。
+
+箱代金 Product 不因 `isEcAvailable=false` 从同步输入移除。税率可解析时仍同步
+Product、价格与每店库存；税率不可解析时继续 blocked。新 Product 默认
+`isEcAvailable=false`，不会因同步自动公开。
+
+获批的同步 plan 只能在 Service 完成所有 GET 和验证后交给单一
+Prisma transaction。当前不提供触发该原子写入的公开 API。
 
 ---
 

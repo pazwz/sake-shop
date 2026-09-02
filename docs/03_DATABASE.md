@@ -51,24 +51,25 @@ Last Update: 2026-08-14
 
 # 二、数据库列表
 
-| Table | 用途 |
-|---------|-------------------------|
-| categories | 商品分类 |
-| products | 商品镜像 |
-| product_images | 商品图片 |
-| inventory_mirror | 库存镜像 |
-| customers | 顾客 |
-| customer_addresses | 收货地址 |
-| orders | 订单 |
-| order_items | 订单商品 |
-| payments | 支付 |
-| shipments | 配送 |
-| featured_collections | 专题 |
-| featured_collection_products | 专题商品 |
-| editorial_sections | Editorial 专题文章段落 |
-| admin_users | 后台用户 |
-| audit_logs | 操作日志 |
-| sync_logs | API同步日志 |
+| Table                        | 用途                   |
+| ---------------------------- | ---------------------- |
+| categories                   | 商品分类               |
+| products                     | 商品镜像               |
+| product_images               | 商品图片               |
+| inventory_mirror             | 库存镜像               |
+| inventory_reservations       | EC 商品级库存预留      |
+| customers                    | 顾客                   |
+| customer_addresses           | 收货地址               |
+| orders                       | 订单                   |
+| order_items                  | 订单商品               |
+| payments                     | 支付                   |
+| shipments                    | 配送                   |
+| featured_collections         | 专题                   |
+| featured_collection_products | 专题商品               |
+| editorial_sections           | Editorial 专题文章段落 |
+| admin_users                  | 后台用户               |
+| audit_logs                   | 操作日志               |
+| sync_logs                    | API同步日志            |
 
 ---
 
@@ -319,6 +320,52 @@ last_synced_at
 created_at
 
 updated_at
+
+每行表示一个 Smaregi Store 的原始物理库存镜像。批准的 EC 库存来源为 Store
+`1`、`2`、`3`、`6`；聚合只发生在 Service / 查询层。`quantity` 可以保留
+Smaregi 返回的负数，`available_quantity` 不得为负。
+
+`reserved_quantity` 与 `available_quantity` 是旧的 Store 级兼容字段。EC 商品可售量
+不得使用或累加这两个字段；正式 reservation 来源仅为 ACTIVE
+`inventory_reservations`。
+
+---
+
+## inventory_reservations
+
+用途：
+
+LINXAS EC 商品级临时库存占用，不绑定 Smaregi Store。
+
+字段：
+
+id
+
+product_id
+
+order_id
+
+order_item_id（unique）
+
+quantity（数据库约束 > 0）
+
+status（ACTIVE / RELEASED / CONSUMED / EXPIRED）
+
+expires_at（nullable）
+
+created_at
+
+updated_at
+
+同一 OrderItem 最多一条 reservation。只有 ACTIVE 状态参与可售库存汇总；其他状态
+保留历史但不再占用库存。Product、Order、OrderItem 均使用 Restrict 外键。
+
+---
+
+## order_items.requires_transfer
+
+下单时的履约快照。Store `1` 在扣除既有商品级 ACTIVE reservation 后不足以直接
+满足该订单行时为 true。该字段不表示自动仓库分配，也不新增订单状态。
 
 ---
 

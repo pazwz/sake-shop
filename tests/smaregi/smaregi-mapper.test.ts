@@ -15,6 +15,8 @@ const category: SmaregiCategory = {
   displaySequence: '2',
   displayFlag: '1',
   parentCategoryId: null,
+  taxDivision: '0',
+  reduceTaxId: null,
 };
 const product: SmaregiProduct = {
   productId: '100',
@@ -25,6 +27,9 @@ const product: SmaregiProduct = {
   displayFlag: '1',
   salesDivision: '0',
   division: '0',
+  taxDivision: '0',
+  useCategoryReduceTax: '1',
+  reduceTaxId: null,
 };
 
 test('maps category and product identities from Smaregi IDs', () => {
@@ -34,10 +39,11 @@ test('maps category and product identities from Smaregi IDs', () => {
     isActive: true,
     parentId: null,
   });
-  const created = mapSmaregiProductCreate(product, 'local-category');
+  const created = mapSmaregiProductCreate(product, 'local-category', '10.00');
   assert.equal(created.smaregiProductId, '100');
   assert.equal(created.categoryId, 'local-category');
   assert.equal(created.isEcAvailable, false);
+  assert.equal(created.taxRate, '10.00');
 });
 
 test('product updates do not overwrite website-owned fields', () => {

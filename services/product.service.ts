@@ -1,17 +1,24 @@
 import { NotFoundError } from '@/lib/errors';
 import { ProductRepository } from '@/repositories/product.repository';
+import { InventoryReservationRepository } from '@/repositories/inventory-reservation.repository';
+import { projectApprovedInventory } from '@/services/inventory-projection.service';
 import type { ProductListResult, ProductRecord } from '@/types/product';
 import type { ProductQuery } from '@/validators/product.validator';
 
 export class ProductService {
   public constructor(
     private readonly productRepository = new ProductRepository(),
+    private readonly reservationRepository = new InventoryReservationRepository(),
   ) {}
 
   public async getProducts(query: ProductQuery): Promise<ProductListResult> {
     const { items, total } = await this.productRepository.findActive(query);
 
-    return this.createListResult(items, total, query);
+    const reservations =
+      await this.reservationRepository.getActiveReservedQuantities(
+        items.map((product) => product.id),
+      );
+    return this.createListResult(items, total, query, reservations);
   }
 
   public async getProduct(identifier: string): Promise<ProductRecord> {
@@ -23,7 +30,11 @@ export class ProductService {
       throw new NotFoundError('Product not found.');
     }
 
-    return this.toProductRecord(product);
+    const reservations =
+      await this.reservationRepository.getActiveReservedQuantities([
+        product.id,
+      ]);
+    return this.toProductRecord(product, reservations.get(product.id) ?? 0);
   }
 
   public async searchProducts(
@@ -35,16 +46,23 @@ export class ProductService {
       query,
     );
 
-    return this.createListResult(items, total, query);
+    const reservations =
+      await this.reservationRepository.getActiveReservedQuantities(
+        items.map((product) => product.id),
+      );
+    return this.createListResult(items, total, query, reservations);
   }
 
   private createListResult(
     items: Awaited<ReturnType<ProductRepository['findMany']>>['items'],
     total: number,
     query: ProductQuery,
+    reservations: Map<string, number>,
   ): ProductListResult {
     return {
-      items: items.map((product) => this.toProductRecord(product)),
+      items: items.map((product) =>
+        this.toProductRecord(product, reservations.get(product.id) ?? 0),
+      ),
       pagination: {
         page: query.page,
         limit: query.limit,
@@ -56,11 +74,16 @@ export class ProductService {
 
   private toProductRecord(
     product: Awaited<ReturnType<ProductRepository['findById']>> & {},
+    activeReservedQuantity: number,
   ): ProductRecord {
     if (!product) {
       throw new NotFoundError('Product not found.');
     }
 
+    const projection = projectApprovedInventory(
+      product.inventoryMirrors,
+      activeReservedQuantity,
+    );
     return {
       id: product.id,
       slug: product.slug,
@@ -102,6 +125,10 @@ export class ProductService {
         availableQuantity: inventory.availableQuantity,
         lastSyncedAt: inventory.lastSyncedAt.toISOString(),
       })),
+      physicalTotalApproved: projection.physicalTotalApproved,
+      store1Physical: projection.store1Physical,
+      activeReservedQuantity: projection.activeReservedQuantity,
+      availableQuantity: projection.availableQuantity,
       isEcAvailable: product.isEcAvailable,
       createdAt: product.createdAt.toISOString(),
     };

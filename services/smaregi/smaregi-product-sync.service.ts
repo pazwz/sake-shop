@@ -4,6 +4,10 @@ import { SmaregiSyncRepository } from '@/repositories/smaregi-sync.repository';
 import { SyncRepository } from '@/repositories/sync.repository';
 import { SmaregiClient } from '@/services/smaregi/smaregi-client';
 import { SmaregiStoreService } from '@/services/smaregi/smaregi-store.service';
+import {
+  getSmaregiTargetDate,
+  resolveProductTax,
+} from '@/services/smaregi/smaregi-tax-resolver';
 import type { SmaregiApiClient, SmaregiSyncSummary } from '@/types/smaregi';
 
 type ProductSyncPersistence = {
@@ -26,6 +30,13 @@ export class SmaregiProductSyncService {
     try {
       await this.stores.verifyConfiguredStore();
       const categories = await this.client.getCategories();
+      const [standardTaxRates, reduceTaxRates] = await Promise.all([
+        this.client.getConsumptionTaxRates(),
+        this.client.getReduceTaxRates(),
+      ]);
+      const categoryBySmaregiId = new Map(
+        categories.map((category) => [category.categoryId, category]),
+      );
       const savedCategories = new Map<string, string>();
       for (const category of categories) {
         const saved = await this.repository.upsertCategory(category, null);
@@ -59,7 +70,18 @@ export class SmaregiProductSyncService {
             422,
           );
         }
-        const result = await this.repository.upsertProduct(product, categoryId);
+        const tax = resolveProductTax(
+          product,
+          categoryBySmaregiId.get(product.categoryId),
+          standardTaxRates,
+          reduceTaxRates,
+          getSmaregiTargetDate(),
+        );
+        const result = await this.repository.upsertProduct(
+          product,
+          categoryId,
+          tax.resolvedTaxRate,
+        );
         summary[result.created ? 'created' : 'updated'] += 1;
       }
       await this.logs.succeed(log.id, summary, this.client.retryCount);

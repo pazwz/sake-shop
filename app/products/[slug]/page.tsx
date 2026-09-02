@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { ProductCard } from '@/components/product-card';
 import { QuantitySelector } from '@/components/quantity-selector';
@@ -43,14 +43,7 @@ export default function ProductDetailPage() {
       .finally(() => setIsLoading(false));
   }, [slug]);
 
-  const inventory = useMemo(
-    () =>
-      product?.inventory.reduce(
-        (total, item) => total + item.availableQuantity,
-        0,
-      ) ?? 0,
-    [product],
-  );
+  const inventory = product?.availableQuantity ?? 0;
   const imageUrl = product?.images[0]?.imageUrl;
 
   if (isLoading) return <BrandLoader label="商品を読み込んでいます" />;

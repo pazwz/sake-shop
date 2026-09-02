@@ -16,6 +16,8 @@ const client = new MockSmaregiClient({
       displaySequence: '1',
       displayFlag: '1',
       parentCategoryId: null,
+      taxDivision: '0',
+      reduceTaxId: null,
     },
   ],
   products: [
@@ -28,6 +30,16 @@ const client = new MockSmaregiClient({
       displayFlag: '1',
       salesDivision: '0',
       division: '0',
+      taxDivision: '0',
+      useCategoryReduceTax: '1',
+      reduceTaxId: null,
+    },
+  ],
+  consumptionTaxRates: [
+    {
+      applyStartDate: '2019-10-01',
+      taxRate: '10.000',
+      taxRounding: '1',
     },
   ],
 });
@@ -86,6 +98,8 @@ test('records a failed mapping without retrying it', async () => {
         displaySequence: '1',
         displayFlag: '1',
         parentCategoryId: 'missing',
+        taxDivision: '0',
+        reduceTaxId: null,
       },
     ],
   });

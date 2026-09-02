@@ -37,14 +37,18 @@ export class SmaregiSyncRepository {
     return prisma.category.findUnique({ where: { smaregiCategoryId } });
   }
 
-  public async upsertProduct(product: SmaregiProduct, categoryId: string) {
+  public async upsertProduct(
+    product: SmaregiProduct,
+    categoryId: string,
+    taxRate: string,
+  ) {
     const existing = await prisma.product.findUnique({
       where: { smaregiProductId: product.productId },
       select: { id: true },
     });
     const saved = await prisma.product.upsert({
       where: { smaregiProductId: product.productId },
-      create: mapSmaregiProductCreate(product, categoryId),
+      create: mapSmaregiProductCreate(product, categoryId, taxRate),
       update: mapSmaregiProductUpdate(product, categoryId),
     });
     return { product: saved, created: existing === null };

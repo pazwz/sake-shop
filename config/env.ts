@@ -19,12 +19,21 @@ export const environmentSchema = z.object({
 
 export type Environment = z.infer<typeof environmentSchema>;
 
-export const smaregiEnvironmentSchema = environmentSchema.pick({
-  SMAREGI_ENVIRONMENT: true,
-  SMAREGI_CONTRACT_ID: true,
-  SMAREGI_CLIENT_ID: true,
-  SMAREGI_CLIENT_SECRET: true,
-  SMAREGI_STORE_ID: true,
+export const smaregiApiEnvironmentSchema = environmentSchema
+  .pick({
+    SMAREGI_ENVIRONMENT: true,
+    SMAREGI_CONTRACT_ID: true,
+    SMAREGI_CLIENT_ID: true,
+    SMAREGI_CLIENT_SECRET: true,
+  })
+  .extend({
+    SMAREGI_ENVIRONMENT: z.enum(['sandbox', 'production']).default('sandbox'),
+  });
+
+export const smaregiEnvironmentSchema = smaregiApiEnvironmentSchema.extend({
+  SMAREGI_STORE_ID: z.string().min(1),
 });
+
+export type SmaregiApiEnvironment = z.infer<typeof smaregiApiEnvironmentSchema>;
 
 export type SmaregiEnvironment = z.infer<typeof smaregiEnvironmentSchema>;

@@ -36,6 +36,10 @@ export interface ProductRecord {
   tastingNotes: string | null;
   images: ProductImageRecord[];
   inventory: ProductInventoryRecord[];
+  physicalTotalApproved: number;
+  store1Physical: number;
+  activeReservedQuantity: number;
+  availableQuantity: number;
   isEcAvailable: boolean;
   createdAt: string;
 }

@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import {
   getSmaregiBaseUrl,
-  getSmaregiEnvironment,
+  getSmaregiApiEnvironment,
   getSmaregiIdentityUrl,
   SMAREGI_MAX_RETRIES,
   SMAREGI_PAGE_SIZE,
@@ -12,12 +12,16 @@ import {
 import { AppError } from '@/lib/errors';
 import {
   smaregiCategorySchema,
+  smaregiConsumptionTaxRateSchema,
   smaregiProductSchema,
+  smaregiReduceTaxRateSchema,
   smaregiStockSchema,
   smaregiStoreSchema,
   type SmaregiApiClient,
   type SmaregiCategory,
+  type SmaregiConsumptionTaxRate,
   type SmaregiProduct,
+  type SmaregiReduceTaxRate,
   type SmaregiStock,
   type SmaregiStore,
 } from '@/types/smaregi';
@@ -33,6 +37,7 @@ type Sleep = (milliseconds: number) => Promise<void>;
 
 export class SmaregiClient implements SmaregiApiClient {
   private token: { value: string; expiresAt: number } | null = null;
+  private tokenRequest: Promise<string> | null = null;
   public retryCount = 0;
 
   public constructor(
@@ -59,6 +64,20 @@ export class SmaregiClient implements SmaregiApiClient {
     });
   }
 
+  public getConsumptionTaxRates() {
+    return this.getAll<SmaregiConsumptionTaxRate>(
+      '/consumption_tax_rates',
+      smaregiConsumptionTaxRateSchema,
+    );
+  }
+
+  public getReduceTaxRates() {
+    return this.getAll<SmaregiReduceTaxRate>(
+      '/reduce_tax_rates',
+      smaregiReduceTaxRateSchema,
+    );
+  }
+
   private async getAll<T>(
     path: string,
     schema: z.ZodType<T, z.ZodTypeDef, unknown>,
@@ -81,7 +100,7 @@ export class SmaregiClient implements SmaregiApiClient {
   }
 
   private async request(path: string, query: Record<string, string>) {
-    const config = getSmaregiEnvironment();
+    const config = getSmaregiApiEnvironment();
     const url = new URL(
       `${getSmaregiBaseUrl(config.SMAREGI_ENVIRONMENT)}/${encodeURIComponent(config.SMAREGI_CONTRACT_ID)}/pos${path}`,
     );
@@ -104,7 +123,17 @@ export class SmaregiClient implements SmaregiApiClient {
   private async getAccessToken() {
     if (this.token && this.token.expiresAt > Date.now())
       return this.token.value;
-    const config = getSmaregiEnvironment();
+    if (this.tokenRequest) return this.tokenRequest;
+    this.tokenRequest = this.requestAccessToken();
+    try {
+      return await this.tokenRequest;
+    } finally {
+      this.tokenRequest = null;
+    }
+  }
+
+  private async requestAccessToken() {
+    const config = getSmaregiApiEnvironment();
     const credentials = Buffer.from(
       `${config.SMAREGI_CLIENT_ID}:${config.SMAREGI_CLIENT_SECRET}`,
     ).toString('base64');

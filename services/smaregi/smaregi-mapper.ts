@@ -1,4 +1,3 @@
-import { STANDARD_TAX_RATE_PERCENT } from '@/config/smaregi';
 import { toExternalSlug } from '@/lib/slug';
 import type { SmaregiCategory, SmaregiProduct } from '@/types/smaregi';
 
@@ -15,6 +14,8 @@ export const mapSmaregiCategory = (
 export const mapSmaregiProductCreate = (
   product: SmaregiProduct,
   categoryId: string,
+  taxRate: string,
+  lastSyncedAt = new Date(),
 ) => ({
   smaregiProductId: product.productId,
   categoryId,
@@ -26,22 +27,23 @@ export const mapSmaregiProductCreate = (
     product.productId,
   ),
   price: product.price,
-  taxRate: STANDARD_TAX_RATE_PERCENT,
+  taxRate,
   isActive: isActiveSmaregiProduct(product),
   isEcAvailable: false,
-  lastSyncedAt: new Date(),
+  lastSyncedAt,
 });
 
 export const mapSmaregiProductUpdate = (
   product: SmaregiProduct,
   categoryId: string,
+  lastSyncedAt = new Date(),
 ) => ({
   categoryId,
   productCode: product.productCode,
   name: product.productName,
   price: product.price,
   isActive: isActiveSmaregiProduct(product),
-  lastSyncedAt: new Date(),
+  lastSyncedAt,
 });
 
 export const calculateAvailableQuantity = (
