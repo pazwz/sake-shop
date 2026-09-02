@@ -133,7 +133,7 @@ export default async function AdminProductsPage({
               <th className="p-3">EC販売可能数</th>
               <th className="p-3">公開</th>
               <th className="p-3">最終同期</th>
-              <th className="p-3" />
+              <th className="w-28 p-3 text-center">操作</th>
             </tr>
           </thead>
           <tbody className="divide-y line">
@@ -194,13 +194,13 @@ export default async function AdminProductsPage({
                       ? new Date(product.lastSyncedAt).toLocaleString('ja-JP')
                       : '—'}
                   </td>
-                  <td className="p-3 text-right">
+                  <td className="w-28 p-3 text-right">
                     {canEdit ? (
                       <Link
                         href={`/admin/products/${product.id}`}
-                        className="text-xs font-semibold underline"
+                        className="btn btn-outline min-h-10 min-w-20 whitespace-nowrap px-4 text-xs focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#171412]"
                       >
-                        編集
+                        編集 →
                       </Link>
                     ) : (
                       <span className="text-xs text-stone-400">閲覧のみ</span>

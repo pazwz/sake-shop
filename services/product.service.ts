@@ -37,6 +37,24 @@ export class ProductService {
     return this.toProductRecord(product, reservations.get(product.id) ?? 0);
   }
 
+  public async getProductBySlug(slug: string): Promise<ProductRecord> {
+    const product = await this.productRepository.findBySlug(slug);
+
+    if (!product || !product.isActive || !product.isEcAvailable) {
+      throw new NotFoundError('Product not found.');
+    }
+
+    const reservations =
+      await this.reservationRepository.getActiveReservedQuantities([
+        product.id,
+      ]);
+    return this.toProductRecord(product, reservations.get(product.id) ?? 0);
+  }
+
+  public async isPublicProductSlug(slug: string): Promise<boolean> {
+    return this.productRepository.isPublicSlug(slug);
+  }
+
   public async searchProducts(
     keyword: string,
     query: ProductQuery,

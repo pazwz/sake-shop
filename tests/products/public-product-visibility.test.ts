@@ -28,6 +28,86 @@ test('direct product detail rejects an unpublished product', async () => {
   });
 });
 
+const productFixture = (overrides: Record<string, unknown> = {}) => ({
+  id: 'product-1',
+  slug: 'published-product',
+  name: 'Published Product',
+  productCode: 'PUBLIC-001',
+  producer: null,
+  origin: null,
+  category: {
+    id: 'category-1',
+    name: 'Whisky',
+    slug: 'whisky',
+    parent: null,
+  },
+  price: 5000,
+  taxRate: 10,
+  volume: null,
+  alcoholPercentage: null,
+  description: null,
+  tastingNotes: null,
+  images: [],
+  inventoryMirrors: [],
+  isActive: true,
+  isEcAvailable: true,
+  createdAt: new Date('2026-01-01T00:00:00.000Z'),
+  ...overrides,
+});
+
+test('published and active product detail resolves by slug', async () => {
+  const product = productFixture();
+  const service = new ProductService(
+    {
+      findBySlug: async () => product,
+    } as never,
+    { getActiveReservedQuantities: async () => new Map() } as never,
+  );
+
+  const result = await service.getProductBySlug('published-product');
+  assert.equal(result.slug, 'published-product');
+  assert.equal(result.isEcAvailable, true);
+});
+
+test('product detail rejects an unpublished product by slug', async () => {
+  const service = new ProductService(
+    {
+      findBySlug: async () => productFixture({ isEcAvailable: false }),
+    } as never,
+    { getActiveReservedQuantities: async () => new Map() } as never,
+  );
+
+  await assert.rejects(service.getProductBySlug('unpublished-product'), {
+    name: 'NotFoundError',
+  });
+});
+
+test('product detail rejects an inactive product by slug', async () => {
+  const service = new ProductService(
+    {
+      findBySlug: async () => productFixture({ isActive: false }),
+    } as never,
+    { getActiveReservedQuantities: async () => new Map() } as never,
+  );
+
+  await assert.rejects(service.getProductBySlug('inactive-product'), {
+    name: 'NotFoundError',
+  });
+});
+
+test('product detail rejects a missing slug', async () => {
+  const service = new ProductService(
+    {
+      findBySlug: async () => null,
+    } as never,
+    { getActiveReservedQuantities: async () => new Map() } as never,
+  );
+
+  await assert.rejects(service.getProductBySlug('missing-product'), {
+    name: 'NotFoundError',
+  });
+});
+
 test('home and collection sanitization removes unpublished and inactive products', () => {
   const visible = { id: 'visible', isActive: true, isEcAvailable: true };
   const unpublished = {

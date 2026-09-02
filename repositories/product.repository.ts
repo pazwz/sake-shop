@@ -50,6 +50,18 @@ export class ProductRepository {
     });
   }
 
+  public async isPublicSlug(slug: string): Promise<boolean> {
+    const product = await prisma.product.findFirst({
+      where: {
+        slug,
+        ...PUBLIC_PRODUCT_VISIBILITY,
+      },
+      select: { id: true },
+    });
+
+    return product !== null;
+  }
+
   public async findMany(
     query: ProductQuery,
   ): Promise<{ items: ProductWithRelations[]; total: number }> {
