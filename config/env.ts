@@ -34,6 +34,19 @@ export const smaregiEnvironmentSchema = smaregiApiEnvironmentSchema.extend({
   SMAREGI_STORE_ID: z.string().min(1),
 });
 
+export const smaregiProductionApiEnvironmentSchema = z
+  .object({
+    SMAREGI_PROD_CONTRACT_ID: z.string().min(1),
+    SMAREGI_PROD_CLIENT_ID: z.string().min(1),
+    SMAREGI_PROD_CLIENT_SECRET: z.string().min(1),
+  })
+  .transform((value) => ({
+    SMAREGI_ENVIRONMENT: 'production' as const,
+    SMAREGI_CONTRACT_ID: value.SMAREGI_PROD_CONTRACT_ID,
+    SMAREGI_CLIENT_ID: value.SMAREGI_PROD_CLIENT_ID,
+    SMAREGI_CLIENT_SECRET: value.SMAREGI_PROD_CLIENT_SECRET,
+  }));
+
 export type SmaregiApiEnvironment = z.infer<typeof smaregiApiEnvironmentSchema>;
 
 export type SmaregiEnvironment = z.infer<typeof smaregiEnvironmentSchema>;

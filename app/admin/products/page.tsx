@@ -3,12 +3,15 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createAdminProductEditHref } from '@/lib/admin-product-navigation';
+import { ProductionSmaregiSyncPanel } from '@/components/admin/production-smaregi-sync-panel';
 import { formatPrice } from '@/lib/products';
 import { getCurrentAdmin } from '@/services/admin-authorization.service';
 import { AdminProductService } from '@/services/admin-product.service';
+import { SyncService } from '@/services/sync.service';
 import { adminProductQueryValidator } from '@/validators/admin-product.validator';
 
 const service = new AdminProductService();
+const syncService = new SyncService();
 
 const scalarParams = (values: Record<string, string | string[] | undefined>) =>
   Object.fromEntries(
@@ -42,7 +45,10 @@ export default async function AdminProductsPage({
   const query = adminProductQueryValidator.parse(
     scalarParams(await searchParams),
   );
-  const result = await service.getProducts(query);
+  const [result, syncStatus] = await Promise.all([
+    service.getProducts(query),
+    syncService.getProductionSmaregiSyncStatus(),
+  ]);
   const returnTo = pageHref(query, query.page);
 
   return (
@@ -56,6 +62,8 @@ export default async function AdminProductsPage({
         スマレジの商品情報と在庫を確認し、LINXAS EC
         の掲載内容・画像・公開状態を管理します。
       </p>
+
+      <ProductionSmaregiSyncPanel status={syncStatus} canSync={canEdit} />
 
       <form className="mt-10 grid gap-4 border-y line py-6 md:grid-cols-5">
         <label className="text-xs md:col-span-2">

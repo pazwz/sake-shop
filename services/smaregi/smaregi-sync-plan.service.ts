@@ -1,5 +1,8 @@
 import { AppError } from '@/lib/errors';
-import { isApprovedDeferredSmaregiProduct } from '@/services/smaregi/smaregi-deferred-policy';
+import {
+  isApprovedDeferredSmaregiProduct,
+  isApprovedDeferredSmaregiProductId,
+} from '@/services/smaregi/smaregi-deferred-policy';
 import { resolveProductTax } from '@/services/smaregi/smaregi-tax-resolver';
 import { SmaregiTaxResolutionError } from '@/services/smaregi/smaregi-tax-resolver';
 import {
@@ -36,18 +39,27 @@ export const buildValidatedSmaregiSyncPlan = (
   const products: ValidatedSmaregiSyncPlan['products'] = [];
   const approvedDeferredProducts: ValidatedSmaregiSyncPlan['approvedDeferredProducts'] =
     [];
+  const quarantinedProducts: ValidatedSmaregiSyncPlan['quarantinedProducts'] =
+    [];
   for (const product of input.products) {
     try {
-      products.push({
+      const resolvedTaxRate = resolveProductTax(
         product,
-        resolvedTaxRate: resolveProductTax(
-          product,
-          categoryById.get(product.categoryId),
-          input.standardTaxRates,
-          input.reduceTaxRates,
-          input.targetDate,
-        ).resolvedTaxRate,
-      });
+        categoryById.get(product.categoryId),
+        input.standardTaxRates,
+        input.reduceTaxRates,
+        input.targetDate,
+      ).resolvedTaxRate;
+      if (isApprovedDeferredSmaregiProductId(product.productId)) {
+        approvedDeferredProducts.push({
+          smaregiProductId: product.productId,
+          productCode: product.productCode,
+          productName: product.productName,
+          code: 'DEFERRED_NOW_RESOLVABLE',
+        });
+        continue;
+      }
+      products.push({ product, resolvedTaxRate });
     } catch (error) {
       if (
         error instanceof SmaregiTaxResolutionError &&
@@ -61,9 +73,48 @@ export const buildValidatedSmaregiSyncPlan = (
         });
         continue;
       }
+      if (error instanceof SmaregiTaxResolutionError) {
+        quarantinedProducts.push({
+          smaregiProductId: product.productId,
+          productCode: product.productCode,
+          reasonCode: error.blockCode,
+          message: error.message,
+        });
+        continue;
+      }
       throw error;
     }
   }
+  const deferredIds = new Set(
+    approvedDeferredProducts.map((item) => item.smaregiProductId),
+  );
+  const quarantinedIds = new Set(
+    quarantinedProducts.map((item) => item.smaregiProductId),
+  );
+  const negativeProductIds = new Set(
+    input.stock
+      .filter(
+        (item) =>
+          input.stores.some((store) => store.storeId === item.storeId) &&
+          parseStockAmount(item.stockAmount) < 0,
+      )
+      .map((item) => item.productId),
+  );
+  for (const item of products) {
+    if (!negativeProductIds.has(item.product.productId)) continue;
+    quarantinedProducts.push({
+      smaregiProductId: item.product.productId,
+      productCode: item.product.productCode,
+      reasonCode: 'NORMAL_PRODUCT_NEGATIVE_STOCK',
+      message: 'Approved-store stock is negative.',
+    });
+    quarantinedIds.add(item.product.productId);
+  }
+  const safeProducts = products.filter(
+    ({ product }) =>
+      !deferredIds.has(product.productId) &&
+      !quarantinedIds.has(product.productId),
+  );
   const stockByKey = new Map(
     input.stock.map((stock) => [
       inventoryKey(stock.productId, stock.storeId),
@@ -72,7 +123,7 @@ export const buildValidatedSmaregiSyncPlan = (
   );
   const approvedStores = selectApprovedSmaregiStores(input.stores);
   const inventory = approvedStores.flatMap((store) =>
-    products.map(({ product }) => {
+    safeProducts.map(({ product }) => {
       const stock = stockByKey.get(
         inventoryKey(product.productId, store.storeId),
       );
@@ -115,7 +166,8 @@ export const buildValidatedSmaregiSyncPlan = (
     },
     categories: input.categories,
     approvedDeferredProducts,
-    products,
+    quarantinedProducts,
+    products: safeProducts,
     inventory,
   };
 };

@@ -6,9 +6,12 @@ export const SMAREGI_APPROVED_DEFERRED_REASON =
 
 const approvedDeferredProductIds = new Set<string>(SMAREGI_BOX_PRODUCT_IDS);
 
+export const isApprovedDeferredSmaregiProductId = (productId: string) =>
+  approvedDeferredProductIds.has(productId);
+
 export const isApprovedDeferredSmaregiProduct = (
   productId: string,
   blockCode: SmaregiTaxBlockCode,
 ): blockCode is typeof SMAREGI_APPROVED_DEFERRED_REASON =>
-  approvedDeferredProductIds.has(productId) &&
+  isApprovedDeferredSmaregiProductId(productId) &&
   blockCode === SMAREGI_APPROVED_DEFERRED_REASON;

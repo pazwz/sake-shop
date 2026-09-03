@@ -446,7 +446,7 @@ test('rejects malformed Smaregi price and stock amounts', async () => {
   );
 });
 
-test('reports orphan and negative stock while keeping box products syncable', async () => {
+test('reports orphan and negative stock while keeping resolvable box products deferred', async () => {
   const client = new MockSmaregiClient({
     stores: [
       { storeId: '1', storeName: 'リンクサス福岡' },
@@ -520,8 +520,16 @@ test('reports orphan and negative stock while keeping box products syncable', as
     result.storesUsed.map((store) => store.storeId),
     ['1', '2', '3', '6'],
   );
-  assert.equal(result.products.toCreate[0].smaregiProductId, '8000575');
-  assert.equal(result.inventory.toCreate.length, 4);
+  assert.equal(result.products.toCreate.length, 0);
+  assert.equal(result.inventory.toCreate.length, 0);
+  assert.deepEqual(result.products.approvedDeferredProducts, [
+    {
+      smaregiProductId: '8000575',
+      productCode: '49001777016324',
+      productName: '響JH 箱代金',
+      code: 'DEFERRED_NOW_RESOLVABLE',
+    },
+  ]);
   assert.equal(
     result.inventory.toCreate.some(
       (item) => item.smaregiProductId === 'deleted-product',

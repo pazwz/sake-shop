@@ -1,6 +1,6 @@
 import { AdminRole } from '@prisma/client';
 import { redirect } from 'next/navigation';
-import { SmaregiSyncActions } from '@/components/admin/smaregi-sync-actions';
+import { ProductionSmaregiSyncPanel } from '@/components/admin/production-smaregi-sync-panel';
 import { getCurrentAdmin } from '@/services/admin-authorization.service';
 import { SyncService } from '@/services/sync.service';
 
@@ -12,7 +12,10 @@ const formatDate = (value: Date | null | undefined) =>
 export default async function SmaregiIntegrationPage() {
   const admin = await getCurrentAdmin();
   if (!admin || admin.role === AdminRole.STAFF) redirect('/admin');
-  const status = await service.getSmaregiStatus();
+  const [status, productionStatus] = await Promise.all([
+    service.getSmaregiStatus(),
+    service.getProductionSmaregiSyncStatus(),
+  ]);
 
   return (
     <main className="wrap py-16">
@@ -30,7 +33,7 @@ export default async function SmaregiIntegrationPage() {
           </dd>
         </div>
         <div>
-          <dt className="text-xs text-stone-500">Store ID</dt>
+          <dt className="text-xs text-stone-500">Approved Store IDs</dt>
           <dd className="mt-2 font-semibold">
             {status.storeId ?? 'Not configured'}
           </dd>
@@ -54,7 +57,7 @@ export default async function SmaregiIntegrationPage() {
           </dd>
         </div>
       </dl>
-      {admin.role === AdminRole.OWNER ? <SmaregiSyncActions /> : null}
+      <ProductionSmaregiSyncPanel status={productionStatus} canSync />
       <h2 className="serif mt-14 text-3xl">Recent SyncLog</h2>
       <div className="mt-6 divide-y border-y line text-sm">
         {status.recentLogs.map((log) => (

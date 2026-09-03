@@ -280,10 +280,13 @@ dry-run 只允许 Repository 读取 Category、Product 和 InventoryMirror，
 Product 更新只比较 Smaregi 主数据字段；slug、description、
 tastingNotes、images、isEcAvailable 及其他 CMS 内容必须保留。
 现有商品的 taxRate 不由同步覆盖；新商品只使用经税率链路唯一解析的税率。
-税率无法解析时将商品标记为 blocked，不进入写入 plan。唯一の例外是、客户批准済みの
+税率无法解析时将商品标记为 quarantine，不进入 Product / InventoryMirror plan，
+其他 safe Product 继续同步。唯一の例外是、客户批准済みの
 箱代金 Product 6 件が `CATEGORY_TAX_DIVISION_MISSING` となる場合で、これらは
 `approvedDeferredProducts` に分離し、Product / InventoryMirror plan から除外する。
-対象 ID または理由が一致しない税率異常は従来どおり fail closed とする。
+対象 ID と理由が完全一致するものだけを approved deferred として扱う。
+这 6 个 Product 即使税率后来已可解析，也以 `DEFERRED_NOW_RESOLVABLE` 继续排除，
+必须经过后续人工批准才能解除 deferred，自动同步不得首次写入。
 
 标准税率从 `consumption_tax_rates` 按目标日期选择最新生效记录，
 轻减税率从 `reduce_tax_rates` 按 ID 和生效期唯一解析。
@@ -334,8 +337,43 @@ Reservation 生命周期为 ACTIVE → RELEASED / CONSUMED / EXPIRED。只有 AC
 本阶段不实现自动过期任务。
 
 Stock 中 Product API 已不存在的 orphan 行只记录 warning，不创建 Product 或
-InventoryMirror，也不阻断其余同步。负库存保留在每店物理镜像与 dry-run anomaly
-中；EC available 只在业务层 clamp 到非负，不改写 Smaregi 原始 stockAmount。
+InventoryMirror，也不阻断其余同步。已知与新出现的 orphan 数量分别记录。
+approved deferred / orphan 的负库存只记录 warning；normal Product 出现负库存时，
+该 Product 整体 quarantine，本轮不更新其 Product 与 InventoryMirror，其他 safe Product
+继续同步。
+
+## Smaregi production incremental sync
+
+外部定时调用与 Admin 手动同步共用唯一 orchestration：
+
+```text
+External Scheduler / Admin API
+        ↓
+PostgreSQL advisory transaction lock
+        ↓
+ProductionSmaregiSyncService
+        ↓
+Smaregi snapshot (transaction 外)
+        ↓
+fatal validation / product classification / plan invariant
+        ↓
+SmaregiAtomicSyncService.executeApprovedSync()
+        ↓
+Category → Product → InventoryMirror (单一 transaction)
+```
+
+全局 fatal 条件包括批准 Store 集合变化、未知 Store、重复 productId/productCode、
+API schema 或全局税率无法解析、source snapshot 不一致、identity 不明确、DB 错误与
+atomic plan invariant 失败。此时不写 Product/Inventory，并将 SyncLog 标记 FAILED。
+
+同步锁使用 PostgreSQL transaction-level advisory lock，跨 Vercel instance 生效。
+Admin 冲突返回 409，internal endpoint 记录 `SKIPPED_ALREADY_RUNNING` 后结束。每次结果复用
+SyncLog 的 JSON payload，记录 trigger、source/count summary、warning、error code；
+其中 orphan 分为 `knownOrphanCount` 与 `newOrphanCount`，不记录 credentials。
+定时入口预留给 AWS EventBridge Scheduler + Lambda 每 15 分钟 GET 调用，并使用
+`Authorization: Bearer <CRON_SECRET>`。Vercel Hobby 不配置 Cron；AWS Scheduler / Lambda
+资源及 production `CRON_SECRET` 配置属于后续独立实施范围。Secret 未配置时 internal
+endpoint 必须 fail closed。
 
 ---
 

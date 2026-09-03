@@ -856,18 +856,55 @@ Product dry-run 同时返回 `taxDivision`、`resolvedTaxRate`、
 不允许固定税率或 silent fallback。
 
 Category 税区分为 null 且 Product 使用 Category 税设置时，Product 以
-`CATEGORY_TAX_DIVISION_MISSING` 标记 blocked。客户明确批准暂缓的 6 个箱代金
+`CATEGORY_TAX_DIVISION_MISSING` 标记 quarantined。客户明确批准暂缓的 6 个箱代金
 Product 在原因完全一致时单独进入 `approvedDeferredProducts`，不进入 Product 或
-InventoryMirror write plan，也不计入未知 blocker；其他税异常继续 fail closed。
-orphan Stock 不进入 inventory plan；negative Stock 保留 raw quantity 并进入 warning，
-不能静默改写为 0。
+InventoryMirror write plan，也不计入未知 blocker。其他单商品税异常进入 quarantine，
+不阻断 safe Product；全局税率结构异常则整批失败。orphan Stock 不进入 inventory plan。
+normal Product 的 negative Stock 会 quarantine 整个 Product，不能写入负 available。
 
-箱代金 Product 不因 `isEcAvailable=false` 从同步输入移除。税率可解析时仍同步
-Product、价格与每店库存；税率不可解析时继续 blocked。新 Product 默认
-`isEcAvailable=false`，不会因同步自动公开。
+箱代金 Product 不因 `isEcAvailable=false` 从同步输入移除。已批准 deferred 的 6 个
+Product 在税率尚不可解析时记录原始原因；税率变为可解析后记录
+`DEFERRED_NOW_RESOLVABLE`，仍不进入 Product/InventoryMirror write plan，等待人工解除。
+新 Product 默认 `isEcAvailable=false`，不会因同步自动公开。
 
 获批的同步 plan 只能在 Service 完成所有 GET 和验证后交给单一
-Prisma transaction。当前不提供触发该原子写入的公开 API。
+Prisma transaction。
+
+---
+
+## Production incremental sync (Admin)
+
+POST
+
+/api/v1/admin/integrations/smaregi/sync
+
+- 认证：Admin session
+- 权限：OWNER / MANAGER（STAFF 返回 403）
+- 并发：已有同步运行时返回 409 `SYNC_ALREADY_RUNNING`
+- 执行：只调用 `ProductionSmaregiSyncService.run('ADMIN')`
+- Response：统一 API envelope 内返回 create/update/zero、deferred、quarantine、
+  known/new orphan、negative 与 warning summary
+
+浏览器不取得 Smaregi credential。
+
+---
+
+## Production incremental sync (protected internal endpoint)
+
+GET
+
+/api/v1/internal/integrations/smaregi/sync
+
+- 认证：`Authorization: Bearer <CRON_SECRET>`
+- Secret 缺失或不一致：401
+- 并发：已有同步运行时记录 `SKIPPED_ALREADY_RUNNING`，HTTP 200 返回 skipped summary
+- 执行：只调用 `ProductionSmaregiSyncService.run('CRON')`
+- Runtime：Node.js，route maxDuration 300 秒
+- Schedule：Vercel Hobby 不配置 Cron
+
+internal endpoint 和 Admin 共用同一 source validation、quarantine、atomic plan 与 SyncLog
+逻辑。未来由 AWS EventBridge Scheduler + Lambda 每 15 分钟调用该 endpoint；AWS 资源与
+production `CRON_SECRET` 另行配置。Secret 未配置时请求仍拒绝，不会跳过认证。
 
 ---
 

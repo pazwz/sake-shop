@@ -2,6 +2,7 @@ import { AppError } from '@/lib/errors';
 import {
   smaregiApiEnvironmentSchema,
   smaregiEnvironmentSchema,
+  smaregiProductionApiEnvironmentSchema,
 } from '@/config/env';
 
 export const SMAREGI_SYSTEM = 'SMAREGI';
@@ -36,6 +37,24 @@ export const SMAREGI_BOX_PRODUCT_IDS = [
   '8000574',
   '8000575',
 ] as const;
+export const SMAREGI_KNOWN_ORPHAN_PRODUCT_IDS = [
+  '8000301',
+  '8000305',
+  '8000368',
+  '8000370',
+  '8000566',
+  '8000726',
+  '8000772',
+  '8000789',
+  '8000790',
+  '8000794',
+  '8000977',
+] as const;
+export const SMAREGI_PRODUCTION_SYNC_ENTITY_TYPE = 'PRODUCTION_SYNC';
+export const SMAREGI_PRODUCTION_SYNC_ENTITY_ID = 'CURRENT';
+export const SMAREGI_PRODUCTION_SYNC_ACTION = 'ATOMIC_INCREMENTAL_SYNC';
+export const SMAREGI_PRODUCTION_SYNC_LOCK_KEY = 1_835_102_321;
+export const SMAREGI_PRODUCTION_SYNC_MAX_DURATION_SECONDS = 300;
 
 export const getSmaregiConfigurationStatus = () => ({
   environment: process.env.SMAREGI_ENVIRONMENT ?? 'sandbox',
@@ -44,6 +63,16 @@ export const getSmaregiConfigurationStatus = () => ({
     process.env.SMAREGI_CLIENT_ID && process.env.SMAREGI_CLIENT_SECRET,
   ),
   storeId: process.env.SMAREGI_STORE_ID ?? null,
+});
+
+export const getSmaregiProductionConfigurationStatus = () => ({
+  environment: 'production' as const,
+  contractConfigured: Boolean(process.env.SMAREGI_PROD_CONTRACT_ID),
+  clientConfigured: Boolean(
+    process.env.SMAREGI_PROD_CLIENT_ID &&
+      process.env.SMAREGI_PROD_CLIENT_SECRET,
+  ),
+  storeId: SMAREGI_APPROVED_STORE_IDS.join(' / '),
 });
 
 export const getSmaregiEnvironment = () => {
@@ -64,6 +93,18 @@ export const getSmaregiApiEnvironment = () => {
     throw new AppError(
       'Smaregi API credentials are not configured.',
       'SMAREGI_NOT_CONFIGURED',
+      503,
+    );
+  }
+  return parsed.data;
+};
+
+export const getSmaregiProductionApiEnvironment = () => {
+  const parsed = smaregiProductionApiEnvironmentSchema.safeParse(process.env);
+  if (!parsed.success) {
+    throw new AppError(
+      'Smaregi production API credentials are not configured.',
+      'SMAREGI_PRODUCTION_NOT_CONFIGURED',
       503,
     );
   }

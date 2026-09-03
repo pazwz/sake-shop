@@ -66,12 +66,18 @@ export class SyncRepository {
     });
   }
 
-  public fail(id: string, errorMessage: string, retryCount = 0) {
+  public fail(
+    id: string,
+    errorMessage: string,
+    retryCount = 0,
+    responsePayload?: Prisma.InputJsonValue,
+  ) {
     return prisma.syncLog.update({
       where: { id },
       data: {
         status: SyncStatus.FAILED,
         errorMessage,
+        responsePayload,
         retryCount,
         completedAt: new Date(),
       },

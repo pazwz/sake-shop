@@ -47,11 +47,23 @@ test('maps category and product identities from Smaregi IDs', () => {
 });
 
 test('product updates do not overwrite website-owned fields', () => {
-  const update = mapSmaregiProductUpdate(product, 'local-category');
+  const update = mapSmaregiProductUpdate(
+    {
+      ...product,
+      productId: '8001027',
+      productCode: 'MOET-BRUT',
+      productName: 'モエ ブリュット',
+    },
+    'local-category',
+  );
   for (const field of [
     'slug',
     'description',
     'tastingNotes',
+    'producer',
+    'origin',
+    'volume',
+    'alcoholPercentage',
     'isEcAvailable',
     'images',
   ]) {

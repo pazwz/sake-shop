@@ -2,7 +2,10 @@ import { AppError } from '@/lib/errors';
 import { toExternalSlug } from '@/lib/slug';
 import { SmaregiDryRunRepository } from '@/repositories/smaregi-dry-run.repository';
 import { SmaregiClient } from '@/services/smaregi/smaregi-client';
-import { isApprovedDeferredSmaregiProduct } from '@/services/smaregi/smaregi-deferred-policy';
+import {
+  isApprovedDeferredSmaregiProduct,
+  isApprovedDeferredSmaregiProductId,
+} from '@/services/smaregi/smaregi-deferred-policy';
 import {
   getMissingApprovedSmaregiStoreIds,
   getSmaregiSpecialProductKind,
@@ -88,16 +91,23 @@ export class SmaregiDryRunService {
     const blocked: SmaregiDryRunResult['products']['blocked'] = [];
     for (const product of products) {
       try {
-        resolvedTaxes.set(
-          product.productId,
-          resolveProductTax(
-            product,
-            categoryBySmaregiId.get(product.categoryId),
-            standardTaxRates,
-            reduceTaxRates,
-            this.targetDate,
-          ),
+        const resolvedTax = resolveProductTax(
+          product,
+          categoryBySmaregiId.get(product.categoryId),
+          standardTaxRates,
+          reduceTaxRates,
+          this.targetDate,
         );
+        if (isApprovedDeferredSmaregiProductId(product.productId)) {
+          approvedDeferredProducts.push({
+            smaregiProductId: product.productId,
+            productCode: product.productCode,
+            productName: product.productName,
+            code: 'DEFERRED_NOW_RESOLVABLE',
+          });
+          continue;
+        }
+        resolvedTaxes.set(product.productId, resolvedTax);
       } catch (error) {
         if (!(error instanceof SmaregiTaxResolutionError)) throw error;
         if (

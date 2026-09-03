@@ -25,6 +25,7 @@ import {
   type SmaregiStock,
   type SmaregiStore,
 } from '@/types/smaregi';
+import type { SmaregiApiEnvironment } from '@/config/env';
 
 const tokenSchema = z.object({
   access_token: z.string().min(1),
@@ -44,6 +45,7 @@ export class SmaregiClient implements SmaregiApiClient {
     private readonly fetcher: Fetch = fetch,
     private readonly sleep: Sleep = (milliseconds) =>
       new Promise((resolve) => setTimeout(resolve, milliseconds)),
+    private readonly environment?: SmaregiApiEnvironment,
   ) {}
 
   public getStores() {
@@ -100,7 +102,7 @@ export class SmaregiClient implements SmaregiApiClient {
   }
 
   private async request(path: string, query: Record<string, string>) {
-    const config = getSmaregiApiEnvironment();
+    const config = this.environment ?? getSmaregiApiEnvironment();
     const url = new URL(
       `${getSmaregiBaseUrl(config.SMAREGI_ENVIRONMENT)}/${encodeURIComponent(config.SMAREGI_CONTRACT_ID)}/pos${path}`,
     );
@@ -133,7 +135,7 @@ export class SmaregiClient implements SmaregiApiClient {
   }
 
   private async requestAccessToken() {
-    const config = getSmaregiApiEnvironment();
+    const config = this.environment ?? getSmaregiApiEnvironment();
     const credentials = Buffer.from(
       `${config.SMAREGI_CLIENT_ID}:${config.SMAREGI_CLIENT_SECRET}`,
     ).toString('base64');
