@@ -99,7 +99,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
                 <Image
                   fill
                   sizes="72px"
-                  className="object-cover"
+                  className="object-contain p-1"
                   src={notice.image}
                   alt=""
                 />

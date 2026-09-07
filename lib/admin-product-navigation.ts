@@ -4,8 +4,10 @@ const allowedReturnToParams = new Set([
   'category',
   'ecStatus',
   'source',
+  'imageStatus',
   'page',
 ]);
+const allowedImageStatuses = new Set(['all', 'with', 'without']);
 
 export const sanitizeAdminProductsReturnTo = (value: string | undefined) => {
   if (!value || value.startsWith('//')) return ADMIN_PRODUCTS_PATH;
@@ -18,7 +20,9 @@ export const sanitizeAdminProductsReturnTo = (value: string | undefined) => {
       url.hash ||
       [...url.searchParams.keys()].some(
         (key) => !allowedReturnToParams.has(key),
-      )
+      ) ||
+      (url.searchParams.has('imageStatus') &&
+        !allowedImageStatuses.has(url.searchParams.get('imageStatus') ?? ''))
     ) {
       return ADMIN_PRODUCTS_PATH;
     }

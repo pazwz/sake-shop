@@ -464,7 +464,8 @@ GET
 Role：OWNER / MANAGER / STAFF
 
 Query：`q`（商品名、商品代码或 Smaregi Product ID）、`category`、`ecStatus`、
-`source`、`page`、`limit`。默认 `limit=25`。
+`source`、`imageStatus`（`all` / `with` / `without`）、`page`、`limit`。默认
+`limit=25`。图片状态使用 ProductImage relation 在数据库侧过滤，可与其他条件及分页组合。
 
 返回 Smaregi 只读字段、LINXAS EC 字段、四店库存、ACTIVE reservation、统一 EC
 可售量、图片与公开检查结果。该列表包含非公开商品。

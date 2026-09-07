@@ -36,13 +36,13 @@ export function ProductDetail({ product, related }: ProductDetailProps) {
         ← 商品一覧へ
       </Link>
       <div className="mt-8 grid gap-10 md:grid-cols-2 md:gap-16">
-        <div className="relative aspect-[4/5] bg-[#29261f]">
+        <div className="relative aspect-[4/5] overflow-hidden bg-[#f7f4ee]">
           {imageUrl ? (
             <Image
               fill
               sizes="(max-width: 767px) 100vw, 50vw"
               loading="eager"
-              className="object-cover"
+              className="object-contain p-5 md:p-10"
               src={imageUrl}
               alt={product.name}
             />

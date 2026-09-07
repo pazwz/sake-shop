@@ -30,6 +30,7 @@ const pageHref = (
   if (query.category) params.set('category', query.category);
   if (query.ecStatus !== 'all') params.set('ecStatus', query.ecStatus);
   if (query.source !== 'all') params.set('source', query.source);
+  if (query.imageStatus !== 'all') params.set('imageStatus', query.imageStatus);
   return `/admin/products?${params.toString()}`;
 };
 
@@ -65,8 +66,8 @@ export default async function AdminProductsPage({
 
       <ProductionSmaregiSyncPanel status={syncStatus} canSync={canEdit} />
 
-      <form className="mt-10 grid gap-4 border-y line py-6 md:grid-cols-5">
-        <label className="text-xs md:col-span-2">
+      <form className="mt-10 grid gap-4 border-y line py-6 md:grid-cols-2 lg:grid-cols-6">
+        <label className="text-xs lg:col-span-2">
           商品検索
           <input
             name="q"
@@ -114,7 +115,19 @@ export default async function AdminProductsPage({
             <option value="local">既存サイト商品</option>
           </select>
         </label>
-        <div className="flex items-end gap-3 md:col-span-5">
+        <label className="text-xs">
+          画像
+          <select
+            name="imageStatus"
+            defaultValue={query.imageStatus}
+            className="input mt-2"
+          >
+            <option value="all">すべて</option>
+            <option value="with">画像あり</option>
+            <option value="without">画像なし</option>
+          </select>
+        </label>
+        <div className="flex items-end gap-3 md:col-span-2 lg:col-span-6">
           <button className="btn bg-[#171412] text-white">検索</button>
           <Link href="/admin/products" className="text-xs underline">
             条件をリセット
@@ -133,7 +146,7 @@ export default async function AdminProductsPage({
       </div>
 
       <div className="mt-5 overflow-x-auto border-y line">
-        <table className="w-full min-w-[1050px] text-left text-sm">
+        <table className="w-full min-w-[1160px] text-left text-sm">
           <thead className="bg-[#faf8f4] text-xs text-stone-500">
             <tr>
               <th className="p-3">商品</th>
@@ -141,6 +154,7 @@ export default async function AdminProductsPage({
               <th className="p-3">カテゴリ</th>
               <th className="p-3">価格</th>
               <th className="p-3">EC販売可能数</th>
+              <th className="p-3">画像</th>
               <th className="p-3">公開</th>
               <th className="p-3">最終同期</th>
               <th className="w-28 p-3 text-center">操作</th>
@@ -153,14 +167,14 @@ export default async function AdminProductsPage({
                 <tr key={product.id}>
                   <td className="p-3">
                     <div className="flex min-w-[280px] items-center gap-3">
-                      <div className="relative h-16 w-14 overflow-hidden bg-stone-100">
+                      <div className="relative h-16 w-14 overflow-hidden bg-[#f7f4ee]">
                         {imageUrl ? (
                           <Image
                             fill
                             sizes="56px"
                             src={imageUrl}
                             alt=""
-                            className="object-cover"
+                            className="object-contain p-1"
                           />
                         ) : (
                           <span className="flex h-full items-center justify-center text-[9px] text-stone-400">
@@ -187,6 +201,17 @@ export default async function AdminProductsPage({
                   <td className="p-3">{formatPrice(product.price)}</td>
                   <td className="p-3 font-semibold">
                     {product.availableQuantity}
+                  </td>
+                  <td className="p-3">
+                    {product.images.length > 0 ? (
+                      <span className="inline-flex whitespace-nowrap rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-semibold text-emerald-800">
+                        画像あり ({product.images.length})
+                      </span>
+                    ) : (
+                      <span className="inline-flex whitespace-nowrap rounded-full bg-stone-100 px-2 py-1 text-[10px] font-semibold text-stone-600">
+                        画像なし
+                      </span>
+                    )}
                   </td>
                   <td className="p-3">
                     <span

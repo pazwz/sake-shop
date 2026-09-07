@@ -5,6 +5,7 @@ import {
   sanitizeAdminProductsReturnTo,
 } from '@/lib/admin-product-navigation';
 import { Prisma } from '@prisma/client';
+import { buildAdminProductWhere } from '@/repositories/admin-product.repository';
 import { AdminProductService } from '@/services/admin-product.service';
 import {
   adminProductQueryValidator,
@@ -73,7 +74,7 @@ const fixture = (isEcAvailable = false) => ({
 
 test('admin product edit link preserves the current list URL', () => {
   const returnTo =
-    '/admin/products?q=moet&category=champagne&ecStatus=unpublished&source=smaregi&page=3';
+    '/admin/products?q=moet&category=champagne&ecStatus=unpublished&source=smaregi&imageStatus=without&page=3';
   const href = createAdminProductEditHref('product-1', returnTo);
   const url = new URL(href, 'https://example.test');
 
@@ -88,6 +89,7 @@ test('admin product return URL rejects open redirects and unrelated paths', () =
     '//evil.example.com/admin/products',
     '/admin/products/product-1',
     '/admin/products?next=https://evil.example.com',
+    '/admin/products?imageStatus=unexpected',
     '/admin/products#unexpected',
   ]) {
     assert.equal(sanitizeAdminProductsReturnTo(unsafe), '/admin/products');
@@ -125,12 +127,27 @@ test('admin list defaults to 25 rows and supports all filters', () => {
     category: 'category-1',
     ecStatus: 'unpublished',
     source: 'smaregi',
+    imageStatus: 'without',
     page: '2',
   });
   assert.equal(query.limit, 25);
   assert.equal(query.page, 2);
   assert.equal(query.ecStatus, 'unpublished');
   assert.equal(query.source, 'smaregi');
+  assert.equal(query.imageStatus, 'without');
+});
+
+test('admin image status filters are translated to server-side relation filters', () => {
+  const withImages = buildAdminProductWhere(
+    adminProductQueryValidator.parse({ imageStatus: 'with' }),
+  );
+  const withoutImages = buildAdminProductWhere(
+    adminProductQueryValidator.parse({ q: '山崎', imageStatus: 'without' }),
+  );
+
+  assert.deepEqual(withImages.images, { some: {} });
+  assert.deepEqual(withoutImages.images, { none: {} });
+  assert.ok(withoutImages.OR);
 });
 
 test('admin pagination calculates 18 pages for 441 products at 25 per page', async () => {

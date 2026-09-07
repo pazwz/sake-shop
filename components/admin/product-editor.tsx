@@ -394,7 +394,7 @@ export function ProductEditor({
                   sizes="240px"
                   src={image.imageUrl}
                   alt={image.altText ?? initialProduct.name}
-                  className="object-cover"
+                  className="object-contain p-2"
                 />
                 {index === 0 ? (
                   <span className="absolute left-2 top-2 bg-white px-2 py-1 text-[10px] font-semibold">

@@ -31,11 +31,11 @@ export default function Cart() {
                 className="grid grid-cols-[100px_1fr] gap-5 border-t line py-5"
                 key={product.id}
               >
-                <div className="relative aspect-square">
+                <div className="relative aspect-square bg-[#f7f4ee]">
                   <Image
                     fill
                     sizes="100px"
-                    className="object-cover"
+                    className="object-contain p-2"
                     src={product.image}
                     alt={product.name}
                   />

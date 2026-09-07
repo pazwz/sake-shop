@@ -58,6 +58,11 @@ export function Header() {
   const [search, setSearch] = useState(false);
   const [query, setQuery] = useState('');
   const [mobile, setMobile] = useState(false);
+  const openSearch = () => {
+    setActive(null);
+    setMobile(false);
+    setSearch(true);
+  };
   const submit = (event: React.FormEvent) => {
     event.preventDefault();
     router.push(`/products?q=${encodeURIComponent(query)}`);
@@ -70,12 +75,12 @@ export function Header() {
     >
       <div className="wrap flex h-[66px] items-center justify-between border-b line">
         <button
-          onClick={() => setSearch(true)}
+          onClick={openSearch}
           className="hidden text-xs font-semibold md:block"
         >
           ⌕　検索する
         </button>
-        <button onClick={() => setSearch(true)} className="text-sm md:hidden">
+        <button onClick={openSearch} className="text-sm md:hidden">
           ⌕
         </button>
         <Link
@@ -145,27 +150,41 @@ export function Header() {
         </div>
       )}
       {search && (
-        <div className="fixed inset-0 z-50 bg-[#fffdf9]">
-          <div className="wrap pt-10">
-            <div className="flex justify-between">
+        <div className="border-b line bg-[#fffdf9]">
+          <div className="wrap py-8 md:py-10">
+            <div className="flex items-center justify-between gap-8">
               <p className="eyebrow">SEARCH THE COLLECTION</p>
-              <button onClick={() => setSearch(false)} className="text-sm">
+              <button
+                type="button"
+                onClick={() => setSearch(false)}
+                className="text-sm"
+              >
                 閉じる　×
               </button>
             </div>
             <form
               noValidate
               onSubmit={submit}
-              className="mx-auto mt-[18vh] max-w-3xl"
+              className="mt-8 grid items-end gap-5 md:grid-cols-[minmax(0,1fr)_auto]"
             >
-              <input
-                autoFocus
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                className="w-full border-b-2 border-[#171412] bg-transparent pb-5 text-3xl outline-none"
-                placeholder="商品名・蔵元・産地を検索"
-              />
-              <button className="btn mt-7">検索する</button>
+              <label className="block">
+                <span className="sr-only">商品を検索</span>
+                <input
+                  autoFocus
+                  aria-label="商品を検索"
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') {
+                      event.preventDefault();
+                      event.currentTarget.form?.requestSubmit();
+                    }
+                  }}
+                  className="w-full border-b-2 border-[#171412] bg-transparent pb-4 text-2xl outline-none md:text-3xl"
+                  placeholder="商品名・蔵元・産地を検索"
+                />
+              </label>
+              <button className="btn md:min-w-32">検索する</button>
             </form>
           </div>
         </div>

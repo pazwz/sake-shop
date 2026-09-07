@@ -16,9 +16,44 @@ export type AdminProductWithRelations = Prisma.ProductGetPayload<{
   include: typeof include;
 }>;
 
+export const buildAdminProductWhere = (
+  query: AdminProductQuery,
+): Prisma.ProductWhereInput => ({
+  ...(query.q
+    ? {
+        OR: [
+          { name: { contains: query.q, mode: 'insensitive' } },
+          { productCode: { contains: query.q, mode: 'insensitive' } },
+          {
+            smaregiProductId: {
+              contains: query.q,
+              mode: 'insensitive',
+            },
+          },
+        ],
+      }
+    : {}),
+  ...(query.category ? { categoryId: query.category } : {}),
+  ...(query.ecStatus === 'published'
+    ? { isEcAvailable: true }
+    : query.ecStatus === 'unpublished'
+      ? { isEcAvailable: false }
+      : {}),
+  ...(query.source === 'smaregi'
+    ? { lastSyncedAt: { not: null } }
+    : query.source === 'local'
+      ? { lastSyncedAt: null }
+      : {}),
+  ...(query.imageStatus === 'with'
+    ? { images: { some: {} } }
+    : query.imageStatus === 'without'
+      ? { images: { none: {} } }
+      : {}),
+});
+
 export class AdminProductRepository {
   public async findMany(query: AdminProductQuery) {
-    const where = this.buildWhere(query);
+    const where = buildAdminProductWhere(query);
     const [items, total, categories] = await prisma.$transaction([
       prisma.product.findMany({
         where,
@@ -109,35 +144,5 @@ export class AdminProductRepository {
         orderBy: { displayOrder: 'asc' },
       });
     });
-  }
-
-  private buildWhere(query: AdminProductQuery): Prisma.ProductWhereInput {
-    return {
-      ...(query.q
-        ? {
-            OR: [
-              { name: { contains: query.q, mode: 'insensitive' } },
-              { productCode: { contains: query.q, mode: 'insensitive' } },
-              {
-                smaregiProductId: {
-                  contains: query.q,
-                  mode: 'insensitive',
-                },
-              },
-            ],
-          }
-        : {}),
-      ...(query.category ? { categoryId: query.category } : {}),
-      ...(query.ecStatus === 'published'
-        ? { isEcAvailable: true }
-        : query.ecStatus === 'unpublished'
-          ? { isEcAvailable: false }
-          : {}),
-      ...(query.source === 'smaregi'
-        ? { lastSyncedAt: { not: null } }
-        : query.source === 'local'
-          ? { lastSyncedAt: null }
-          : {}),
-    };
   }
 }
