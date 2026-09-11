@@ -1,6 +1,7 @@
 import type { AdminProductWithRelations } from '@/repositories/admin-product.repository';
 import { AdminProductRepository } from '@/repositories/admin-product.repository';
 import { projectApprovedInventory } from '@/services/inventory-projection.service';
+import { isPackageOnlyProduct } from '@/services/product-visibility.service';
 import type { ProductPublicationResult } from '@/types/admin-product';
 
 type PublicationProduct = Pick<
@@ -14,6 +15,7 @@ type PublicationProduct = Pick<
   | 'description'
   | 'images'
   | 'inventoryMirrors'
+  | 'category'
 >;
 
 type PublicationPersistence = Pick<AdminProductRepository, 'findSlugOwner'>;
@@ -33,6 +35,12 @@ export class ProductPublicationService {
     const errors: ProductPublicationResult['errors'] = [];
     const warnings: ProductPublicationResult['warnings'] = [];
     const slug = product.slug.trim();
+
+    if (isPackageOnlyProduct(product))
+      errors.push({
+        code: 'PACKAGE_ONLY_PRODUCT',
+        message: '箱・包装商品は単独でEC公開できません。',
+      });
 
     if (!product.isActive)
       errors.push({

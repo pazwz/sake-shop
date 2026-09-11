@@ -77,9 +77,10 @@ export default function Checkout() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          items: items.map(({ product, quantity }) => ({
+          items: items.map(({ product, quantity, boxProduct }) => ({
             productId: String(product.id),
             quantity,
+            ...(boxProduct ? { boxProductId: boxProduct.id } : {}),
           })),
           customer: { email: form.email, name: form.name, phone: form.phone },
           address: {
@@ -258,15 +259,25 @@ export default function Checkout() {
         <aside className="h-fit bg-[#e8e1d5] p-7">
           <p className="serif text-xl">ご注文内容</p>
           {items.map((line) => (
-            <p
-              className="mt-4 flex justify-between text-sm"
-              key={line.product.id}
+            <div
+              className="mt-4 border-b border-stone-300 pb-3 text-sm"
+              key={`${line.product.id}:${line.boxProduct?.id ?? 'no-box'}`}
             >
-              <span>
-                {line.product.name} × {line.quantity}
-              </span>
-              <span>{formatPrice(line.product.price * line.quantity)}</span>
-            </p>
+              <p className="flex justify-between">
+                <span>
+                  {line.product.name} × {line.quantity}
+                </span>
+                <span>{formatPrice(line.product.price * line.quantity)}</span>
+              </p>
+              {line.boxProduct ? (
+                <p className="mt-2 flex justify-between pl-3 text-xs text-stone-600">
+                  <span>＋ 純正箱 × {line.quantity}</span>
+                  <span>
+                    {formatPrice(line.boxProduct.price * line.quantity)}
+                  </span>
+                </p>
+              ) : null}
+            </div>
           ))}
           <p className="mt-6 text-xs text-stone-600">
             決済は開発用 Mock Adapter

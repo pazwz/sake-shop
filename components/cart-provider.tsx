@@ -12,19 +12,31 @@ import {
 import { formatPrice } from '@/lib/products';
 import type { ProductCardItem } from './product-card';
 export type CartProduct = ProductCardItem & { image: string };
-type Line = { product: CartProduct; quantity: number };
+export type CartBoxProduct = {
+  id: string;
+  productCode: string;
+  name: string;
+  price: number;
+};
+export type CartLine = {
+  product: CartProduct;
+  quantity: number;
+  boxProduct?: CartBoxProduct;
+};
 type Cart = {
-  items: Line[];
-  add: (p: CartProduct, q?: number) => void;
-  update: (id: string | number, q: number) => void;
-  remove: (id: string | number) => void;
+  items: CartLine[];
+  add: (p: CartProduct, q?: number, boxProduct?: CartBoxProduct) => void;
+  update: (lineId: string, q: number) => void;
+  remove: (lineId: string) => void;
   clear: () => void;
   count: number;
   subtotal: number;
 };
 const C = createContext<Cart | undefined>(undefined);
+export const cartLineId = (line: Pick<CartLine, 'product' | 'boxProduct'>) =>
+  `${line.product.id}:${line.boxProduct?.id ?? 'no-box'}`;
 export function CartProvider({ children }: { children: React.ReactNode }) {
-  const [items, setItems] = useState<Line[]>([]);
+  const [items, setItems] = useState<CartLine[]>([]);
   const [notice, setNotice] = useState<CartProduct | null>(null);
   const [ready, setReady] = useState(false);
   const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -45,32 +57,45 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const value = useMemo(
     () => ({
       items,
-      add: (product: CartProduct, quantity = 1) => {
+      add: (
+        product: CartProduct,
+        quantity = 1,
+        boxProduct?: CartBoxProduct,
+      ) => {
         setItems((x) => {
-          const item = x.find((v) => v.product.id === product.id);
+          const nextLine = { product, quantity, boxProduct };
+          const nextLineId = cartLineId(nextLine);
+          const item = x.find((line) => cartLineId(line) === nextLineId);
           return item
             ? x.map((v) =>
-                v.product.id === product.id
+                cartLineId(v) === nextLineId
                   ? { ...v, quantity: v.quantity + quantity }
                   : v,
               )
-            : [...x, { product, quantity }];
+            : [...x, nextLine];
         });
         setNotice(product);
         if (noticeTimer.current) clearTimeout(noticeTimer.current);
         noticeTimer.current = setTimeout(() => setNotice(null), 3000);
       },
-      update: (id: string | number, quantity: number) =>
+      update: (lineId: string, quantity: number) =>
         setItems((x) =>
           quantity < 1
-            ? x.filter((v) => v.product.id !== id)
-            : x.map((v) => (v.product.id === id ? { ...v, quantity } : v)),
+            ? x.filter((line) => cartLineId(line) !== lineId)
+            : x.map((line) =>
+                cartLineId(line) === lineId ? { ...line, quantity } : line,
+              ),
         ),
-      remove: (id: string | number) =>
-        setItems((x) => x.filter((v) => v.product.id !== id)),
+      remove: (lineId: string) =>
+        setItems((x) => x.filter((line) => cartLineId(line) !== lineId)),
       clear: () => setItems([]),
       count: items.reduce((s, x) => s + x.quantity, 0),
-      subtotal: items.reduce((s, x) => s + x.product.price * x.quantity, 0),
+      subtotal: items.reduce(
+        (sum, line) =>
+          sum +
+          (line.product.price + (line.boxProduct?.price ?? 0)) * line.quantity,
+        0,
+      ),
     }),
     [items],
   );

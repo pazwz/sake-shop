@@ -6,7 +6,8 @@ export type PublicationIssue = {
     | 'SLUG_INVALID'
     | 'SLUG_DUPLICATE'
     | 'IMAGE_REQUIRED'
-    | 'SYNC_SOURCE_INVALID';
+    | 'SYNC_SOURCE_INVALID'
+    | 'PACKAGE_ONLY_PRODUCT';
   message: string;
 };
 
@@ -54,12 +55,31 @@ export type AdminProductRecord = {
   description: string | null;
   tastingNotes: string | null;
   isEcAvailable: boolean;
+  isPackageOnly: boolean;
   images: AdminProductImage[];
   inventory: AdminProductInventory[];
   physicalTotalApproved: number;
   activeReservedQuantity: number;
   availableQuantity: number;
+  boxProduct: AdminBoxProductOption | null;
+  boxCandidates: AdminBoxProductOption[];
+  expectedBox: {
+    smaregiProductId: string;
+    name: string;
+    reason: string;
+  } | null;
   publication: ProductPublicationResult;
+};
+
+export type AdminBoxProductOption = {
+  id: string;
+  smaregiProductId: string;
+  productCode: string;
+  name: string;
+  price: number;
+  taxRate: number;
+  isActive: boolean;
+  availableQuantity: number;
 };
 
 export type AdminProductListResult = {

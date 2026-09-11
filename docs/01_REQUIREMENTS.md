@@ -142,6 +142,21 @@ Smaregi 管理的商品名、商品代码、Category、价格、有效状态、�
 公开商品查询、搜索、直接详情、首页及 Collection 均必须同时满足
 `isActive=true` 与 `isEcAvailable=true`。
 
+箱・包装専用 SKU は独立商品ではなく、公開商品一覧、検索、推薦、Collection、
+Seasonal、サイトマップおよび直接商品詳細から常に除外する。通常商品は同期済みの
+箱 Product を任意で一件だけ参照できる。箱は Smaregi の価格・税率・四店在庫を使い、
+在庫がある場合に限り商品詳細で追加選択できる。カートでは酒本体の配下に表示し、
+注文時は酒本体と箱を別々の OrderItem / InventoryReservation として同一 transaction
+で確保する。箱だけの注文は禁止する。
+
+OWNER / MANAGER は Admin 商品編集画面から短時間の署名付き URL を発行し、現在の
+Admin session を保持したまま非公開商品の実商品詳細 UI を確認できる。preview token
+単体ではアクセスできず、一般利用者および STAFF は利用できない。
+
+トップナビゲーションは実在し、公開可能な独立商品を持つ Category だけを動的に
+メガメニューへ表示する。固定の存在しない小分類を作らず、特集入口は公開中の
+FeaturedCollection の既存 URL を使用する。
+
 支持：
 
 大分类

@@ -9,12 +9,15 @@ import type { OrderInput } from '@/validators/order.validator';
 
 type FakeProduct = {
   id: string;
+  smaregiProductId: string;
   productCode: string;
   name: string;
   price: Prisma.Decimal;
   taxRate: Prisma.Decimal;
   isActive: boolean;
   isEcAvailable: boolean;
+  boxProductId: string | null;
+  category: { smaregiCategoryId: string | null };
   inventoryMirrors: Array<{
     smaregiStoreId: string;
     quantity: number;
@@ -24,18 +27,23 @@ type FakeProduct = {
 const product = (
   id: string,
   quantities: [number, number, number, number],
+  overrides: Partial<FakeProduct> = {},
 ): FakeProduct => ({
   id,
+  smaregiProductId: `smaregi-${id}`,
   productCode: `CODE-${id}`,
   name: `Product ${id}`,
   price: new Prisma.Decimal(1000),
   taxRate: new Prisma.Decimal(10),
   isActive: true,
   isEcAvailable: true,
+  boxProductId: null,
+  category: { smaregiCategoryId: '8000001' },
   inventoryMirrors: ['1', '2', '3', '6'].map((smaregiStoreId, index) => ({
     smaregiStoreId,
     quantity: quantities[index],
   })),
+  ...overrides,
 });
 
 const input = (items: OrderInput['items']): OrderInput => ({
@@ -217,6 +225,87 @@ test('rolls back the whole multi-product order when one item is insufficient', a
   );
   assert.equal(multi.repository.active.get('a') ?? 0, 0);
   assert.equal(multi.repository.orders.length, 0);
+});
+
+test('creates separate bottle and box order items and reservations atomically', async () => {
+  const bottle = product('bottle', [2, 0, 0, 0], {
+    boxProductId: 'box',
+  });
+  const box = product('box', [2, 0, 0, 0], {
+    smaregiProductId: '8000570',
+    category: { smaregiCategoryId: '8000014' },
+    isEcAvailable: false,
+    price: new Prisma.Decimal(500),
+  });
+  const created = service([bottle, box]);
+  const order = (await created.service.create(
+    input([{ productId: 'bottle', boxProductId: 'box', quantity: 2 }]),
+  )) as {
+    items: Array<{
+      id: string;
+      productId: string;
+      parentOrderItemId: string | null;
+    }>;
+  };
+
+  assert.equal(created.repository.active.get('bottle'), 2);
+  assert.equal(created.repository.active.get('box'), 2);
+  assert.equal(order.items.length, 2);
+  const bottleLine = order.items.find(
+    ({ productId }) => productId === 'bottle',
+  );
+  const boxLine = order.items.find(({ productId }) => productId === 'box');
+  assert.equal(bottleLine?.parentOrderItemId, null);
+  assert.equal(boxLine?.parentOrderItemId, bottleLine?.id);
+});
+
+test('rolls back bottle reservation when linked box inventory is insufficient', async () => {
+  const bottle = product('bottle', [3, 0, 0, 0], {
+    boxProductId: 'box',
+  });
+  const box = product('box', [0, 0, 0, 0], {
+    smaregiProductId: '8000570',
+    category: { smaregiCategoryId: '8000014' },
+    isEcAvailable: false,
+  });
+  const created = service([bottle, box]);
+  await assert.rejects(
+    created.service.create(
+      input([{ productId: 'bottle', boxProductId: 'box', quantity: 1 }]),
+    ),
+    { code: 'INSUFFICIENT_INVENTORY' },
+  );
+  assert.equal(created.repository.active.size, 0);
+  assert.equal(created.repository.orders.length, 0);
+});
+
+test('rejects adding a package-only SKU as a standalone order item', async () => {
+  const box = product('box', [3, 0, 0, 0], {
+    smaregiProductId: '8000570',
+    category: { smaregiCategoryId: '8000014' },
+  });
+  const created = service([box]);
+  await assert.rejects(
+    created.service.create(input([{ productId: 'box', quantity: 1 }])),
+    { code: 'PRODUCT_NOT_AVAILABLE' },
+  );
+  assert.equal(created.repository.orders.length, 0);
+});
+
+test('rejects a box SKU that is not linked to the selected bottle', async () => {
+  const bottle = product('bottle', [3, 0, 0, 0]);
+  const box = product('box', [3, 0, 0, 0], {
+    smaregiProductId: '8000570',
+    category: { smaregiCategoryId: '8000014' },
+    isEcAvailable: false,
+  });
+  const created = service([bottle, box]);
+  await assert.rejects(
+    created.service.create(
+      input([{ productId: 'bottle', boxProductId: 'box', quantity: 1 }]),
+    ),
+    { code: 'INVALID_BOX_OPTION' },
+  );
 });
 
 test('release and consume transition ACTIVE reservations idempotently', async () => {

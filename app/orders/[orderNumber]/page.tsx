@@ -38,8 +38,12 @@ export default async function OrderConfirmation({
           <h2 className="serif text-2xl">ご注文商品</h2>
           <div className="mt-5 divide-y border-y line">
             {order.items.map((item) => (
-              <p className="flex justify-between py-4 text-sm" key={item.id}>
+              <p
+                className={`flex justify-between py-4 text-sm ${item.parentOrderItemId ? 'pl-4 text-stone-600' : ''}`}
+                key={item.id}
+              >
                 <span>
+                  {item.parentOrderItemId ? '＋ 純正箱：' : ''}
                   {item.productName} × {item.quantity}
                 </span>
                 <span>{formatPrice(Number(item.subtotal))}</span>

@@ -72,6 +72,13 @@ export class FeaturedCollectionRepository {
   findHomeCollections() {
     return this.findPublished();
   }
+  findNavigationCollections() {
+    return prisma.featuredCollection.findMany({
+      where: visibleOnHomepage,
+      select: { id: true, type: true, title: true, season: true },
+      orderBy: [{ displayOrder: 'asc' }, { createdAt: 'asc' }],
+    });
+  }
   create(data: Prisma.FeaturedCollectionCreateInput) {
     return prisma.featuredCollection.create({ data, include });
   }

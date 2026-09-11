@@ -2,6 +2,10 @@ import { NotFoundError } from '@/lib/errors';
 import { ProductRepository } from '@/repositories/product.repository';
 import { InventoryReservationRepository } from '@/repositories/inventory-reservation.repository';
 import { projectApprovedInventory } from '@/services/inventory-projection.service';
+import {
+  isPackageOnlyProduct,
+  isStandaloneEcProduct,
+} from '@/services/product-visibility.service';
 import type { ProductListResult, ProductRecord } from '@/types/product';
 import type { ProductQuery } from '@/validators/product.validator';
 
@@ -16,7 +20,10 @@ export class ProductService {
 
     const reservations =
       await this.reservationRepository.getActiveReservedQuantities(
-        items.map((product) => product.id),
+        items.flatMap((product) => [
+          product.id,
+          ...(product.boxProduct ? [product.boxProduct.id] : []),
+        ]),
       );
     return this.createListResult(items, total, query, reservations);
   }
@@ -26,29 +33,66 @@ export class ProductService {
       (await this.productRepository.findById(identifier)) ??
       (await this.productRepository.findBySlug(identifier));
 
-    if (!product || !product.isActive || !product.isEcAvailable) {
+    if (
+      !product ||
+      !product.isActive ||
+      !product.isEcAvailable ||
+      !isStandaloneEcProduct(product)
+    ) {
       throw new NotFoundError('Product not found.');
     }
 
     const reservations =
       await this.reservationRepository.getActiveReservedQuantities([
         product.id,
+        ...(product.boxProduct ? [product.boxProduct.id] : []),
       ]);
-    return this.toProductRecord(product, reservations.get(product.id) ?? 0);
+    return this.toProductRecord(
+      product,
+      reservations.get(product.id) ?? 0,
+      product.boxProduct ? (reservations.get(product.boxProduct.id) ?? 0) : 0,
+    );
   }
 
   public async getProductBySlug(slug: string): Promise<ProductRecord> {
     const product = await this.productRepository.findBySlug(slug);
 
-    if (!product || !product.isActive || !product.isEcAvailable) {
+    if (
+      !product ||
+      !product.isActive ||
+      !product.isEcAvailable ||
+      !isStandaloneEcProduct(product)
+    ) {
       throw new NotFoundError('Product not found.');
     }
 
     const reservations =
       await this.reservationRepository.getActiveReservedQuantities([
         product.id,
+        ...(product.boxProduct ? [product.boxProduct.id] : []),
       ]);
-    return this.toProductRecord(product, reservations.get(product.id) ?? 0);
+    return this.toProductRecord(
+      product,
+      reservations.get(product.id) ?? 0,
+      product.boxProduct ? (reservations.get(product.boxProduct.id) ?? 0) : 0,
+    );
+  }
+
+  public async getPreviewProductBySlug(slug: string): Promise<ProductRecord> {
+    const product = await this.productRepository.findBySlug(slug);
+    if (!product || !isStandaloneEcProduct(product)) {
+      throw new NotFoundError('Product not found.');
+    }
+    const reservations =
+      await this.reservationRepository.getActiveReservedQuantities([
+        product.id,
+        ...(product.boxProduct ? [product.boxProduct.id] : []),
+      ]);
+    return this.toProductRecord(
+      product,
+      reservations.get(product.id) ?? 0,
+      product.boxProduct ? (reservations.get(product.boxProduct.id) ?? 0) : 0,
+    );
   }
 
   public async isPublicProductSlug(slug: string): Promise<boolean> {
@@ -66,7 +110,10 @@ export class ProductService {
 
     const reservations =
       await this.reservationRepository.getActiveReservedQuantities(
-        items.map((product) => product.id),
+        items.flatMap((product) => [
+          product.id,
+          ...(product.boxProduct ? [product.boxProduct.id] : []),
+        ]),
       );
     return this.createListResult(items, total, query, reservations);
   }
@@ -79,7 +126,13 @@ export class ProductService {
   ): ProductListResult {
     return {
       items: items.map((product) =>
-        this.toProductRecord(product, reservations.get(product.id) ?? 0),
+        this.toProductRecord(
+          product,
+          reservations.get(product.id) ?? 0,
+          product.boxProduct
+            ? (reservations.get(product.boxProduct.id) ?? 0)
+            : 0,
+        ),
       ),
       pagination: {
         page: query.page,
@@ -93,6 +146,7 @@ export class ProductService {
   private toProductRecord(
     product: Awaited<ReturnType<ProductRepository['findById']>> & {},
     activeReservedQuantity: number,
+    boxActiveReservedQuantity = 0,
   ): ProductRecord {
     if (!product) {
       throw new NotFoundError('Product not found.');
@@ -102,6 +156,28 @@ export class ProductService {
       product.inventoryMirrors,
       activeReservedQuantity,
     );
+    const boxProjection = product.boxProduct
+      ? projectApprovedInventory(
+          product.boxProduct.inventoryMirrors,
+          boxActiveReservedQuantity,
+        )
+      : null;
+    const boxOption =
+      product.boxProduct && isPackageOnlyProduct(product.boxProduct)
+        ? {
+            id: product.boxProduct.id,
+            productCode: product.boxProduct.productCode,
+            name: product.boxProduct.name,
+            price: Number(product.boxProduct.price),
+            taxRate: Number(product.boxProduct.taxRate),
+            availableQuantity: boxProjection?.availableQuantity ?? 0,
+            isAvailable:
+              product.boxProduct.isActive &&
+              Number(product.boxProduct.price) > 0 &&
+              Number(product.boxProduct.taxRate) >= 0 &&
+              (boxProjection?.availableQuantity ?? 0) > 0,
+          }
+        : null;
     return {
       id: product.id,
       slug: product.slug,
@@ -147,6 +223,7 @@ export class ProductService {
       store1Physical: projection.store1Physical,
       activeReservedQuantity: projection.activeReservedQuantity,
       availableQuantity: projection.availableQuantity,
+      boxOption,
       isEcAvailable: product.isEcAvailable,
       createdAt: product.createdAt.toISOString(),
     };

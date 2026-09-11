@@ -26,6 +26,7 @@ type Order = {
     productName: string;
     quantity: number;
     subtotal: number;
+    parentOrderItemId: string | null;
   }[];
   customer: { name: string; email: string };
   payments: Payment[];
@@ -153,8 +154,12 @@ export function AdminOrderDetail({
       </p>
       <div className="mt-8 divide-y border-y line">
         {order.items.map((item) => (
-          <p key={item.id} className="flex justify-between py-4">
+          <p
+            key={item.id}
+            className={`flex justify-between py-4 ${item.parentOrderItemId ? 'pl-5 text-sm text-stone-600' : ''}`}
+          >
             <span>
+              {item.parentOrderItemId ? '＋ 純正箱：' : ''}
               {item.productName} × {item.quantity}
             </span>
             <span>¥{Number(item.subtotal).toLocaleString()}</span>

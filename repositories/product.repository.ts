@@ -1,6 +1,19 @@
 import { Prisma, Season } from '@prisma/client';
+import {
+  SMAREGI_BOX_CATEGORY_ID,
+  SMAREGI_PACKAGE_ONLY_PRODUCT_IDS,
+} from '@/config/box-products';
 import { prisma } from '@/lib/prisma';
 import type { ProductQuery } from '@/validators/product.validator';
+
+export const STANDALONE_EC_PRODUCT_WHERE = {
+  NOT: {
+    OR: [
+      { smaregiProductId: { in: [...SMAREGI_PACKAGE_ONLY_PRODUCT_IDS] } },
+      { category: { smaregiCategoryId: SMAREGI_BOX_CATEGORY_ID } },
+    ],
+  },
+} satisfies Prisma.ProductWhereInput;
 
 const productInclude = {
   category: {
@@ -16,6 +29,14 @@ const productInclude = {
   inventoryMirrors: {
     orderBy: {
       createdAt: 'asc',
+    },
+  },
+  boxProduct: {
+    include: {
+      category: true,
+      inventoryMirrors: {
+        orderBy: { createdAt: 'asc' as const },
+      },
     },
   },
 } satisfies Prisma.ProductInclude;
@@ -55,6 +76,7 @@ export class ProductRepository {
       where: {
         slug,
         ...PUBLIC_PRODUCT_VISIBILITY,
+        ...STANDALONE_EC_PRODUCT_WHERE,
       },
       select: { id: true },
     });
@@ -155,6 +177,7 @@ export class ProductRepository {
 
     return {
       ...PUBLIC_PRODUCT_VISIBILITY,
+      ...STANDALONE_EC_PRODUCT_WHERE,
       AND: [categoryFilter, subcategoryFilter, keywordFilter, seasonFilter],
     };
   }

@@ -40,6 +40,15 @@ export interface ProductRecord {
   store1Physical: number;
   activeReservedQuantity: number;
   availableQuantity: number;
+  boxOption: {
+    id: string;
+    productCode: string;
+    name: string;
+    price: number;
+    taxRate: number;
+    availableQuantity: number;
+    isAvailable: boolean;
+  } | null;
   isEcAvailable: boolean;
   createdAt: string;
 }

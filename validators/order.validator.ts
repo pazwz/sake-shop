@@ -6,6 +6,7 @@ export const orderValidator = z.object({
     .array(
       z.object({
         productId: z.string().cuid(),
+        boxProductId: z.string().cuid().optional(),
         quantity: z.number().int().positive().max(99),
       }),
     )

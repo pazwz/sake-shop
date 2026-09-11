@@ -36,6 +36,8 @@ const fixture = (isEcAvailable = false) => ({
   lastSyncedAt: now,
   createdAt: now,
   updatedAt: now,
+  boxProductId: null,
+  boxProduct: null,
   category: {
     id: 'category-1',
     smaregiCategoryId: '8000001',
@@ -119,6 +121,18 @@ test('update validation accepts only LINXAS-owned fields', () => {
     isEcAvailable: true,
   });
   assert.equal(result.slug, 'linxas-sake');
+});
+
+test('update validation accepts one nullable linked box product', () => {
+  assert.deepEqual(
+    adminProductUpdateValidator.parse({
+      boxProductId: 'cm12345678901234567890123',
+    }),
+    { boxProductId: 'cm12345678901234567890123' },
+  );
+  assert.deepEqual(adminProductUpdateValidator.parse({ boxProductId: null }), {
+    boxProductId: null,
+  });
 });
 
 test('admin list defaults to 25 rows and supports all filters', () => {
@@ -224,7 +238,10 @@ test('true to false publication is allowed without publication validation', asyn
 
 test('admin detail includes unpublished products and subtracts reservations', async () => {
   const service = new AdminProductService(
-    { findById: async () => fixture(false) } as never,
+    {
+      findById: async () => fixture(false),
+      findBoxCandidates: async () => [],
+    } as never,
     {
       getActiveReservedQuantities: async () => new Map([['product-1', 2]]),
     } as never,

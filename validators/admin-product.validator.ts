@@ -36,6 +36,7 @@ export const adminProductUpdateValidator = z
     alcoholPercentage: z.number().min(0).max(100).nullable().optional(),
     description: nullableText,
     tastingNotes: nullableText,
+    boxProductId: z.string().cuid().nullable().optional(),
     isEcAvailable: z.boolean().optional(),
   })
   .strict()

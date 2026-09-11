@@ -47,6 +47,20 @@ export async function proxy(request: NextRequest) {
       return NextResponse.next();
     }
 
+    const previewToken = request.nextUrl.searchParams.get('previewToken');
+    if (previewToken) {
+      const previewSession = await readSession(request);
+      if (
+        previewSession?.role === 'OWNER' ||
+        previewSession?.role === 'MANAGER'
+      ) {
+        // The page performs the authoritative admin, token, product ID, and
+        // slug checks. This only prevents the public visibility guard from
+        // rejecting a legitimate unpublished preview before it reaches SSR.
+        return NextResponse.next();
+      }
+    }
+
     const { ProductService } = await import('@/services/product.service');
     const productService = new ProductService();
     const isPublic = await productService.isPublicProductSlug(productSlug);

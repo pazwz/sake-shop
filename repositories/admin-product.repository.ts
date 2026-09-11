@@ -1,4 +1,8 @@
 import { Prisma } from '@prisma/client';
+import {
+  SMAREGI_BOX_CATEGORY_ID,
+  SMAREGI_PACKAGE_ONLY_PRODUCT_IDS,
+} from '@/config/box-products';
 import { prisma } from '@/lib/prisma';
 import type {
   AdminProductImageInput,
@@ -10,6 +14,12 @@ const include = {
   category: true,
   images: { orderBy: { displayOrder: 'asc' as const } },
   inventoryMirrors: { orderBy: { smaregiStoreId: 'asc' as const } },
+  boxProduct: {
+    include: {
+      category: true,
+      inventoryMirrors: { orderBy: { smaregiStoreId: 'asc' as const } },
+    },
+  },
 } satisfies Prisma.ProductInclude;
 
 export type AdminProductWithRelations = Prisma.ProductGetPayload<{
@@ -76,10 +86,34 @@ export class AdminProductRepository {
     return prisma.product.findUnique({ where: { id }, include });
   }
 
+  public findBoxCandidates() {
+    return prisma.product.findMany({
+      where: {
+        lastSyncedAt: { not: null },
+        OR: [
+          { smaregiProductId: { in: [...SMAREGI_PACKAGE_ONLY_PRODUCT_IDS] } },
+          { category: { smaregiCategoryId: SMAREGI_BOX_CATEGORY_ID } },
+        ],
+      },
+      include: {
+        category: true,
+        inventoryMirrors: { orderBy: { smaregiStoreId: 'asc' } },
+      },
+      orderBy: [{ name: 'asc' }, { smaregiProductId: 'asc' }],
+    });
+  }
+
   public findSlugOwner(slug: string) {
     return prisma.product.findUnique({
       where: { slug },
       select: { id: true },
+    });
+  }
+
+  public findBoxOwner(boxProductId: string) {
+    return prisma.product.findFirst({
+      where: { boxProductId },
+      select: { id: true, name: true },
     });
   }
 

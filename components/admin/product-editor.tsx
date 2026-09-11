@@ -96,6 +96,9 @@ export function ProductEditor({
       alcoholPercentage: alcohol ? Number(alcohol) : null,
       description: String(formData.get('description')) || null,
       tastingNotes: String(formData.get('tastingNotes')) || null,
+      boxProductId: initialProduct.isPackageOnly
+        ? undefined
+        : String(formData.get('boxProductId')) || null,
       isEcAvailable: formData.get('isEcAvailable') === 'on',
     };
     try {
@@ -273,15 +276,25 @@ export function ProductEditor({
           <p className="eyebrow">PRODUCT EDIT</p>
           <h1 className="serif mt-3 text-4xl">{initialProduct.name}</h1>
         </div>
-        <span
-          className={`rounded-full px-3 py-1 text-xs font-semibold ${
-            published
-              ? 'bg-emerald-100 text-emerald-800'
-              : 'bg-stone-100 text-stone-600'
-          }`}
-        >
-          {published ? 'EC公開中' : 'EC非公開'}
-        </span>
+        <div className="flex items-center gap-3">
+          <a
+            href={`/api/v1/admin/products/${initialProduct.id}/preview`}
+            target="_blank"
+            rel="noreferrer"
+            className="btn btn-outline text-xs"
+          >
+            プレビュー
+          </a>
+          <span
+            className={`rounded-full px-3 py-1 text-xs font-semibold ${
+              published
+                ? 'bg-emerald-100 text-emerald-800'
+                : 'bg-stone-100 text-stone-600'
+            }`}
+          >
+            {published ? 'EC公開中' : 'EC非公開'}
+          </span>
+        </div>
       </div>
 
       <section className="mt-10 border line bg-[#faf8f4] p-6 md:p-8">
@@ -444,6 +457,47 @@ export function ProductEditor({
           LINXAS EC上で表示する内容を編集できます。
         </p>
         <div className="mt-7 grid gap-5 md:grid-cols-2">
+          {!initialProduct.isPackageOnly ? (
+            <div className="border-b line pb-6 md:col-span-2">
+              <label className="text-sm">
+                箱オプション
+                <select
+                  name="boxProductId"
+                  defaultValue={initialProduct.boxProduct?.id ?? ''}
+                  className="input mt-2"
+                >
+                  <option value="">箱なし / 未接続</option>
+                  {initialProduct.boxCandidates.map((candidate) => (
+                    <option key={candidate.id} value={candidate.id}>
+                      {candidate.name} / {candidate.productCode} /{' '}
+                      {formatPrice(candidate.price)} / 在庫
+                      {candidate.availableQuantity}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {initialProduct.boxProduct ? (
+                <p className="mt-3 text-xs text-stone-600">
+                  接続中：{initialProduct.boxProduct.name}（Smaregi ID{' '}
+                  {initialProduct.boxProduct.smaregiProductId}）
+                </p>
+              ) : initialProduct.expectedBox ? (
+                <p className="mt-3 border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+                  箱商品：未接続 — {initialProduct.expectedBox.name}（Smaregi ID{' '}
+                  {initialProduct.expectedBox.smaregiProductId}）は
+                  {initialProduct.expectedBox.reason} のため同期保留中です。
+                </p>
+              ) : (
+                <p className="mt-3 text-xs text-stone-500">
+                  Smaregi同期済みの箱・包装SKUだけを選択できます。
+                </p>
+              )}
+            </div>
+          ) : (
+            <div className="border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 md:col-span-2">
+              この商品は箱・包装SKUです。単独でEC公開できません。
+            </div>
+          )}
           <label className="text-sm md:col-span-2">
             URLスラッグ
             <input

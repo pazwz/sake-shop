@@ -9,6 +9,10 @@ import {
   projectApprovedInventory,
   requiresTransferForQuantity,
 } from '@/services/inventory-projection.service';
+import {
+  isPackageOnlyProduct,
+  isStandaloneEcProduct,
+} from '@/services/product-visibility.service';
 import type { OrderInput } from '@/validators/order.validator';
 
 const transitions: Record<OrderStatus, OrderStatus[]> = {
@@ -27,14 +31,21 @@ export class OrderService {
     private readonly reservations = new InventoryReservationRepository(),
   ) {}
   async create(input: OrderInput) {
-    const requestedProductIds = input.items.map((item) => item.productId);
-    if (new Set(requestedProductIds).size !== requestedProductIds.length)
+    const baseProductIds = input.items.map((item) => item.productId);
+    if (new Set(baseProductIds).size !== baseProductIds.length)
       throw new AppError(
         'Each product may appear only once in an order.',
         'DUPLICATE_ORDER_PRODUCT',
         422,
       );
-    const sortedProductIds = [...requestedProductIds].sort();
+    const sortedProductIds = [
+      ...new Set(
+        input.items.flatMap((item) => [
+          item.productId,
+          ...(item.boxProductId ? [item.boxProductId] : []),
+        ]),
+      ),
+    ].sort();
     return this.reservations.withLockedProducts(
       sortedProductIds,
       async (transaction) => {
@@ -50,34 +61,69 @@ export class OrderService {
         const productById = new Map(
           products.map((product) => [product.id, product]),
         );
-        const lines = input.items.map((item) => {
+        const lines = input.items.flatMap((item) => {
           const product = productById.get(item.productId)!;
-          if (!product.isActive || !product.isEcAvailable)
+          if (
+            !product.isActive ||
+            !product.isEcAvailable ||
+            !isStandaloneEcProduct(product)
+          )
             throw new AppError(
               'This product is not available for online purchase.',
               'PRODUCT_NOT_AVAILABLE',
               409,
             );
-          const projection = projectApprovedInventory(
-            product.inventoryMirrors,
-            activeReservations.get(product.id) ?? 0,
-          );
-          const requiresTransfer = requiresTransferForQuantity(
-            projection,
-            item.quantity,
-          );
-          const unitPrice = Number(product.price);
-          const subtotal = unitPrice * item.quantity;
-          return {
-            product,
-            item,
-            unitPrice,
-            subtotal,
-            requiresTransfer,
-            tax:
-              (subtotal * Number(product.taxRate)) /
-              (100 + Number(product.taxRate)),
+          const baseOrderItemId = randomUUID();
+          const createLine = (
+            lineProduct: typeof product,
+            parentOrderItemId: string | null,
+          ) => {
+            const projection = projectApprovedInventory(
+              lineProduct.inventoryMirrors,
+              activeReservations.get(lineProduct.id) ?? 0,
+            );
+            const requiresTransfer = requiresTransferForQuantity(
+              projection,
+              item.quantity,
+            );
+            const unitPrice = Number(lineProduct.price);
+            const subtotal = unitPrice * item.quantity;
+            return {
+              id: parentOrderItemId ? randomUUID() : baseOrderItemId,
+              reservationId: randomUUID(),
+              product: lineProduct,
+              quantity: item.quantity,
+              unitPrice,
+              subtotal,
+              requiresTransfer,
+              parentOrderItemId,
+              tax:
+                (subtotal * Number(lineProduct.taxRate)) /
+                (100 + Number(lineProduct.taxRate)),
+            };
           };
+          const baseLine = createLine(product, null);
+          if (!item.boxProductId) return [baseLine];
+          if (product.boxProductId !== item.boxProductId)
+            throw new AppError(
+              'The selected box is not linked to this product.',
+              'INVALID_BOX_OPTION',
+              422,
+            );
+          const boxProduct = productById.get(item.boxProductId);
+          if (
+            !boxProduct ||
+            !isPackageOnlyProduct(boxProduct) ||
+            !boxProduct.isActive ||
+            Number(boxProduct.price) <= 0 ||
+            Number(boxProduct.taxRate) < 0
+          )
+            throw new AppError(
+              'The selected box is not currently available.',
+              'BOX_OPTION_NOT_AVAILABLE',
+              409,
+            );
+          return [baseLine, createLine(boxProduct, baseOrderItemId)];
         });
         const customer = await transaction.upsertCustomer(input.customer);
         const subtotal = lines.reduce((sum, line) => sum + line.subtotal, 0);
@@ -103,22 +149,26 @@ export class OrderService {
           ageConfirmedAt: now,
           items: lines.map(
             ({
+              id,
+              reservationId,
               product,
-              item,
+              quantity,
               unitPrice,
               subtotal: lineSubtotal,
               requiresTransfer,
+              parentOrderItemId,
             }) => ({
-              id: randomUUID(),
-              reservationId: randomUUID(),
+              id,
+              reservationId,
               productId: product.id,
               productName: product.name,
               productCode: product.productCode,
               unitPrice,
-              quantity: item.quantity,
+              quantity,
               taxRate: product.taxRate,
               subtotal: lineSubtotal,
               requiresTransfer,
+              parentOrderItemId,
               expiresAt: null,
             }),
           ),

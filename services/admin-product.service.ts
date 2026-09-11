@@ -1,5 +1,9 @@
 import { Prisma } from '@prisma/client';
 import {
+  DEFERRED_BOX_REASON,
+  EXPECTED_BOX_PRODUCT_BY_BASE_PRODUCT_ID,
+} from '@/config/box-products';
+import {
   AppError,
   ConflictError,
   NotFoundError,
@@ -12,7 +16,12 @@ import {
 import { InventoryReservationRepository } from '@/repositories/inventory-reservation.repository';
 import { projectApprovedInventory } from '@/services/inventory-projection.service';
 import { ProductPublicationService } from '@/services/product-publication.service';
+import {
+  isPackageOnlyProduct,
+  isStandaloneEcProduct,
+} from '@/services/product-visibility.service';
 import type {
+  AdminBoxProductOption,
   AdminProductListResult,
   AdminProductRecord,
 } from '@/types/admin-product';
@@ -59,15 +68,55 @@ export class AdminProductService {
 
   public async getProduct(id: string): Promise<AdminProductRecord> {
     const product = await this.requireProduct(id);
-    const reservations = await this.reservations.getActiveReservedQuantities([
-      id,
+    const [reservations, candidates] = await Promise.all([
+      this.reservations.getActiveReservedQuantities([
+        id,
+        ...(product.boxProduct ? [product.boxProduct.id] : []),
+      ]),
+      this.repository.findBoxCandidates(),
     ]);
-    return this.toRecord(product, reservations.get(id) ?? 0, true);
+    const candidateReservations =
+      await this.reservations.getActiveReservedQuantities(
+        candidates.map(({ id: candidateId }) => candidateId),
+      );
+    return this.toRecord(
+      product,
+      reservations.get(id) ?? 0,
+      true,
+      candidates.map((candidate) =>
+        this.toBoxOption(
+          candidate,
+          candidateReservations.get(candidate.id) ?? 0,
+        ),
+      ),
+      product.boxProduct ? (reservations.get(product.boxProduct.id) ?? 0) : 0,
+    );
   }
 
   public async updateProduct(id: string, input: AdminProductUpdate) {
     const product = await this.requireProduct(id);
     const data = this.normalizeUpdate(input);
+    if (data.boxProductId !== undefined && data.boxProductId !== null) {
+      if (!isStandaloneEcProduct(product))
+        throw new ValidationError(
+          '箱・包装商品に別の箱オプションを設定することはできません。',
+        );
+      if (data.boxProductId === product.id)
+        throw new ValidationError('商品自身を箱オプションに設定できません。');
+      const candidates = await this.repository.findBoxCandidates();
+      const candidate = candidates.find(
+        ({ id: candidateId }) => candidateId === data.boxProductId,
+      );
+      if (!candidate || !isPackageOnlyProduct(candidate))
+        throw new ValidationError(
+          'Smaregi同期済みの箱・包装商品を選択してください。',
+        );
+      const boxOwner = await this.repository.findBoxOwner(data.boxProductId);
+      if (boxOwner && boxOwner.id !== id)
+        throw new ConflictError(
+          `この箱商品は「${boxOwner.name}」に接続されています。`,
+        );
+    }
     const candidate = { ...product, ...data };
     const activeReservations =
       await this.reservations.getActiveReservedQuantities([id]);
@@ -91,6 +140,11 @@ export class AdminProductService {
         error instanceof Prisma.PrismaClientKnownRequestError &&
         error.code === 'P2002'
       ) {
+        const target = Array.isArray(error.meta?.target)
+          ? error.meta.target.map(String)
+          : [];
+        if (target.some((field) => field.includes('box_product_id')))
+          throw new ConflictError('この箱商品は別の商品に接続されています。');
         throw new ConflictError(
           'このURLスラッグは別の商品で使用されています。',
         );
@@ -176,11 +230,20 @@ export class AdminProductService {
     product: AdminProductWithRelations,
     activeReservedQuantity: number,
     checkSlugOwner: boolean,
+    boxCandidates: AdminBoxProductOption[] = [],
+    boxActiveReservedQuantity = 0,
   ): Promise<AdminProductRecord> {
     const projection = projectApprovedInventory(
       product.inventoryMirrors,
       activeReservedQuantity,
     );
+    const configuredBox = product.boxProduct
+      ? this.toBoxOption(product.boxProduct, boxActiveReservedQuantity)
+      : null;
+    const expected =
+      EXPECTED_BOX_PRODUCT_BY_BASE_PRODUCT_ID[
+        product.smaregiProductId as keyof typeof EXPECTED_BOX_PRODUCT_BY_BASE_PRODUCT_ID
+      ];
     return {
       id: product.id,
       smaregiProductId: product.smaregiProductId,
@@ -202,6 +265,7 @@ export class AdminProductService {
       description: product.description,
       tastingNotes: product.tastingNotes,
       isEcAvailable: product.isEcAvailable,
+      isPackageOnly: isPackageOnlyProduct(product),
       images: product.images.map((image) => ({
         id: image.id,
         imageUrl: image.imageUrl,
@@ -217,11 +281,46 @@ export class AdminProductService {
       physicalTotalApproved: projection.physicalTotalApproved,
       activeReservedQuantity: projection.activeReservedQuantity,
       availableQuantity: projection.availableQuantity,
+      boxProduct: configuredBox,
+      boxCandidates,
+      expectedBox:
+        !configuredBox && expected
+          ? { ...expected, reason: DEFERRED_BOX_REASON }
+          : null,
       publication: await this.publication.validateProduct(
         product,
         activeReservedQuantity,
         checkSlugOwner,
       ),
+    };
+  }
+
+  private toBoxOption(
+    product: {
+      id: string;
+      smaregiProductId: string;
+      productCode: string;
+      name: string;
+      price: Prisma.Decimal;
+      taxRate: Prisma.Decimal;
+      isActive: boolean;
+      inventoryMirrors: Array<{ smaregiStoreId: string; quantity: number }>;
+    },
+    activeReservedQuantity: number,
+  ): AdminBoxProductOption {
+    const projection = projectApprovedInventory(
+      product.inventoryMirrors,
+      activeReservedQuantity,
+    );
+    return {
+      id: product.id,
+      smaregiProductId: product.smaregiProductId,
+      productCode: product.productCode,
+      name: product.name,
+      price: Number(product.price),
+      taxRate: Number(product.taxRate),
+      isActive: product.isActive,
+      availableQuantity: projection.availableQuantity,
     };
   }
 }

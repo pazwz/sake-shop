@@ -6,6 +6,7 @@ import {
 import { prisma } from '@/lib/prisma';
 
 const productInclude = {
+  category: true,
   inventoryMirrors: {
     orderBy: { createdAt: 'asc' },
   },
@@ -45,6 +46,7 @@ export type ReservedOrderInput = {
     taxRate: Prisma.Decimal;
     subtotal: number;
     requiresTransfer: boolean;
+    parentOrderItemId: string | null;
     expiresAt: Date | null;
   }>;
 };
@@ -132,6 +134,7 @@ class PrismaLockedInventoryReservationTransaction
             taxRate: item.taxRate,
             subtotal: item.subtotal,
             requiresTransfer: item.requiresTransfer,
+            parentOrderItemId: item.parentOrderItemId,
           })),
         },
       },

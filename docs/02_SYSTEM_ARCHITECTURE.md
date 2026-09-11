@@ -223,6 +223,25 @@ CloudFront URL。ProductImage.displayOrder 决定主图和显示顺序。
 公开商品 Repository 强制 `isActive=true AND isEcAvailable=true`。首页和 Collection
 Service 对关联商品再执行相同的防御性过滤，避免历史关联泄露非公开商品。
 
+公开查询还通过统一 `isStandaloneEcProduct` 规则排除 Smaregi 箱 Category 和已确认的
+package-only SKU。规则只依赖 Smaregi identity / Category，不以商品名包含「箱」进行
+宽泛推断，因此「酒本体 + 木箱付き」仍是普通商品。Header 的 Category mega menu 由
+Category Repository → Service 读取真实公开独立商品分类；特集菜单由已发布
+FeaturedCollection 生成。
+
+非公开商品 preview 使用 `Admin preview route → Preview Service → Product Service`。
+route 只允许 OWNER / MANAGER 发出 5 分钟署名 token；商品页同时验证 token、productId、
+adminId 和当前有效 Admin session。preview 复用同一 ProductDetail，不建立第二套详情 UI，
+且 preview 中禁止实际加入购物袋。
+
+箱オプションは Product の one-to-one self relation で表現する。箱 Product は Smaregi
+同期・税 resolver・四店 InventoryMirror をそのまま使い、`isEcAvailable=false` の内部
+SKU とする。詳細画面で選択された場合、Order Service は酒本体と箱の Product 行を
+安定順でロックし、それぞれの在庫を検証して別 OrderItem / InventoryReservation を
+作成する。箱 OrderItem は `parentOrderItemId` で酒本体行へ結び、どちらか一方でも在庫
+不足なら transaction 全体を rollback する。Smaregi の税設定が解決できない deferred
+箱は Product を偽造せず、Admin で未接続理由だけを表示する。
+
 ---
 
 # 六、同步

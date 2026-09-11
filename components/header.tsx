@@ -1,58 +1,27 @@
 'use client';
-import Image from 'next/image';
+
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { categories } from '@/lib/products';
+import type {
+  HeaderNavigationGroup,
+  HeaderNavigationLink,
+} from '@/types/navigation';
 import { BrandLogo } from './brand-logo';
 import { useCart } from './cart-provider';
 import { useAuth } from './auth-provider';
 import { useLanguage } from './language-provider';
-const menu: Record<
-  string,
-  { sub: string[]; taste: string[]; region: string[]; image: string }
-> = {
-  日本酒: {
-    sub: ['純米酒', '純米吟醸', '大吟醸', '本醸造', 'スパークリング'],
-    taste: ['辛口', '甘口', 'フルーティー', '濃醇', 'すっきり'],
-    region: ['新潟県', '山形県', '秋田県', '兵庫県'],
-    image: 'photo-1569529465841-dfecdab7503b',
-  },
-  ウイスキー: {
-    sub: ['シングルモルト', 'ブレンデッド'],
-    taste: ['スモーキー', '華やか', 'リッチ'],
-    region: ['北海道', '山梨県', '鹿児島県'],
-    image: 'photo-1584916201218-f4242ceb4809',
-  },
-  焼酎: {
-    sub: ['芋焼酎', '麦焼酎', '米焼酎'],
-    taste: ['濃厚', 'すっきり', '香ばしい'],
-    region: ['鹿児島県', '宮崎県', '熊本県'],
-    image: 'photo-1527281400683-1aae777175f8',
-  },
-  ワイン: {
-    sub: ['赤ワイン', '白ワイン', 'ロゼ'],
-    taste: ['フルボディ', '辛口', '果実味'],
-    region: ['山梨県', '長野県', '北海道'],
-    image: 'photo-1510812431401-41d2bd2722f3',
-  },
-  シャンパン: {
-    sub: ['ブリュット', 'ロゼ', 'ヴィンテージ'],
-    taste: ['エレガント', 'リッチ'],
-    region: ['フランス'],
-    image: 'photo-1568213816046-0ee1c42bd559',
-  },
-  リキュール: {
-    sub: ['梅酒', 'ジン', '果実酒'],
-    taste: ['甘口', 'ボタニカル'],
-    region: ['京都府', '大阪府', '和歌山県'],
-    image: 'photo-1513558161293-cdaf765ed2fd',
-  },
-};
-export function Header() {
+
+export function Header({
+  navigation,
+  features,
+}: {
+  navigation: HeaderNavigationGroup[];
+  features: HeaderNavigationLink[];
+}) {
   const { count } = useCart();
   const { member } = useAuth();
-  const { locale, setLocale, categoryLabel } = useLanguage();
+  const { locale, setLocale } = useLanguage();
   const router = useRouter();
   const [active, setActive] = useState<string | null>(null);
   const [search, setSearch] = useState(false);
@@ -68,6 +37,10 @@ export function Header() {
     router.push(`/products?q=${encodeURIComponent(query)}`);
     setSearch(false);
   };
+  const activeGroup = navigation.find(({ id }) => id === active);
+  const megaTitle = active === 'features' ? '特集' : activeGroup?.label;
+  const megaLinks = active === 'features' ? features : activeGroup?.links;
+
   return (
     <header
       onMouseLeave={() => setActive(null)}
@@ -115,31 +88,57 @@ export function Header() {
         </div>
       </div>
       <div className="hidden h-[48px] border-b line lg:block">
-        <nav className="wrap flex h-full items-center justify-center gap-10 text-xs font-bold tracking-[.12em]">
+        <nav className="wrap flex h-full items-center justify-center gap-7 text-[11px] font-bold tracking-[.08em] xl:gap-10 xl:text-xs xl:tracking-[.12em]">
           <Link href="/products">商品一覧</Link>
-          {categories.map((category) => (
-            <button key={category} onMouseEnter={() => setActive(category)}>
-              {categoryLabel(category)}
+          {navigation.map((group) => (
+            <button key={group.id} onMouseEnter={() => setActive(group.id)}>
+              {group.label}
             </button>
           ))}
+          <button onMouseEnter={() => setActive('features')}>特集</button>
           <Link href="/about">私たちについて</Link>
         </nav>
       </div>
-      {active && <Mega category={active} />}{' '}
-      {mobile && (
+      {megaTitle && megaLinks ? (
+        <Mega title={megaTitle} links={megaLinks} />
+      ) : null}
+      {mobile ? (
         <div className="border-b line bg-[#fffdf9] lg:hidden">
-          <nav className="wrap grid grid-cols-2 gap-4 py-5 text-sm">
-            {categories.map((category) => (
-              <Link
-                key={category}
-                href={`/products?category=${encodeURIComponent(category)}`}
-                onClick={() => setMobile(false)}
-              >
-                {categoryLabel(category)}
-              </Link>
+          <nav className="wrap grid grid-cols-2 gap-5 py-5 text-sm">
+            <Link href="/products" onClick={() => setMobile(false)}>
+              商品一覧
+            </Link>
+            {navigation.map((group) => (
+              <div key={group.id}>
+                <p className="font-semibold">{group.label}</p>
+                {group.links.map((link) => (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    onClick={() => setMobile(false)}
+                    className="mt-2 block text-xs text-stone-600"
+                  >
+                    {link.label}
+                  </Link>
+                ))}
+              </div>
             ))}
-            <Link href="/products">商品一覧</Link>
-            <Link href="/about">私たちについて</Link>
+            <div>
+              <p className="font-semibold">特集</p>
+              {features.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  onClick={() => setMobile(false)}
+                  className="mt-2 block text-xs text-stone-600"
+                >
+                  {link.label}
+                </Link>
+              ))}
+            </div>
+            <Link href="/about" onClick={() => setMobile(false)}>
+              私たちについて
+            </Link>
             <Link
               href={member ? '/mypage' : '/login'}
               onClick={() => setMobile(false)}
@@ -148,8 +147,8 @@ export function Header() {
             </Link>
           </nav>
         </div>
-      )}
-      {search && (
+      ) : null}
+      {search ? (
         <div className="border-b line bg-[#fffdf9]">
           <div className="wrap py-8 md:py-10">
             <div className="flex items-center justify-between gap-8">
@@ -188,82 +187,38 @@ export function Header() {
             </form>
           </div>
         </div>
-      )}
+      ) : null}
     </header>
   );
 }
-function Mega({ category }: { category: string }) {
-  const data = menu[category];
-  return (
-    <div className="absolute inset-x-0 top-[114px] z-30 border-b line bg-[#fffdf9] shadow-sm">
-      <div className="wrap grid grid-cols-[1fr_1fr_1fr_1.1fr] gap-8 py-9">
-        <Column
-          title="種類"
-          category={category}
-          values={data.sub}
-          keyName="subcategory"
-        />
-        <Column
-          title="味わい"
-          category={category}
-          values={data.taste}
-          keyName="taste"
-        />
-        <Column
-          title="産地"
-          category={category}
-          values={data.region}
-          keyName="origin"
-        />
-        <Link
-          href={`/products?category=${encodeURIComponent(category)}`}
-          className="group relative min-h-44 overflow-hidden"
-        >
-          <Image
-            fill
-            sizes="(max-width: 1023px) 0px, 28vw"
-            className="object-cover transition group-hover:scale-105"
-            src={`https://images.unsplash.com/${data.image}?auto=format&fit=crop&w=800&q=80`}
-            alt="特集"
-          />
-          <div className="absolute inset-0 bg-black/25" />
-          <p className="absolute bottom-5 left-5 text-sm font-semibold text-white">
-            {category}のおすすめ　→
-          </p>
-        </Link>
-      </div>
-    </div>
-  );
-}
-function Column({
+
+function Mega({
   title,
-  category,
-  values,
-  keyName,
+  links,
 }: {
   title: string;
-  category: string;
-  values: string[];
-  keyName: string;
+  links: HeaderNavigationLink[];
 }) {
   return (
-    <div>
-      <p className="eyebrow">{title}</p>
-      <div className="mt-4 grid gap-3 text-sm">
-        {values.map((value) => (
-          <Link
-            key={value}
-            href={`/products?category=${encodeURIComponent(category)}&${keyName}=${encodeURIComponent(value)}`}
-          >
-            {value}
-          </Link>
-        ))}
-        <Link
-          className="mt-2 text-xs text-[#6d2227]"
-          href={`/products?category=${encodeURIComponent(category)}`}
-        >
-          価格帯・おすすめを見る　→
-        </Link>
+    <div className="absolute inset-x-0 top-[114px] z-30 border-b line bg-[#fffdf9] shadow-sm">
+      <div className="wrap grid gap-8 py-9 md:grid-cols-[.65fr_1.35fr]">
+        <div>
+          <p className="eyebrow">EXPLORE</p>
+          <p className="serif mt-4 text-3xl">{title}</p>
+        </div>
+        {links.length ? (
+          <div className="grid gap-x-8 gap-y-4 text-sm sm:grid-cols-2 lg:grid-cols-3">
+            {links.map((link) => (
+              <Link key={link.href} href={link.href}>
+                {link.label}　→
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-stone-500">
+            現在ご案内できる商品カテゴリーはありません。
+          </p>
+        )}
       </div>
     </div>
   );

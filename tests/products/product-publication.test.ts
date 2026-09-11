@@ -11,6 +11,7 @@ const product = (overrides: Record<string, unknown> = {}) => ({
   isActive: true,
   lastSyncedAt: new Date('2026-09-01T00:00:00.000Z'),
   description: '商品説明',
+  category: { smaregiCategoryId: '8000001' },
   images: [{ id: 'image-1' }],
   inventoryMirrors: [
     { smaregiStoreId: '1', quantity: 0 },
@@ -84,6 +85,18 @@ test('warns but does not block when description is missing', async () => {
   assert.equal(result.canPublish, true);
   assert.equal(
     result.warnings.some(({ code }) => code === 'DESCRIPTION_RECOMMENDED'),
+    true,
+  );
+});
+
+test('package-only products can never be published as standalone EC products', async () => {
+  const result = await validate({
+    smaregiProductId: '8000570',
+    category: { smaregiCategoryId: '8000014' },
+  });
+  assert.equal(result.canPublish, false);
+  assert.equal(
+    result.errors.some(({ code }) => code === 'PACKAGE_ONLY_PRODUCT'),
     true,
   );
 });

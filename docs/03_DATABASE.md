@@ -241,6 +241,8 @@ description
 
 tasting_notes
 
+box_product_id（nullable / unique / products self relation）
+
 is_active
 
 is_ec_available
@@ -256,10 +258,10 @@ updated_at
 - Smaregi-owned：smaregi_product_id、category_id、product_code、jan_code、name、
   price、tax_rate、is_active、last_synced_at、InventoryMirror。
 - LINXAS-owned：slug、producer、origin、volume、alcohol_percentage、description、
-  tasting_notes、is_ec_available、ProductImage 及 CMS 关联。
+  tasting_notes、is_ec_available、box_product_id、ProductImage 及 CMS 关联。
 
-Admin 编辑必须保护 Smaregi-owned 字段。现有结构已覆盖商品 CMS，不为此功能新增表或
-Migration。
+Admin 编辑必须保护 Smaregi-owned 字段。`box_product_id` 只能指向 Smaregi 同期済みの
+package-only Product；`ON DELETE SET NULL` で通常商品のリンクだけを解除する。
 
 Index
 
@@ -376,6 +378,12 @@ updated_at
 
 下单时的履约快照。Store `1` 在扣除既有商品级 ACTIVE reservation 后不足以直接
 满足该订单行时为 true。该字段不表示自动仓库分配，也不新增订单状态。
+
+## order_items.parent_order_item_id
+
+箱オプション OrderItem が対応する酒本体 OrderItem を参照する nullable / unique の
+self relation。箱は独立した product_id、product_code、unit_price、tax_rate、quantity
+を保持し、数量は Service により親商品と同一に固定する。通常の酒商品行は null。
 
 ---
 

@@ -13,12 +13,23 @@ import type { ProductRecord } from '@/types/product';
 interface ProductDetailProps {
   product: ProductRecord;
   related: ProductRecord[];
+  previewMode?: boolean;
 }
 
-export function ProductDetail({ product, related }: ProductDetailProps) {
+export function ProductDetail({
+  product,
+  related,
+  previewMode = false,
+}: ProductDetailProps) {
   const { add } = useCart();
   const [quantity, setQuantity] = useState(1);
+  const [withBox, setWithBox] = useState(false);
   const inventory = product.availableQuantity;
+  const boxCanFulfill = Boolean(
+    product.boxOption?.isAvailable &&
+      product.boxOption.availableQuantity >= quantity,
+  );
+  const selectedBox = withBox && boxCanFulfill;
   const imageUrl = product.images[0]?.imageUrl;
   const cartProduct = {
     id: product.id,
@@ -31,96 +42,174 @@ export function ProductDetail({ product, related }: ProductDetailProps) {
   };
 
   return (
-    <div className="wrap py-10 md:py-16">
-      <Link href="/products" className="text-xs text-stone-500">
-        ← 商品一覧へ
-      </Link>
-      <div className="mt-8 grid gap-10 md:grid-cols-2 md:gap-16">
-        <div className="relative aspect-[4/5] overflow-hidden bg-[#f7f4ee]">
-          {imageUrl ? (
-            <Image
-              fill
-              sizes="(max-width: 767px) 100vw, 50vw"
-              loading="eager"
-              className="object-contain p-5 md:p-10"
-              src={imageUrl}
-              alt={product.name}
-            />
+    <div>
+      {previewMode ? (
+        <div className="border-b border-amber-300 bg-amber-50 px-5 py-3 text-center text-sm text-amber-950">
+          <strong>プレビューモード</strong>
+          {!product.isEcAvailable ? (
+            <span className="ml-3">この商品は現在EC非公開です</span>
           ) : null}
         </div>
-        <div className="md:pt-8">
-          <p className="eyebrow">{product.productCode}</p>
-          <h1 className="serif mt-4 text-4xl md:text-5xl">{product.name}</h1>
-          <p className="mt-4 text-sm text-stone-600">
-            {product.producer} / {product.origin}
-          </p>
-          <p className="mt-8 text-2xl">
-            {formatPrice(product.price)}{' '}
-            <span className="text-xs text-stone-500">税込</span>
-          </p>
-          <AgeNotice className="mt-3" />
-          <p
-            className={`mt-5 text-xs ${inventory > 0 ? 'text-[#c7a463]' : 'text-red-400'}`}
-          >
-            {inventory > 0
-              ? `在庫あり — 通常2〜4日で発送（残り ${inventory} 点）`
-              : '現在完売しています'}
-          </p>
-          {inventory > 0 ? (
-            <div className="mt-8 flex gap-3">
-              <QuantitySelector value={quantity} onChange={setQuantity} />
-              <button
-                className="btn flex-1"
-                onClick={() => add(cartProduct, quantity)}
-              >
-                バッグに入れる
-              </button>
-            </div>
-          ) : null}
-          <div className="mt-12 border-t line pt-8">
-            <p className="eyebrow">ABOUT THIS BOTTLE</p>
-            <p className="mt-5 text-sm leading-8 text-stone-600">
-              {product.description}
-            </p>
-          </div>
-          <div className="mt-10 border-t line pt-8">
-            <p className="eyebrow">TASTING NOTES</p>
-            <p className="mt-5 text-sm leading-8 text-stone-600">
-              {product.tastingNotes}
-            </p>
-          </div>
-          <div className="mt-10 border-t line pt-8">
-            <p className="eyebrow">DETAIL</p>
-            <dl className="mt-5 grid grid-cols-2 gap-y-4 text-sm">
-              <dt>カテゴリー</dt>
-              <dd>{product.category.name}</dd>
-              <dt>産地</dt>
-              <dd>{product.origin}</dd>
-              <dt>容量</dt>
-              <dd>{product.volume}</dd>
-              <dt>アルコール度数</dt>
-              <dd>
-                {product.alcoholPercentage
-                  ? `${product.alcoholPercentage}%`
-                  : '—'}
-              </dd>
-              <dt>蔵元・生産者</dt>
-              <dd>{product.producer}</dd>
-            </dl>
-          </div>
-        </div>
-      </div>
-      {related.length > 0 ? (
-        <section className="py-24">
-          <p className="eyebrow">YOU MAY ALSO LIKE</p>
-          <h2 className="serif mt-4 text-3xl">同じカテゴリーの商品</h2>
-          <div className="mt-8 grid gap-5 sm:grid-cols-3">
-            {related.map((item) => (
-              <ProductCard key={item.id} product={item} />
-            ))}
-          </div>
-        </section>
       ) : null}
+      <div className="wrap py-10 md:py-16">
+        <Link href="/products" className="text-xs text-stone-500">
+          ← 商品一覧へ
+        </Link>
+        <div className="mt-8 grid gap-10 md:grid-cols-2 md:gap-16">
+          <div className="relative aspect-[4/5] overflow-hidden bg-[#f7f4ee]">
+            {imageUrl ? (
+              <Image
+                fill
+                sizes="(max-width: 767px) 100vw, 50vw"
+                loading="eager"
+                className="object-contain p-5 md:p-10"
+                src={imageUrl}
+                alt={product.name}
+              />
+            ) : null}
+          </div>
+          <div className="md:pt-8">
+            <p className="eyebrow">{product.productCode}</p>
+            <h1 className="serif mt-4 text-4xl md:text-5xl">{product.name}</h1>
+            <p className="mt-4 text-sm text-stone-600">
+              {product.producer} / {product.origin}
+            </p>
+            <p className="mt-8 text-2xl">
+              {formatPrice(product.price)}{' '}
+              <span className="text-xs text-stone-500">税込</span>
+            </p>
+            <AgeNotice className="mt-3" />
+            <p
+              className={`mt-5 text-xs ${inventory > 0 ? 'text-[#c7a463]' : 'text-red-400'}`}
+            >
+              {inventory > 0
+                ? `在庫あり — 通常2〜4日で発送（残り ${inventory} 点）`
+                : '現在完売しています'}
+            </p>
+            {inventory > 0 ? (
+              <>
+                {product.boxOption ? (
+                  <fieldset className="mt-8 border-y line py-5">
+                    <legend className="eyebrow">BOX OPTION</legend>
+                    <label className="mt-4 flex items-center justify-between gap-4 text-sm">
+                      <span>
+                        <input
+                          type="radio"
+                          name="box-option"
+                          checked={!withBox}
+                          onChange={() => setWithBox(false)}
+                        />{' '}
+                        箱なし
+                      </span>
+                      <span>追加料金なし</span>
+                    </label>
+                    <label
+                      className={`mt-3 flex items-center justify-between gap-4 text-sm ${
+                        boxCanFulfill ? '' : 'text-stone-400'
+                      }`}
+                    >
+                      <span>
+                        <input
+                          type="radio"
+                          name="box-option"
+                          disabled={!boxCanFulfill}
+                          checked={selectedBox}
+                          onChange={() => setWithBox(true)}
+                        />{' '}
+                        純正箱あり
+                      </span>
+                      <span>
+                        {boxCanFulfill
+                          ? `+${formatPrice(product.boxOption.price)}`
+                          : `選択数量分の在庫なし（残り ${product.boxOption.availableQuantity} 点）`}
+                      </span>
+                    </label>
+                  </fieldset>
+                ) : null}
+                <p className="mt-6 text-right text-sm">
+                  選択合計：
+                  <strong className="ml-2 text-xl">
+                    {formatPrice(
+                      product.price +
+                        (selectedBox && product.boxOption
+                          ? product.boxOption.price
+                          : 0),
+                    )}
+                  </strong>
+                  <span className="ml-1 text-xs text-stone-500">税込</span>
+                </p>
+                <div className="mt-5 flex gap-3">
+                  <QuantitySelector value={quantity} onChange={setQuantity} />
+                  <button
+                    disabled={previewMode}
+                    className="btn flex-1 disabled:cursor-not-allowed disabled:bg-stone-400"
+                    onClick={() =>
+                      add(
+                        cartProduct,
+                        quantity,
+                        selectedBox && product.boxOption
+                          ? {
+                              id: product.boxOption.id,
+                              productCode: product.boxOption.productCode,
+                              name: product.boxOption.name,
+                              price: product.boxOption.price,
+                            }
+                          : undefined,
+                      )
+                    }
+                  >
+                    {previewMode
+                      ? 'プレビューでは購入できません'
+                      : 'バッグに入れる'}
+                  </button>
+                </div>
+              </>
+            ) : null}
+            <div className="mt-12 border-t line pt-8">
+              <p className="eyebrow">ABOUT THIS BOTTLE</p>
+              <p className="mt-5 text-sm leading-8 text-stone-600">
+                {product.description}
+              </p>
+            </div>
+            <div className="mt-10 border-t line pt-8">
+              <p className="eyebrow">TASTING NOTES</p>
+              <p className="mt-5 text-sm leading-8 text-stone-600">
+                {product.tastingNotes}
+              </p>
+            </div>
+            <div className="mt-10 border-t line pt-8">
+              <p className="eyebrow">DETAIL</p>
+              <dl className="mt-5 grid grid-cols-2 gap-y-4 text-sm">
+                <dt>カテゴリー</dt>
+                <dd>{product.category.name}</dd>
+                <dt>産地</dt>
+                <dd>{product.origin}</dd>
+                <dt>容量</dt>
+                <dd>{product.volume}</dd>
+                <dt>アルコール度数</dt>
+                <dd>
+                  {product.alcoholPercentage
+                    ? `${product.alcoholPercentage}%`
+                    : '—'}
+                </dd>
+                <dt>蔵元・生産者</dt>
+                <dd>{product.producer}</dd>
+              </dl>
+            </div>
+          </div>
+        </div>
+        {related.length > 0 ? (
+          <section className="py-24">
+            <p className="eyebrow">YOU MAY ALSO LIKE</p>
+            <h2 className="serif mt-4 text-3xl">同じカテゴリーの商品</h2>
+            <div className="mt-8 grid gap-5 sm:grid-cols-3">
+              {related.map((item) => (
+                <ProductCard key={item.id} product={item} />
+              ))}
+            </div>
+          </section>
+        ) : null}
+      </div>
     </div>
   );
 }

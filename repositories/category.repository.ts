@@ -1,4 +1,8 @@
 import { Prisma } from '@prisma/client';
+import {
+  SMAREGI_BOX_CATEGORY_ID,
+  SMAREGI_PACKAGE_ONLY_PRODUCT_IDS,
+} from '@/config/box-products';
 import { prisma } from '@/lib/prisma';
 
 const categoryInclude = {
@@ -47,5 +51,38 @@ export class CategoryRepository {
 
   public async findActive(): Promise<CategoryWithChildren[]> {
     return this.findMany();
+  }
+
+  public findPublicProductCategories() {
+    return prisma.category.findMany({
+      where: {
+        isActive: true,
+        products: {
+          some: {
+            isActive: true,
+            isEcAvailable: true,
+            NOT: {
+              OR: [
+                {
+                  smaregiProductId: {
+                    in: [...SMAREGI_PACKAGE_ONLY_PRODUCT_IDS],
+                  },
+                },
+                {
+                  category: { smaregiCategoryId: SMAREGI_BOX_CATEGORY_ID },
+                },
+              ],
+            },
+          },
+        },
+      },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        displayOrder: true,
+      },
+      orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }],
+    });
   }
 }

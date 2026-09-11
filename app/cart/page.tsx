@@ -2,7 +2,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { AgeNotice } from '@/components/age-notice';
-import { useCart } from '@/components/cart-provider';
+import { cartLineId, useCart } from '@/components/cart-provider';
 import { useAuth } from '@/components/auth-provider';
 import { formatPrice } from '@/lib/products';
 import { QuantitySelector } from '@/components/quantity-selector';
@@ -26,43 +26,54 @@ export default function Cart() {
       ) : (
         <div className="mt-12 grid gap-12 lg:grid-cols-[1.5fr_.7fr]">
           <div>
-            {items.map(({ product, quantity }) => (
-              <div
-                className="grid grid-cols-[100px_1fr] gap-5 border-t line py-5"
-                key={product.id}
-              >
-                <div className="relative aspect-square bg-[#f7f4ee]">
-                  <Image
-                    fill
-                    sizes="100px"
-                    className="object-contain p-2"
-                    src={product.image}
-                    alt={product.name}
-                  />
-                </div>
-                <div>
-                  <p className="text-xs text-stone-500">
-                    {typeof product.category === 'string'
-                      ? product.category
-                      : product.category.name}
-                  </p>
-                  <h2 className="mt-1 text-sm">{product.name}</h2>
-                  <p className="mt-2 text-sm">{formatPrice(product.price)}</p>
-                  <div className="mt-4 flex items-center justify-between">
-                    <QuantitySelector
-                      value={quantity}
-                      onChange={(q) => update(product.id, q)}
+            {items.map((line) => {
+              const { product, quantity, boxProduct } = line;
+              const lineId = cartLineId(line);
+              return (
+                <div
+                  className="grid grid-cols-[100px_1fr] gap-5 border-t line py-5"
+                  key={lineId}
+                >
+                  <div className="relative aspect-square bg-[#f7f4ee]">
+                    <Image
+                      fill
+                      sizes="100px"
+                      className="object-contain p-2"
+                      src={product.image}
+                      alt={product.name}
                     />
-                    <button
-                      onClick={() => remove(product.id)}
-                      className="text-xs underline"
-                    >
-                      削除
-                    </button>
+                  </div>
+                  <div>
+                    <p className="text-xs text-stone-500">
+                      {typeof product.category === 'string'
+                        ? product.category
+                        : product.category.name}
+                    </p>
+                    <h2 className="mt-1 text-sm">{product.name}</h2>
+                    <p className="mt-2 text-sm">{formatPrice(product.price)}</p>
+                    {boxProduct ? (
+                      <div className="mt-3 border-l-2 border-[#c7a463] pl-3 text-xs text-stone-600">
+                        <p>＋ 純正箱：{boxProduct.name}</p>
+                        <p className="mt-1">{formatPrice(boxProduct.price)}</p>
+                        <p className="mt-1 text-[10px]">数量は商品と同じです</p>
+                      </div>
+                    ) : null}
+                    <div className="mt-4 flex items-center justify-between">
+                      <QuantitySelector
+                        value={quantity}
+                        onChange={(q) => update(lineId, q)}
+                      />
+                      <button
+                        onClick={() => remove(lineId)}
+                        className="text-xs underline"
+                      >
+                        削除
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
           <aside className="h-fit bg-[#e8e1d5] p-7">
             <p className="serif text-2xl">ご注文内容</p>

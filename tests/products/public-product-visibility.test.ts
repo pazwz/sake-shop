@@ -1,13 +1,45 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { Prisma } from '@prisma/client';
 import { PUBLIC_PRODUCT_VISIBILITY } from '@/repositories/product.repository';
 import { sanitizePublicCollections } from '@/services/collection.service';
 import { ProductService } from '@/services/product.service';
+import {
+  isPackageOnlyProduct,
+  isStandaloneEcProduct,
+} from '@/services/product-visibility.service';
 import { productQueryValidator } from '@/validators/product.validator';
 
 test('public list and search predicates require active and EC-published products', () => {
   assert.equal(PUBLIC_PRODUCT_VISIBILITY.isActive, true);
   assert.equal(PUBLIC_PRODUCT_VISIBILITY.isEcAvailable, true);
+});
+
+test('package-only products are excluded by Smaregi identity and box category', () => {
+  assert.equal(
+    isPackageOnlyProduct({
+      smaregiProductId: '8000570',
+      category: { smaregiCategoryId: '8000001' },
+    }),
+    true,
+  );
+  assert.equal(
+    isStandaloneEcProduct({
+      smaregiProductId: 'another-product',
+      category: { smaregiCategoryId: '8000014' },
+    }),
+    false,
+  );
+});
+
+test('an alcohol product whose name includes box wording is not misclassified', () => {
+  assert.equal(
+    isStandaloneEcProduct({
+      smaregiProductId: '8000999',
+      category: { smaregiCategoryId: '8000001' },
+    }),
+    true,
+  );
 });
 
 test('direct product detail rejects an unpublished product', async () => {
@@ -37,6 +69,7 @@ const productFixture = (overrides: Record<string, unknown> = {}) => ({
   origin: null,
   category: {
     id: 'category-1',
+    smaregiCategoryId: '8000001',
     name: 'Whisky',
     slug: 'whisky',
     parent: null,
@@ -49,6 +82,8 @@ const productFixture = (overrides: Record<string, unknown> = {}) => ({
   tastingNotes: null,
   images: [],
   inventoryMirrors: [],
+  boxProduct: null,
+  boxProductId: null,
   isActive: true,
   isEcAvailable: true,
   createdAt: new Date('2026-01-01T00:00:00.000Z'),
@@ -95,6 +130,51 @@ test('product detail rejects an inactive product by slug', async () => {
   });
 });
 
+test('product detail rejects a package-only product even if flags are public', async () => {
+  const service = new ProductService(
+    {
+      findBySlug: async () =>
+        productFixture({
+          smaregiProductId: '8000570',
+          category: {
+            id: 'box-category',
+            name: '箱',
+            slug: 'box',
+            smaregiCategoryId: '8000014',
+            parent: null,
+          },
+        }),
+    } as never,
+    { getActiveReservedQuantities: async () => new Map() } as never,
+  );
+  await assert.rejects(service.getProductBySlug('box-product'), {
+    name: 'NotFoundError',
+  });
+});
+
+test('linked box with zero stock is present but unavailable for selection', async () => {
+  const boxProduct = {
+    id: 'box-product',
+    smaregiProductId: '8000570',
+    productCode: 'BOX-001',
+    name: '純正箱',
+    price: new Prisma.Decimal(500),
+    taxRate: new Prisma.Decimal(10),
+    isActive: true,
+    category: { smaregiCategoryId: '8000014' },
+    inventoryMirrors: [],
+  };
+  const service = new ProductService(
+    {
+      findBySlug: async () => productFixture({ boxProduct }),
+    } as never,
+    { getActiveReservedQuantities: async () => new Map() } as never,
+  );
+  const result = await service.getProductBySlug('published-product');
+  assert.equal(result.boxOption?.availableQuantity, 0);
+  assert.equal(result.boxOption?.isAvailable, false);
+});
+
 test('product detail rejects a missing slug', async () => {
   const service = new ProductService(
     {
@@ -109,13 +189,28 @@ test('product detail rejects a missing slug', async () => {
 });
 
 test('home and collection sanitization removes unpublished and inactive products', () => {
-  const visible = { id: 'visible', isActive: true, isEcAvailable: true };
+  const identity = {
+    smaregiProductId: '8000001',
+    category: { smaregiCategoryId: '8000001' },
+  };
+  const visible = {
+    id: 'visible',
+    isActive: true,
+    isEcAvailable: true,
+    ...identity,
+  };
   const unpublished = {
     id: 'unpublished',
     isActive: true,
     isEcAvailable: false,
+    ...identity,
   };
-  const inactive = { id: 'inactive', isActive: false, isEcAvailable: true };
+  const inactive = {
+    id: 'inactive',
+    isActive: false,
+    isEcAvailable: true,
+    ...identity,
+  };
   const [collection] = sanitizePublicCollections([
     {
       id: 'collection-1',
@@ -134,6 +229,34 @@ test('home and collection sanitization removes unpublished and inactive products
   );
   assert.equal(collection.editorialSections[0].product?.id, 'visible');
   assert.equal(collection.editorialSections[1].product, null);
+});
+
+test('home and collection sanitization removes package-only products', () => {
+  const bottle = {
+    id: 'bottle',
+    isActive: true,
+    isEcAvailable: true,
+    smaregiProductId: '8000001',
+    category: { smaregiCategoryId: '8000001' },
+  };
+  const box = {
+    id: 'box',
+    isActive: true,
+    isEcAvailable: true,
+    smaregiProductId: '8000570',
+    category: { smaregiCategoryId: '8000014' },
+  };
+  const [collection] = sanitizePublicCollections([
+    {
+      products: [{ product: bottle }, { product: box }],
+      editorialSections: [{ product: box }],
+    },
+  ]);
+  assert.deepEqual(
+    collection.products.map(({ product }) => product.id),
+    ['bottle'],
+  );
+  assert.equal(collection.editorialSections[0].product, null);
 });
 
 test('public query validator preserves category, search, and season filters', () => {

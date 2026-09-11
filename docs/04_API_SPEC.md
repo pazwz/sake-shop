@@ -290,6 +290,13 @@ availableQuantity = max(0, approvedPhysicalTotal - activeReservedQuantity)
 
 订单创建不会修改 Smaregi inventory，也不会自动调拨。
 
+各 request item は任意の `boxProductId` を一件だけ持てる。指定時は Product の
+`boxProductId` と完全一致し、対象が同期済み package-only SKU、active、価格・税率有効、
+在庫十分であることを検証する。箱だけを `productId` として注文することは禁止する。
+酒本体と箱は別 OrderItem とし、箱行の `parentOrderItemId` は酒本体行を指す。
+両方の InventoryReservation は同一 transaction で作成し、一方の在庫不足で全体を
+rollback する。小計・税額には箱価格を含める。
+
 ---
 
 ### 我的订单
@@ -482,6 +489,18 @@ Role：OWNER / MANAGER / STAFF
 
 ---
 
+### 商品プレビュー
+
+GET
+
+/api/v1/admin/products/{id}/preview
+
+Role：OWNER / MANAGER。短時間の署名付き `previewToken` を生成して実際の
+`/products/{slug}` へ redirect する。商品ページ側でも現在の OWNER / MANAGER session、
+adminId、productId を再検証するため、token 単体または STAFF session では表示できない。
+
+---
+
 ### EC字段修改
 
 PATCH
@@ -491,7 +510,7 @@ PATCH
 允许：
 
 `slug`、`producer`、`origin`、`volume`、`alcoholPercentage`、`description`、
-`tastingNotes`、`isEcAvailable`
+`tastingNotes`、`isEcAvailable`、`boxProductId`
 
 禁止：
 

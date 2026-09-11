@@ -4,11 +4,14 @@ import type { SeasonCollectionSlug } from '@/config/collections';
 import { ConflictError, NotFoundError, ValidationError } from '@/lib/errors';
 import { FeaturedCollectionRepository } from '@/repositories/collection.repository';
 import { ProductRepository } from '@/repositories/product.repository';
+import { isStandaloneEcProduct } from '@/services/product-visibility.service';
 import type {
   CollectionInput,
   CollectionUpdate,
   EditorialSectionInput,
 } from '@/validators/collection.validator';
+import { COLLECTION_PATHS } from '@/config/collections';
+import type { HeaderNavigationLink } from '@/types/navigation';
 
 const createUniqueProductFilter = () => {
   const productIds = new Set<string>();
@@ -22,10 +25,22 @@ const createUniqueProductFilter = () => {
 export const sanitizePublicCollections = <
   T extends {
     products: Array<{
-      product: { isActive: boolean; isEcAvailable: boolean };
+      product: {
+        id: string;
+        isActive: boolean;
+        isEcAvailable: boolean;
+        smaregiProductId: string;
+        category: { smaregiCategoryId: string | null };
+      };
     }>;
     editorialSections: Array<{
-      product: { isActive: boolean; isEcAvailable: boolean } | null;
+      product: {
+        isActive: boolean;
+        isEcAvailable: boolean;
+        id: string;
+        smaregiProductId: string;
+        category: { smaregiCategoryId: string | null };
+      } | null;
     }>;
   },
 >(
@@ -34,12 +49,17 @@ export const sanitizePublicCollections = <
   collections.map((collection) => ({
     ...collection,
     products: collection.products.filter(
-      ({ product }) => product.isActive && product.isEcAvailable,
+      ({ product }) =>
+        product.isActive &&
+        product.isEcAvailable &&
+        isStandaloneEcProduct(product),
     ),
     editorialSections: collection.editorialSections.map((section) => ({
       ...section,
       product:
-        section.product?.isActive && section.product.isEcAvailable
+        section.product?.isActive &&
+        section.product.isEcAvailable &&
+        isStandaloneEcProduct(section.product)
           ? section.product
           : null,
     })),
@@ -132,6 +152,31 @@ export class FeaturedCollectionService {
       ),
       currentSeason: getCurrentSeason(),
     };
+  }
+  async getHeaderNavigation(): Promise<HeaderNavigationLink[]> {
+    const collections = await this.repository.findNavigationCollections();
+    const byType = (type: CollectionType) =>
+      collections.filter((collection) => collection.type === type);
+    const seasonal = byType(CollectionType.SEASONAL);
+    const shopkeeper = byType(CollectionType.SHOPKEEPER)[0];
+    const gift = byType(CollectionType.GIFT)[0];
+    return [
+      ...(seasonal.length
+        ? [{ label: '季節の特集', href: COLLECTION_PATHS.seasonal }]
+        : []),
+      ...(shopkeeper
+        ? [{ label: '店主のおすすめ', href: COLLECTION_PATHS.shopkeeper }]
+        : []),
+      ...(gift ? [{ label: 'ギフト', href: COLLECTION_PATHS.gift }] : []),
+      ...byType(CollectionType.EDITORIAL).map((collection) => ({
+        label: collection.title,
+        href: COLLECTION_PATHS.editorial(collection.id),
+      })),
+      ...byType(CollectionType.STORY).map((collection) => ({
+        label: collection.title,
+        href: COLLECTION_PATHS.story(collection.id),
+      })),
+    ];
   }
   async getPublicCollectionDetail(slug: string) {
     const all = sanitizePublicCollections(
