@@ -54,6 +54,22 @@ const validateCandidates = (candidates: ProductEnrichmentCandidate[]) => {
       throw new Error(
         'Product image contentHash must be a SHA-256 hex digest.',
       );
+    if (
+      candidate.image &&
+      !candidate.image.identityDecision.imageIdentityApproved
+    )
+      throw new Error(
+        `Product image identity is not approved: ${candidate.productId}.`,
+      );
+    if (
+      candidate.image &&
+      (candidate.image.identityDecision.smaregiProductId !==
+        candidate.smaregiProductId ||
+        candidate.image.identityDecision.productCode !== candidate.productCode)
+    )
+      throw new Error(
+        `Product image identity decision does not match: ${candidate.productId}.`,
+      );
   }
 };
 

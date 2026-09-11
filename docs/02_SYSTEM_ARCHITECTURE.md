@@ -220,6 +220,22 @@ Settings
 商品图片沿用 Admin media presign 流程，由浏览器直接 PUT 私有 S3；数据库只保存
 CloudFront URL。ProductImage.displayOrder 决定主图和显示顺序。
 
+运营 enrichment 在 ProductImage 写入前通过统一的 ProductIdentityProfile 与字段级
+identity scoring 进行校验。画像身份批准与商品资料完整度分离：producer 缺失不会作为
+全局拒绝条件；只在 Burgundy 等 producer 本身是必要判别字段的类型中 fail closed。
+不同商品类型分别校验 vintage、age、batch、edition、volume、package 等必要字段，
+明确冲突时不允许写图。检索使用可扩展的品牌/商品 alias registry 与 productCode，
+不依赖数据库商品名和页面标题完全相等；官方 domain 也不依赖 Product.producer 已填充。
+历史 unresolved 结果不作永久缓存，每次使用最新 profile 和 evidence 重新计算。
+Profile 的 identity type 同时参考 Category、已知 product family 与名称中的
+discriminator；未注册品牌可从 DB 商品名或可追溯 evidence 推断，但不会因
+brand 为 null 而自动成功或失败。SAKE 的容量/生火入、Burgundy 的生产者与
+vintage、batch/release family 的 batch、限定版的 edition/variant，以及
+结构化 package 都按类型动态列为 required fields。箱/木箱/无箱/礼盒/套装
+使用 longest-match-first parser，套装构成不明时 fail closed。Identity decision 保留
+required/matched/unknown/conflict 字段用于 Production preflight 审计；hard
+requirement 不得被高 score 覆盖。
+
 公开商品 Repository 强制 `isActive=true AND isEcAvailable=true`。首页和 Collection
 Service 对关联商品再执行相同的防御性过滤，避免历史关联泄露非公开商品。
 

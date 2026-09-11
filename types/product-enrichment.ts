@@ -1,3 +1,5 @@
+import type { ProductImageIdentityDecision } from '@/types/product-identity';
+
 export type ProductEnrichmentFields = {
   producer?: string;
   origin?: string;
@@ -11,6 +13,7 @@ export type PreparedProductEnrichmentImage = {
   imageUrl: string;
   contentHash: string;
   altText?: string | null;
+  identityDecision: ProductImageIdentityDecision;
 };
 
 export type ProductEnrichmentCandidate = {

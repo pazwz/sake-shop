@@ -8,8 +8,37 @@ import type {
   ProductEnrichmentBatchResult,
   ProductEnrichmentCandidate,
 } from '@/types/product-enrichment';
+import type { ProductImageIdentityDecision } from '@/types/product-identity';
 
 const hash = 'a'.repeat(64);
+const approvedIdentity: ProductImageIdentityDecision = {
+  smaregiProductId: 'smaregi-1',
+  productCode: 'CODE-1',
+  identityType: 'STANDARD_SPIRIT',
+  identityConfirmed: true,
+  imageIdentityApproved: true,
+  approved: true,
+  score: 100,
+  requiredFields: ['brand', 'product'],
+  matchedFields: ['brand', 'product', 'productCode'],
+  unknownRequiredFields: [],
+  hardConflicts: [],
+  rejectionReason: null,
+  matches: {
+    brandMatch: 'STRONG_MATCH',
+    productMatch: 'STRONG_MATCH',
+    vintageMatch: 'UNKNOWN',
+    ageMatch: 'UNKNOWN',
+    batchMatch: 'UNKNOWN',
+    editionMatch: 'UNKNOWN',
+    variantMatch: 'UNKNOWN',
+    volumeMatch: 'UNKNOWN',
+    packageMatch: 'UNKNOWN',
+    productCodeMatch: 'STRONG_MATCH',
+    producerMatch: 'UNKNOWN',
+  },
+  evaluatedAt: '2026-09-11T00:00:00.000Z',
+};
 
 const candidate = (index: number): ProductEnrichmentCandidate => ({
   productId: `local-${String(index).padStart(2, '0')}`,
@@ -19,6 +48,11 @@ const candidate = (index: number): ProductEnrichmentCandidate => ({
   image: {
     imageUrl: `https://cdn.example/uploads/products/smaregi-${index}/${hash}.png`,
     contentHash: hash,
+    identityDecision: {
+      ...approvedIdentity,
+      smaregiProductId: `smaregi-${index}`,
+      productCode: `CODE-${index}`,
+    },
   },
 });
 
@@ -117,4 +151,42 @@ test('uses content-addressed product image keys', () => {
       contentHash: 'not-a-hash',
     }),
   );
+});
+
+test('rejects an image whose identity decision is not approved', async () => {
+  const writer = new InMemoryWriter();
+  const service = new ProductEnrichmentBatchService(writer);
+  const input = candidate(1);
+  input.image = {
+    ...input.image!,
+    identityDecision: {
+      ...approvedIdentity,
+      identityConfirmed: false,
+      imageIdentityApproved: false,
+      approved: false,
+      rejectionReason: 'IDENTITY_EVIDENCE_INSUFFICIENT',
+    },
+  };
+
+  await assert.rejects(
+    service.apply([input]),
+    /Product image identity is not approved/,
+  );
+  assert.deepEqual(writer.committed, []);
+});
+
+test('rejects an approved identity decision copied from another product', async () => {
+  const writer = new InMemoryWriter();
+  const service = new ProductEnrichmentBatchService(writer);
+  const input = candidate(2);
+  input.image = {
+    ...input.image!,
+    identityDecision: approvedIdentity,
+  };
+
+  await assert.rejects(
+    service.apply([input]),
+    /Product image identity decision does not match/,
+  );
+  assert.deepEqual(writer.committed, []);
 });

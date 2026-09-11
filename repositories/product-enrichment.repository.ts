@@ -124,6 +124,7 @@ export class ProductEnrichmentRepository {
         const image = candidate.image;
         if (
           image &&
+          image.identityDecision.imageIdentityApproved &&
           !product.images.some(({ imageUrl }) =>
             hasContentHash(imageUrl, image.contentHash),
           )
