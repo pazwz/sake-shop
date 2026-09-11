@@ -257,6 +257,8 @@ SKU とする。詳細画面で選択された場合、Order Service は酒本�
 作成する。箱 OrderItem は `parentOrderItemId` で酒本体行へ結び、どちらか一方でも在庫
 不足なら transaction 全体を rollback する。Smaregi の税設定が解決できない deferred
 箱は Product を偽造せず、Admin で未接続理由だけを表示する。
+Admin の箱候補は main Product の Smaregi ID と箱 Product の Smaregi ID を結ぶ明示的な
+compatibility allowlist だけから取得し、ブランド名や商品名の部分一致では推測しない。
 
 ---
 

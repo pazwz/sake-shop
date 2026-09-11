@@ -484,12 +484,12 @@ export function ProductEditor({
               ) : initialProduct.expectedBox ? (
                 <p className="mt-3 border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
                   箱商品：未接続 — {initialProduct.expectedBox.name}（Smaregi ID{' '}
-                  {initialProduct.expectedBox.smaregiProductId}）は
-                  {initialProduct.expectedBox.reason} のため同期保留中です。
+                  {initialProduct.expectedBox.smaregiProductId}）は、スマレジ側
+                  「箱」カテゴリの税設定待ちです。
                 </p>
               ) : (
                 <p className="mt-3 text-xs text-stone-500">
-                  Smaregi同期済みの箱・包装SKUだけを選択できます。
+                  対応する箱商品はありません。
                 </p>
               )}
             </div>

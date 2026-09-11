@@ -2,6 +2,7 @@ import { Prisma } from '@prisma/client';
 import {
   DEFERRED_BOX_REASON,
   EXPECTED_BOX_PRODUCT_BY_BASE_PRODUCT_ID,
+  getCompatibleBoxSmaregiProductIds,
 } from '@/config/box-products';
 import {
   AppError,
@@ -68,22 +69,28 @@ export class AdminProductService {
 
   public async getProduct(id: string): Promise<AdminProductRecord> {
     const product = await this.requireProduct(id);
+    const compatibleBoxIds = getCompatibleBoxSmaregiProductIds(
+      product.smaregiProductId,
+    );
     const [reservations, candidates] = await Promise.all([
       this.reservations.getActiveReservedQuantities([
         id,
         ...(product.boxProduct ? [product.boxProduct.id] : []),
       ]),
-      this.repository.findBoxCandidates(),
+      this.repository.findBoxCandidates(compatibleBoxIds),
     ]);
+    const compatibleCandidates = candidates.filter((candidate) =>
+      compatibleBoxIds.includes(candidate.smaregiProductId),
+    );
     const candidateReservations =
       await this.reservations.getActiveReservedQuantities(
-        candidates.map(({ id: candidateId }) => candidateId),
+        compatibleCandidates.map(({ id: candidateId }) => candidateId),
       );
     return this.toRecord(
       product,
       reservations.get(id) ?? 0,
       true,
-      candidates.map((candidate) =>
+      compatibleCandidates.map((candidate) =>
         this.toBoxOption(
           candidate,
           candidateReservations.get(candidate.id) ?? 0,
@@ -103,13 +110,22 @@ export class AdminProductService {
         );
       if (data.boxProductId === product.id)
         throw new ValidationError('商品自身を箱オプションに設定できません。');
-      const candidates = await this.repository.findBoxCandidates();
+      const compatibleBoxIds = getCompatibleBoxSmaregiProductIds(
+        product.smaregiProductId,
+      );
+      const candidates = await this.repository.findBoxCandidates(
+        compatibleBoxIds,
+      );
       const candidate = candidates.find(
         ({ id: candidateId }) => candidateId === data.boxProductId,
       );
-      if (!candidate || !isPackageOnlyProduct(candidate))
+      if (
+        !candidate ||
+        !compatibleBoxIds.includes(candidate.smaregiProductId) ||
+        !isPackageOnlyProduct(candidate)
+      )
         throw new ValidationError(
-          'Smaregi同期済みの箱・包装商品を選択してください。',
+          'この商品に対応するSmaregi同期済みの箱商品を選択してください。',
         );
       const boxOwner = await this.repository.findBoxOwner(data.boxProductId);
       if (boxOwner && boxOwner.id !== id)

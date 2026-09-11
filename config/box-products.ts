@@ -16,4 +16,28 @@ export const EXPECTED_BOX_PRODUCT_BY_BASE_PRODUCT_ID = {
   '8000016': { smaregiProductId: '8000575', name: '響JH 箱代金' },
 } as const;
 
+/**
+ * Explicit main-product → package-only SKU compatibility.
+ *
+ * Never infer these relationships from brand or product-name fragments: one
+ * brand can have multiple bottle sizes, editions, and package shapes.
+ */
+export const BOX_PRODUCT_COMPATIBILITY = {
+  '8000001': ['8000570'],
+  '8000002': ['8000571'],
+  '8000008': ['8000572'],
+  '8000003': ['8000573'],
+  '8000014': ['8000574'],
+  '8000016': ['8000575'],
+  // The generic package SKU is compatible only with the standard 750ml item.
+  '8000052': ['8000774'],
+} as const satisfies Record<string, readonly string[]>;
+
+export const getCompatibleBoxSmaregiProductIds = (
+  baseSmaregiProductId: string,
+): readonly string[] =>
+  BOX_PRODUCT_COMPATIBILITY[
+    baseSmaregiProductId as keyof typeof BOX_PRODUCT_COMPATIBILITY
+  ] ?? [];
+
 export const DEFERRED_BOX_REASON = 'CATEGORY_TAX_DIVISION_MISSING';

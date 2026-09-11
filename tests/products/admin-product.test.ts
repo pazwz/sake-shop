@@ -74,6 +74,42 @@ const fixture = (isEcAvailable = false) => ({
   })),
 });
 
+const fixtureWithIdentity = (
+  smaregiProductId: string,
+  name: string,
+  productCode = `CODE-${smaregiProductId}`,
+) => ({
+  ...fixture(false),
+  smaregiProductId,
+  productCode,
+  name,
+});
+
+const domPerignonBoxCandidate = () => ({
+  id: 'dom-perignon-box',
+  smaregiProductId: '8000774',
+  productCode: '49001777016496',
+  name: 'ドンペリニヨン箱',
+  price: new Prisma.Decimal('2200'),
+  taxRate: new Prisma.Decimal('10'),
+  isActive: true,
+  lastSyncedAt: now,
+  category: fixture(false).category,
+  inventoryMirrors: fixture(false).inventoryMirrors,
+});
+
+const publication = {
+  validateProduct: async () => ({
+    canPublish: true,
+    errors: [],
+    warnings: [],
+  }),
+};
+
+const reservations = {
+  getActiveReservedQuantities: async () => new Map<string, number>(),
+};
+
 test('admin product edit link preserves the current list URL', () => {
   const returnTo =
     '/admin/products?q=moet&category=champagne&ecStatus=unpublished&source=smaregi&imageStatus=without&page=3';
@@ -257,6 +293,120 @@ test('admin detail includes unpublished products and subtracts reservations', as
   assert.equal(result.isEcAvailable, false);
   assert.equal(result.physicalTotalApproved, 5);
   assert.equal(result.availableQuantity, 3);
+});
+
+test('YUZA cannot see the Dom Perignon package candidate', async () => {
+  const service = new AdminProductService(
+    {
+      findById: async () => fixtureWithIdentity('8000900', 'YUZA'),
+      findBoxCandidates: async (compatibleIds: readonly string[]) => {
+        assert.deepEqual(compatibleIds, []);
+        return [domPerignonBoxCandidate()];
+      },
+    } as never,
+    reservations as never,
+    publication as never,
+  );
+
+  const result = await service.getProduct('product-1');
+  assert.deepEqual(result.boxCandidates, []);
+  assert.equal(result.expectedBox, null);
+});
+
+test('Yamazaki 12 cannot see the Dom Perignon package candidate', async () => {
+  const service = new AdminProductService(
+    {
+      findById: async () => fixtureWithIdentity('8000001', '山崎12年'),
+      findBoxCandidates: async (compatibleIds: readonly string[]) => {
+        assert.deepEqual(compatibleIds, ['8000570']);
+        return [domPerignonBoxCandidate()];
+      },
+    } as never,
+    reservations as never,
+    publication as never,
+  );
+
+  const result = await service.getProduct('product-1');
+  assert.deepEqual(result.boxCandidates, []);
+});
+
+test('a product without an explicit compatibility mapping has zero candidates', async () => {
+  const service = new AdminProductService(
+    {
+      findById: async () => fixtureWithIdentity('8000999', '而今'),
+      findBoxCandidates: async () => [],
+    } as never,
+    reservations as never,
+    publication as never,
+  );
+
+  const result = await service.getProduct('product-1');
+  assert.equal(result.boxCandidates.length, 0);
+});
+
+test('deferred Yamazaki 12 exposes only its tax-setting wait state', async () => {
+  const service = new AdminProductService(
+    {
+      findById: async () => fixtureWithIdentity('8000001', '山崎12年'),
+      findBoxCandidates: async () => [],
+    } as never,
+    reservations as never,
+    publication as never,
+  );
+
+  const result = await service.getProduct('product-1');
+  assert.deepEqual(result.expectedBox, {
+    smaregiProductId: '8000570',
+    name: '山崎12年 箱代金',
+    reason: 'CATEGORY_TAX_DIVISION_MISSING',
+  });
+  assert.deepEqual(result.boxCandidates, []);
+});
+
+test('only the standard Dom Perignon product can see package 8000774', async () => {
+  const box = domPerignonBoxCandidate();
+  const service = new AdminProductService(
+    {
+      findById: async () =>
+        fixtureWithIdentity('8000052', 'ドンペリニヨン', '3185370735695'),
+      findBoxCandidates: async (compatibleIds: readonly string[]) => {
+        assert.deepEqual(compatibleIds, ['8000774']);
+        return [box];
+      },
+    } as never,
+    reservations as never,
+    publication as never,
+  );
+
+  const result = await service.getProduct('product-1');
+  assert.deepEqual(
+    result.boxCandidates.map(({ smaregiProductId }) => smaregiProductId),
+    ['8000774'],
+  );
+});
+
+test('a normal product cannot bind an incompatible package candidate', async () => {
+  let updated = false;
+  const service = new AdminProductService(
+    {
+      findById: async () => fixtureWithIdentity('8000900', 'YUZA'),
+      findBoxCandidates: async () => [domPerignonBoxCandidate()],
+      update: async () => {
+        updated = true;
+        return fixture(false);
+      },
+    } as never,
+    reservations as never,
+    publication as never,
+  );
+
+  await assert.rejects(
+    service.updateProduct('product-1', {
+      boxProductId: 'dom-perignon-box',
+    }),
+    { code: 'VALIDATION_ERROR' },
+  );
+  assert.equal(updated, false);
 });
 
 test('product image API service rejects URLs outside configured CloudFront uploads', async () => {

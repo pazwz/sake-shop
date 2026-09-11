@@ -86,10 +86,12 @@ export class AdminProductRepository {
     return prisma.product.findUnique({ where: { id }, include });
   }
 
-  public findBoxCandidates() {
+  public findBoxCandidates(compatibleSmaregiProductIds: readonly string[]) {
+    if (compatibleSmaregiProductIds.length === 0) return Promise.resolve([]);
     return prisma.product.findMany({
       where: {
         lastSyncedAt: { not: null },
+        smaregiProductId: { in: [...compatibleSmaregiProductIds] },
         OR: [
           { smaregiProductId: { in: [...SMAREGI_PACKAGE_ONLY_PRODUCT_IDS] } },
           { category: { smaregiCategoryId: SMAREGI_BOX_CATEGORY_ID } },
