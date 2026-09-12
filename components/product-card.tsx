@@ -24,7 +24,7 @@ export function ProductCard({ product }: { product: ProductCardItem }) {
   return (
     <Link
       href={`/products/${product.slug}`}
-      className="product-card group block"
+      className="product-card group flex flex-col"
       data-reveal
     >
       <div className="product-card-image relative aspect-[4/5] overflow-hidden bg-white md:aspect-square">
@@ -32,7 +32,7 @@ export function ProductCard({ product }: { product: ProductCardItem }) {
           <Image
             fill
             sizes="(max-width: 639px) 100vw, (max-width: 1023px) 50vw, 33vw"
-            className="object-contain object-bottom p-4 sm:p-5"
+            className="object-contain object-center p-4 sm:p-5"
             src={imageUrl}
             alt={product.name}
           />
