@@ -203,7 +203,6 @@ aside[aria-labelledby='newsletter-title'] {
 }
 .product-card-meta {
   display: -webkit-box;
-  min-height: 2rem;
   overflow: hidden;
   line-height: 1rem;
   -webkit-box-orient: vertical;
@@ -215,7 +214,6 @@ aside[aria-labelledby='newsletter-title'] {
 }
 .product-card-title {
   display: -webkit-box;
-  min-height: 3rem;
   overflow: hidden;
   line-height: 1.5rem;
   -webkit-box-orient: vertical;
