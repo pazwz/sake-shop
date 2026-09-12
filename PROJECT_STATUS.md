@@ -25,6 +25,33 @@ the historical sprint numbering.
 
 ---
 
+# Current Work State
+
+- Production catalog, CMS, media, Admin, and Smaregi inventory-mirror operations
+  are active.
+- Real customer checkout is intentionally classified as not production-ready.
+- Current planning focus is the P0 production-commerce boundary listed below;
+  no new feature sprint is active during this audit.
+
+---
+
+# Source of Truth
+
+- Smaregi production is authoritative for Product identity, Category, name,
+  product code, price, active state, and physical stock.
+- Neon stores the validated Smaregi mirror plus LINXAS-owned commerce/content
+  data.
+- LINXAS is authoritative for slug, EC publication, description, tasting notes,
+  producer, origin, volume, alcohol percentage, ProductImage, box binding,
+  Collections, Editorial, Story, Customers, Orders, Payments, Shipments, and
+  InventoryReservation.
+- Current implementation status is established from Git code, Prisma schema,
+  deployed migrations, current tests, and safe Production read-only checks.
+- `docs/01_REQUIREMENTS.md` through `docs/04_API_SPEC.md` remain the design source
+  of truth. Historical sprint result files document history, not current status.
+
+---
+
 # Current Architecture
 
 ```text
@@ -262,7 +289,7 @@ things. Do not infer a deletion or failed sync by comparing them directly.
 
 ---
 
-# Not Implemented / Not Production Ready
+# Remaining Work — Not Implemented / Not Production Ready
 
 ## Customer Identity and Account
 
