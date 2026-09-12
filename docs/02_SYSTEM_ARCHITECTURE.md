@@ -253,9 +253,11 @@ predicate，Service 再做防御性有效期检查，并通过统一 path helper
 产生可见但 404 的链接。
 
 Admin Collection 分为两个投影视图，但不复制数据：`/admin/collections` 通过 Service 的
-home projection 只显示当前首页槽位；`/admin/collections/all` 读取全部 Editorial / Story
-管理记录，并链接到同一个 `/admin/collections/[id]` 编辑器。公开菜单、公开详情和 Admin
-内容列表均可追溯到同一 FeaturedCollection 主键。
+home projection 显示当前首页内容，其中 Story 返回全部公开有效记录；
+`/admin/collections/all` 读取全部 Editorial / Story 管理记录，并链接到同一个
+`/admin/collections/[id]` 编辑器。公开菜单、公开详情和 Admin 内容列表均可追溯到同一
+FeaturedCollection 主键。Story 始终按 Repository 的 displayOrder、createdAt 稳定顺序透传，
+不设置固定数量上限。
 
 掲載商品候補使用独立 Admin Route → FeaturedCollection Service → Product/Category
 Repository 查询。候補 predicate 复用公开 Product 的 active + EC available + standalone

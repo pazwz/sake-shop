@@ -132,7 +132,7 @@ const selectCurrentCollections = <
       0,
       HOME_CONTENT_LIMITS.editorial,
     ),
-    story: by(CollectionType.STORY).slice(0, HOME_CONTENT_LIMITS.story),
+    story: by(CollectionType.STORY),
   };
 };
 

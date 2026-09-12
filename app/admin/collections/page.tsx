@@ -157,7 +157,7 @@ function FixedContentList({
   collections: CollectionItem[];
   canEdit: boolean;
   type: 'EDITORIAL' | 'STORY';
-  limit: number;
+  limit?: number;
 }) {
   return (
     <section className="border line bg-white p-6 md:p-8">
@@ -170,7 +170,7 @@ function FixedContentList({
             現在表示中：{collections.length}件
           </p>
         </div>
-        {canEdit && collections.length < limit ? (
+        {canEdit && (limit === undefined || collections.length < limit) ? (
           <Link
             href={`/admin/collections/new?type=${type}`}
             className="text-xs font-semibold underline"
@@ -200,7 +200,7 @@ function FixedContentList({
           </p>
         ) : null}
       </div>
-      {collections.length >= limit ? (
+      {limit !== undefined && collections.length >= limit ? (
         <p className="mt-3 text-xs text-stone-500">
           トップページでは{limit}件まで表示できます。
         </p>
@@ -337,11 +337,10 @@ export default async function AdminCollectionsPage() {
         <FixedContentList
           title="ストーリー"
           eyebrow="STORY"
-          description="トップページに表示する2件のストーリーを編集します。"
+          description="公開中のストーリーはすべてトップページに表示されます。"
           collections={management.story}
           canEdit={canEdit}
           type="STORY"
-          limit={HOME_CONTENT_LIMITS.story}
         />
       </div>
     </main>

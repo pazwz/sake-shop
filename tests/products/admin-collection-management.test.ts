@@ -89,3 +89,22 @@ test('admin content management delegates to the complete editorial and story pro
   } as never);
   assert.deepEqual(await service.getAdminContentCollections(), expected);
 });
+
+test('homepage admin management returns all published stories without a slot limit', async () => {
+  const stories = ['story-1', 'story-2', 'story-3'].map((id) => ({
+    id,
+    type: CollectionType.STORY,
+    status: CollectionStatus.PUBLISHED,
+    season: null,
+    products: [],
+  }));
+  const service = new FeaturedCollectionService({
+    findAdminCollections: async () => stories,
+  } as never);
+
+  const result = await service.getAdminHomeManagement();
+  assert.deepEqual(
+    result.story.map(({ id }) => id),
+    ['story-1', 'story-2', 'story-3'],
+  );
+});

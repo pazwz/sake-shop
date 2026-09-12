@@ -24,10 +24,10 @@ export function ProductCard({ product }: { product: ProductCardItem }) {
   return (
     <Link
       href={`/products/${product.slug}`}
-      className="product-card group flex flex-col"
+      className="product-card group flex w-full min-w-0 max-w-full flex-col"
       data-reveal
     >
-      <div className="product-card-image relative aspect-[4/5] overflow-hidden bg-white md:aspect-square">
+      <div className="product-card-image relative aspect-[4/5] w-full min-w-0 max-w-full overflow-hidden bg-white md:aspect-square">
         {imageUrl ? (
           <Image
             fill
@@ -43,16 +43,18 @@ export function ProductCard({ product }: { product: ProductCardItem }) {
           </span>
         ) : null}
       </div>
-      <p className="product-card-meta mt-5 text-[10px] tracking-[.15em] text-[#6d2227] md:mt-7">
-        {categoryName} / {product.producer ?? 'LINXAS'}
-      </p>
-      <h3 className="product-card-title mt-2 text-[15px] font-normal md:mt-3">
-        {product.name}
-      </h3>
-      <p className="product-card-price mt-4 text-sm md:mt-5">
-        {formatPrice(product.price)}{' '}
-        <span className="text-[10px] text-stone-500">税込</span>
-      </p>
+      <div className="product-card-info w-full min-w-0 max-w-full [overflow-wrap:anywhere]">
+        <p className="product-card-meta mt-5 max-w-full text-[10px] tracking-[.15em] text-[#6d2227] md:mt-7">
+          {categoryName} / {product.producer ?? 'LINXAS'}
+        </p>
+        <h3 className="product-card-title mt-2 max-w-full text-[15px] font-normal md:mt-3">
+          {product.name}
+        </h3>
+        <p className="product-card-price mt-4 max-w-full text-sm md:mt-5">
+          {formatPrice(product.price)}{' '}
+          <span className="text-[10px] text-stone-500">税込</span>
+        </p>
+      </div>
     </Link>
   );
 }

@@ -75,3 +75,42 @@ test('story detail resolution is not limited by the homepage story count', async
   const result = await service.getPublicCollectionDetail('story-story-3');
   assert.equal(result?.id, 'story-3');
 });
+
+test('homepage returns every published story in repository display order', async () => {
+  const collections = [
+    detailedCollection('story-1'),
+    detailedCollection('story-2'),
+    detailedCollection('story-3'),
+    detailedCollection('story-4'),
+  ];
+  const service = new FeaturedCollectionService({
+    findPublished: async () => collections,
+  } as never);
+
+  const result = await service.getHome();
+  assert.deepEqual(
+    result.story.map(({ id }) => id),
+    ['story-1', 'story-2', 'story-3', 'story-4'],
+  );
+});
+
+test('homepage story count follows current published data and excludes archived stories', async () => {
+  const service = new FeaturedCollectionService({
+    findPublished: async () =>
+      [
+        detailedCollection('story-1'),
+        detailedCollection('story-2'),
+        detailedCollection('story-archived'),
+      ].map((collection) =>
+        collection.id === 'story-archived'
+          ? { ...collection, status: CollectionStatus.ARCHIVED }
+          : collection,
+      ),
+  } as never);
+
+  const result = await service.getHome();
+  assert.deepEqual(
+    result.story.map(({ id }) => id),
+    ['story-1', 'story-2'],
+  );
+});
