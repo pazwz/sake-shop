@@ -100,3 +100,12 @@ test('package-only products can never be published as standalone EC products', a
     true,
   );
 });
+
+test('service-only products can never be published as standalone EC products', async () => {
+  const result = await validate({ smaregiProductId: '8000511' });
+  assert.equal(result.canPublish, false);
+  assert.equal(
+    result.errors.some(({ code }) => code === 'NON_STANDALONE_PRODUCT'),
+    true,
+  );
+});

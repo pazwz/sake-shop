@@ -1,0 +1,8 @@
+import { SMAREGI_PACKAGE_ONLY_PRODUCT_IDS } from '@/config/box-products';
+
+export const SMAREGI_SERVICE_ONLY_PRODUCT_IDS = ['8000511'] as const;
+
+export const SMAREGI_NON_STANDALONE_PRODUCT_IDS = [
+  ...SMAREGI_PACKAGE_ONLY_PRODUCT_IDS,
+  ...SMAREGI_SERVICE_ONLY_PRODUCT_IDS,
+] as const;

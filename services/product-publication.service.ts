@@ -1,7 +1,10 @@
 import type { AdminProductWithRelations } from '@/repositories/admin-product.repository';
 import { AdminProductRepository } from '@/repositories/admin-product.repository';
 import { projectApprovedInventory } from '@/services/inventory-projection.service';
-import { isPackageOnlyProduct } from '@/services/product-visibility.service';
+import {
+  isPackageOnlyProduct,
+  isStandaloneEcProduct,
+} from '@/services/product-visibility.service';
 import type { ProductPublicationResult } from '@/types/admin-product';
 
 type PublicationProduct = Pick<
@@ -40,6 +43,11 @@ export class ProductPublicationService {
       errors.push({
         code: 'PACKAGE_ONLY_PRODUCT',
         message: '箱・包装商品は単独でEC公開できません。',
+      });
+    else if (!isStandaloneEcProduct(product))
+      errors.push({
+        code: 'NON_STANDALONE_PRODUCT',
+        message: '送料・サービス商品は単独でEC公開できません。',
       });
 
     if (!product.isActive)

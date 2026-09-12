@@ -149,6 +149,10 @@ Seasonal、サイトマップおよび直接商品詳細から常に除外する
 注文時は酒本体と箱を別々の OrderItem / InventoryReservation として同一 transaction
 で確保する。箱だけの注文は禁止する。
 
+送料・手数料・サービス専用 SKU も独立商品ではなく、EC 公開および公開商品查询の
+対象外とする。対象は確認済み Smaregi identity の明示 allow/deny 設定で管理し、名称の
+部分一致だけで通常商品を除外しない。
+
 OWNER / MANAGER は Admin 商品編集画面から短時間の署名付き URL を発行し、現在の
 Admin session を保持したまま非公開商品の実商品詳細 UI を確認できる。preview token
 単体ではアクセスできず、一般利用者および STAFF は利用できない。

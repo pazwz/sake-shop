@@ -42,6 +42,16 @@ test('an alcohol product whose name includes box wording is not misclassified', 
   );
 });
 
+test('explicit service-only products are not standalone EC products', () => {
+  assert.equal(
+    isStandaloneEcProduct({
+      smaregiProductId: '8000511',
+      category: { smaregiCategoryId: '8000001' },
+    }),
+    false,
+  );
+});
+
 test('direct product detail rejects an unpublished product', async () => {
   const product = {
     id: 'product-1',

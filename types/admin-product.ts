@@ -7,6 +7,7 @@ export type PublicationIssue = {
     | 'SLUG_DUPLICATE'
     | 'IMAGE_REQUIRED'
     | 'SYNC_SOURCE_INVALID'
+    | 'NON_STANDALONE_PRODUCT'
     | 'PACKAGE_ONLY_PRODUCT';
   message: string;
 };

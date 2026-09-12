@@ -77,3 +77,24 @@ export const PUBLIC_EXPLORE_NAVIGATION = [
 export const getPublicProductNavigation = (
   id: string | null | undefined,
 ) => PUBLIC_PRODUCT_NAVIGATION.find((definition) => definition.id === id);
+
+export const getPublicProductGroupSelectValue = (
+  id: string | null | undefined,
+) => getPublicProductNavigation(id)?.id ?? '';
+
+export const buildPublicProductGroupHref = (
+  currentSearch: string,
+  nextGroup: string,
+) => {
+  const search = new URLSearchParams(currentSearch);
+  const group = getPublicProductNavigation(nextGroup);
+
+  if (group) search.set('group', group.id);
+  else search.delete('group');
+
+  search.delete('category');
+  search.delete('subcategory');
+
+  const query = search.toString();
+  return query ? `/products?${query}` : '/products';
+};

@@ -1,8 +1,8 @@
 import { Prisma, Season } from '@prisma/client';
 import {
   SMAREGI_BOX_CATEGORY_ID,
-  SMAREGI_PACKAGE_ONLY_PRODUCT_IDS,
 } from '@/config/box-products';
+import { SMAREGI_NON_STANDALONE_PRODUCT_IDS } from '@/config/public-products';
 import { getPublicProductNavigation } from '@/config/public-navigation';
 import { prisma } from '@/lib/prisma';
 import type { ProductQuery } from '@/validators/product.validator';
@@ -10,7 +10,7 @@ import type { ProductQuery } from '@/validators/product.validator';
 export const STANDALONE_EC_PRODUCT_WHERE = {
   NOT: {
     OR: [
-      { smaregiProductId: { in: [...SMAREGI_PACKAGE_ONLY_PRODUCT_IDS] } },
+      { smaregiProductId: { in: [...SMAREGI_NON_STANDALONE_PRODUCT_IDS] } },
       { category: { smaregiCategoryId: SMAREGI_BOX_CATEGORY_ID } },
     ],
   },

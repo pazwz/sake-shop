@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+  buildPublicProductGroupHref,
+  getPublicProductGroupSelectValue,
   PUBLIC_EXPLORE_NAVIGATION,
   PUBLIC_PRODUCT_NAVIGATION,
 } from '@/config/public-navigation';
@@ -28,6 +30,42 @@ test('header and homepage share the same public product navigation', () => {
     ({ label }) => label,
   );
   assert.equal(labels.includes('リキュール'), false);
+});
+
+test('consumer product group selector uses the shared public navigation', () => {
+  assert.deepEqual(
+    PUBLIC_PRODUCT_NAVIGATION.map(({ id, label }) => ({ id, label })),
+    [
+      { id: 'sake', label: '日本酒' },
+      { id: 'whisky', label: 'ウイスキー' },
+      { id: 'wine-champagne', label: 'ワイン・シャンパン' },
+      { id: 'shochu', label: '焼酎' },
+      { id: 'brandy-spirits', label: 'ブランデー・スピリッツ' },
+    ],
+  );
+  const labels: readonly string[] = PUBLIC_PRODUCT_NAVIGATION.map(
+    ({ label }) => label,
+  );
+  assert.equal(labels.includes('箱'), false);
+  assert.equal(labels.includes('リキュール'), false);
+});
+
+test('product group select value is derived from the URL group', () => {
+  assert.equal(getPublicProductGroupSelectValue(null), '');
+  assert.equal(getPublicProductGroupSelectValue('whisky'), 'whisky');
+  assert.equal(getPublicProductGroupSelectValue('sake'), 'sake');
+  assert.equal(getPublicProductGroupSelectValue('unknown'), '');
+});
+
+test('changing the public group updates the URL and removes raw categories', () => {
+  assert.equal(
+    buildPublicProductGroupHref('category=box&sort=price_asc', 'whisky'),
+    '/products?sort=price_asc&group=whisky',
+  );
+  assert.equal(
+    buildPublicProductGroupHref('group=whisky', ''),
+    '/products',
+  );
 });
 
 test('header navigation groups only categories that actually exist', async () => {

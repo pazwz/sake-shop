@@ -1,13 +1,18 @@
 'use client';
 
 import { Suspense, useEffect, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { ProductCard } from '@/components/product-card';
-import { getCategories, getProducts } from '@/lib/product-api';
-import type { CategoryRecord, ProductListResult } from '@/types/product';
+import { getProducts } from '@/lib/product-api';
+import type { ProductListResult } from '@/types/product';
 import { BrandLoader } from '@/components/brand-loader';
 import { BrandEmptyState } from '@/components/brand-empty-state';
 import { AgeNotice } from '@/components/age-notice';
+import {
+  buildPublicProductGroupHref,
+  getPublicProductGroupSelectValue,
+  PUBLIC_PRODUCT_NAVIGATION,
+} from '@/config/public-navigation';
 
 const INITIAL_RESULT: ProductListResult = {
   items: [],
@@ -23,36 +28,25 @@ export default function ProductsPage() {
 }
 
 function ProductsCollection() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const routeCategory = searchParams.get('category') ?? '';
-  const routeGroup = searchParams.get('group') ?? '';
-  const [categories, setCategories] = useState<CategoryRecord[]>([]);
+  const routeGroup = getPublicProductGroupSelectValue(
+    searchParams.get('group'),
+  );
   const [result, setResult] = useState<ProductListResult>(INITIAL_RESULT);
   const [keyword, setKeyword] = useState(
     searchParams.get('keyword') ?? searchParams.get('q') ?? '',
   );
-  const [category, setCategory] = useState(searchParams.get('category') ?? '');
-  const [group, setGroup] = useState(searchParams.get('group') ?? '');
   const [sort, setSort] = useState(searchParams.get('sort') ?? 'recommended');
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
 
   useEffect(() => {
-    void getCategories()
-      .then(setCategories)
-      .catch(() => setCategories([]));
-  }, []);
-
-  useEffect(() => {
-    setCategory(routeCategory);
-    setGroup(routeGroup);
-  }, [routeCategory, routeGroup]);
-
-  useEffect(() => {
     const query = new URLSearchParams({ page: '1', limit: '20', sort });
     if (keyword) query.set('keyword', keyword);
-    if (category) query.set('category', category);
-    if (group) query.set('group', group);
+    if (routeCategory) query.set('category', routeCategory);
+    if (routeGroup) query.set('group', routeGroup);
 
     setIsLoading(true);
     setHasError(false);
@@ -60,7 +54,7 @@ function ProductsCollection() {
       .then(setResult)
       .catch(() => setHasError(true))
       .finally(() => setIsLoading(false));
-  }, [category, group, keyword, sort]);
+  }, [keyword, routeCategory, routeGroup, sort]);
 
   return (
     <div className="storefront-results">
@@ -81,16 +75,20 @@ function ProductsCollection() {
             カテゴリー
             <select
               className="input mt-1 block"
-              value={category}
-              onChange={(event) => {
-                setCategory(event.target.value);
-                setGroup('');
-              }}
+              value={routeGroup}
+              onChange={(event) =>
+                router.push(
+                  buildPublicProductGroupHref(
+                    searchParams.toString(),
+                    event.target.value,
+                  ),
+                )
+              }
             >
               <option value="">すべて</option>
-              {categories.map((item) => (
-                <option key={item.id} value={item.slug}>
-                  {item.name}
+              {PUBLIC_PRODUCT_NAVIGATION.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.label}
                 </option>
               ))}
             </select>
