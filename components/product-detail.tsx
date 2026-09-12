@@ -56,7 +56,7 @@ export function ProductDetail({
           ← 商品一覧へ
         </Link>
         <div className="mt-8 grid gap-10 md:grid-cols-2 md:gap-16">
-          <div className="relative aspect-[4/5] overflow-hidden bg-[#f7f4ee]">
+          <div className="relative aspect-[4/5] overflow-hidden bg-transparent">
             {imageUrl ? (
               <Image
                 fill
