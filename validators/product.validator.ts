@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { DEFAULT_PAGE, DEFAULT_PAGE_LIMIT, MAX_PAGE_LIMIT } from '@/config/api';
+import { PUBLIC_PRODUCT_NAVIGATION_IDS } from '@/config/public-navigation';
 
 const optionalQueryValue = z.preprocess(
   (value) => (value === '' ? undefined : value),
@@ -9,6 +10,11 @@ const optionalQueryValue = z.preprocess(
 const optionalSeasonValue = z.preprocess(
   (value) => (value === '' ? undefined : value),
   z.enum(['spring', 'summer', 'autumn', 'winter']).optional(),
+);
+
+const optionalNavigationGroup = z.preprocess(
+  (value) => (value === '' ? undefined : value),
+  z.enum(PUBLIC_PRODUCT_NAVIGATION_IDS).optional(),
 );
 
 export const productSortValidator = z.enum([
@@ -27,6 +33,7 @@ export const productQueryValidator = z.object({
     .max(MAX_PAGE_LIMIT)
     .default(DEFAULT_PAGE_LIMIT),
   category: optionalQueryValue,
+  group: optionalNavigationGroup,
   subcategory: optionalQueryValue,
   keyword: optionalQueryValue,
   season: optionalSeasonValue,

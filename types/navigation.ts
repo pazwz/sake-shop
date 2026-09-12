@@ -6,5 +6,6 @@ export type HeaderNavigationLink = {
 export type HeaderNavigationGroup = {
   id: string;
   label: string;
+  href: string;
   links: HeaderNavigationLink[];
 };

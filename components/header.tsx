@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { PUBLIC_FEATURE_NAVIGATION } from '@/config/public-navigation';
 import type {
   HeaderNavigationGroup,
   HeaderNavigationLink,
@@ -38,7 +39,8 @@ export function Header({
     setSearch(false);
   };
   const activeGroup = navigation.find(({ id }) => id === active);
-  const megaTitle = active === 'features' ? '特集' : activeGroup?.label;
+  const megaTitle =
+    active === 'features' ? PUBLIC_FEATURE_NAVIGATION.label : activeGroup?.label;
   const megaLinks = active === 'features' ? features : activeGroup?.links;
 
   return (
@@ -91,11 +93,20 @@ export function Header({
         <nav className="wrap flex h-full items-center justify-center gap-7 text-[11px] font-bold tracking-[.08em] xl:gap-10 xl:text-xs xl:tracking-[.12em]">
           <Link href="/products">商品一覧</Link>
           {navigation.map((group) => (
-            <button key={group.id} onMouseEnter={() => setActive(group.id)}>
+            <Link
+              key={group.id}
+              href={group.href}
+              onMouseEnter={() => setActive(group.id)}
+            >
               {group.label}
-            </button>
+            </Link>
           ))}
-          <button onMouseEnter={() => setActive('features')}>特集</button>
+          <Link
+            href={PUBLIC_FEATURE_NAVIGATION.href}
+            onMouseEnter={() => setActive('features')}
+          >
+            {PUBLIC_FEATURE_NAVIGATION.label}
+          </Link>
           <Link href="/about">私たちについて</Link>
         </nav>
       </div>
@@ -110,7 +121,13 @@ export function Header({
             </Link>
             {navigation.map((group) => (
               <div key={group.id}>
-                <p className="font-semibold">{group.label}</p>
+                <Link
+                  href={group.href}
+                  onClick={() => setMobile(false)}
+                  className="font-semibold"
+                >
+                  {group.label}
+                </Link>
                 {group.links.map((link) => (
                   <Link
                     key={link.href}
@@ -124,7 +141,13 @@ export function Header({
               </div>
             ))}
             <div>
-              <p className="font-semibold">特集</p>
+              <Link
+                href={PUBLIC_FEATURE_NAVIGATION.href}
+                onClick={() => setMobile(false)}
+                className="font-semibold"
+              >
+                {PUBLIC_FEATURE_NAVIGATION.label}
+              </Link>
               {features.map((link) => (
                 <Link
                   key={link.href}

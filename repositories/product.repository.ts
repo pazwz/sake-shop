@@ -3,6 +3,7 @@ import {
   SMAREGI_BOX_CATEGORY_ID,
   SMAREGI_PACKAGE_ONLY_PRODUCT_IDS,
 } from '@/config/box-products';
+import { getPublicProductNavigation } from '@/config/public-navigation';
 import { prisma } from '@/lib/prisma';
 import type { ProductQuery } from '@/validators/product.validator';
 
@@ -123,6 +124,15 @@ export class ProductRepository {
   }
 
   private buildWhere(query: ProductQuery): Prisma.ProductWhereInput {
+    const navigationGroup = getPublicProductNavigation(query.group);
+    const groupFilter = navigationGroup
+      ? {
+          OR: navigationGroup.terms.flatMap((term) => [
+            { category: { name: { contains: term } } },
+            { category: { parent: { name: { contains: term } } } },
+          ]),
+        }
+      : {};
     const categoryFilter = query.category
       ? {
           OR: [
@@ -178,7 +188,13 @@ export class ProductRepository {
     return {
       ...PUBLIC_PRODUCT_VISIBILITY,
       ...STANDALONE_EC_PRODUCT_WHERE,
-      AND: [categoryFilter, subcategoryFilter, keywordFilter, seasonFilter],
+      AND: [
+        groupFilter,
+        categoryFilter,
+        subcategoryFilter,
+        keywordFilter,
+        seasonFilter,
+      ],
     };
   }
 

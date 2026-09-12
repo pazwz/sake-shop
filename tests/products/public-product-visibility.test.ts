@@ -259,13 +259,15 @@ test('home and collection sanitization removes package-only products', () => {
   assert.equal(collection.editorialSections[0].product, null);
 });
 
-test('public query validator preserves category, search, and season filters', () => {
+test('public query validator preserves category, group, search, and season filters', () => {
   const query = productQueryValidator.parse({
     category: 'whisky',
+    group: 'wine-champagne',
     keyword: '山崎',
     season: 'autumn',
   });
   assert.equal(query.category, 'whisky');
+  assert.equal(query.group, 'wine-champagne');
   assert.equal(query.keyword, '山崎');
   assert.equal(query.season, 'autumn');
 });

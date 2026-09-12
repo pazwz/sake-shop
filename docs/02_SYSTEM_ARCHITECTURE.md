@@ -241,8 +241,9 @@ Service 对关联商品再执行相同的防御性过滤，避免历史关联泄
 
 公开查询还通过统一 `isStandaloneEcProduct` 规则排除 Smaregi 箱 Category 和已确认的
 package-only SKU。规则只依赖 Smaregi identity / Category，不以商品名包含「箱」进行
-宽泛推断，因此「酒本体 + 木箱付き」仍是普通商品。Header 的 Category mega menu 由
-Category Repository → Service 读取真实公开独立商品分类；特集菜单由已发布
+宽泛推断，因此「酒本体 + 木箱付き」仍是普通商品。Header 与首页 `EXPLORE BY CATEGORY`
+共用 `PUBLIC_PRODUCT_NAVIGATION` 顶层分类、聚合查询参数和链接；Category mega menu 由
+Category Repository → Service 读取真实公开独立商品分类，特集菜单由已发布
 FeaturedCollection 生成。
 
 非公开商品 preview 使用 `Admin preview route → Preview Service → Product Service`。

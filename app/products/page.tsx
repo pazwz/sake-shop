@@ -24,12 +24,15 @@ export default function ProductsPage() {
 
 function ProductsCollection() {
   const searchParams = useSearchParams();
+  const routeCategory = searchParams.get('category') ?? '';
+  const routeGroup = searchParams.get('group') ?? '';
   const [categories, setCategories] = useState<CategoryRecord[]>([]);
   const [result, setResult] = useState<ProductListResult>(INITIAL_RESULT);
   const [keyword, setKeyword] = useState(
     searchParams.get('keyword') ?? searchParams.get('q') ?? '',
   );
   const [category, setCategory] = useState(searchParams.get('category') ?? '');
+  const [group, setGroup] = useState(searchParams.get('group') ?? '');
   const [sort, setSort] = useState(searchParams.get('sort') ?? 'recommended');
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
@@ -41,9 +44,15 @@ function ProductsCollection() {
   }, []);
 
   useEffect(() => {
+    setCategory(routeCategory);
+    setGroup(routeGroup);
+  }, [routeCategory, routeGroup]);
+
+  useEffect(() => {
     const query = new URLSearchParams({ page: '1', limit: '20', sort });
     if (keyword) query.set('keyword', keyword);
     if (category) query.set('category', category);
+    if (group) query.set('group', group);
 
     setIsLoading(true);
     setHasError(false);
@@ -51,7 +60,7 @@ function ProductsCollection() {
       .then(setResult)
       .catch(() => setHasError(true))
       .finally(() => setIsLoading(false));
-  }, [category, keyword, sort]);
+  }, [category, group, keyword, sort]);
 
   return (
     <div className="wrap py-14 md:py-20">
@@ -72,7 +81,10 @@ function ProductsCollection() {
           <select
             className="input mt-1 block"
             value={category}
-            onChange={(event) => setCategory(event.target.value)}
+            onChange={(event) => {
+              setCategory(event.target.value);
+              setGroup('');
+            }}
           >
             <option value="">すべて</option>
             {categories.map((item) => (
