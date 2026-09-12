@@ -59,13 +59,13 @@ test('product group select value is derived from the URL group', () => {
 
 test('changing the public group updates the URL and removes raw categories', () => {
   assert.equal(
-    buildPublicProductGroupHref('category=box&sort=price_asc', 'whisky'),
-    '/products?sort=price_asc&group=whisky',
+    buildPublicProductGroupHref(
+      'category=box&sort=price_asc&page=8&perPage=48',
+      'whisky',
+    ),
+    '/products?sort=price_asc&perPage=48&group=whisky',
   );
-  assert.equal(
-    buildPublicProductGroupHref('group=whisky', ''),
-    '/products',
-  );
+  assert.equal(buildPublicProductGroupHref('group=whisky', ''), '/products');
 });
 
 test('header navigation groups only categories that actually exist', async () => {

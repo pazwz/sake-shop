@@ -74,9 +74,8 @@ export const PUBLIC_EXPLORE_NAVIGATION = [
   PUBLIC_FEATURE_NAVIGATION,
 ] as const;
 
-export const getPublicProductNavigation = (
-  id: string | null | undefined,
-) => PUBLIC_PRODUCT_NAVIGATION.find((definition) => definition.id === id);
+export const getPublicProductNavigation = (id: string | null | undefined) =>
+  PUBLIC_PRODUCT_NAVIGATION.find((definition) => definition.id === id);
 
 export const getPublicProductGroupSelectValue = (
   id: string | null | undefined,
@@ -94,6 +93,7 @@ export const buildPublicProductGroupHref = (
 
   search.delete('category');
   search.delete('subcategory');
+  search.delete('page');
 
   const query = search.toString();
   return query ? `/products?${query}` : '/products';

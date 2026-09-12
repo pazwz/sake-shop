@@ -8,5 +8,5 @@ export const INTERNAL_SERVER_ERROR_CODE = 'INTERNAL_SERVER_ERROR' as const;
 export const INTERNAL_SERVER_ERROR_MESSAGE =
   'An unexpected error occurred.' as const;
 export const DEFAULT_PAGE = 1;
-export const DEFAULT_PAGE_LIMIT = 20;
+export const DEFAULT_PAGE_LIMIT = 24;
 export const MAX_PAGE_LIMIT = 100;

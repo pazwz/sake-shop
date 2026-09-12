@@ -16,7 +16,8 @@ export class ProductService {
   ) {}
 
   public async getProducts(query: ProductQuery): Promise<ProductListResult> {
-    const { items, total } = await this.productRepository.findActive(query);
+    const { items, total, page } =
+      await this.productRepository.findActive(query);
 
     const reservations =
       await this.reservationRepository.getActiveReservedQuantities(
@@ -25,7 +26,12 @@ export class ProductService {
           ...(product.boxProduct ? [product.boxProduct.id] : []),
         ]),
       );
-    return this.createListResult(items, total, query, reservations);
+    return this.createListResult(
+      items,
+      total,
+      { ...query, page },
+      reservations,
+    );
   }
 
   public async getProduct(identifier: string): Promise<ProductRecord> {
@@ -103,7 +109,7 @@ export class ProductService {
     keyword: string,
     query: ProductQuery,
   ): Promise<ProductListResult> {
-    const { items, total } = await this.productRepository.search(
+    const { items, total, page } = await this.productRepository.search(
       keyword,
       query,
     );
@@ -115,7 +121,12 @@ export class ProductService {
           ...(product.boxProduct ? [product.boxProduct.id] : []),
         ]),
       );
-    return this.createListResult(items, total, query, reservations);
+    return this.createListResult(
+      items,
+      total,
+      { ...query, page },
+      reservations,
+    );
   }
 
   private createListResult(

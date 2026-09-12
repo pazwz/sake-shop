@@ -1,9 +1,8 @@
 import { Prisma, Season } from '@prisma/client';
-import {
-  SMAREGI_BOX_CATEGORY_ID,
-} from '@/config/box-products';
+import { SMAREGI_BOX_CATEGORY_ID } from '@/config/box-products';
 import { SMAREGI_NON_STANDALONE_PRODUCT_IDS } from '@/config/public-products';
 import { getPublicProductNavigation } from '@/config/public-navigation';
+import { getPublicProductEffectivePage } from '@/config/public-product-pagination';
 import { prisma } from '@/lib/prisma';
 import type { ProductQuery } from '@/validators/product.validator';
 
@@ -42,9 +41,23 @@ const productInclude = {
   },
 } satisfies Prisma.ProductInclude;
 
+const productListInclude = {
+  ...productInclude,
+  images: {
+    orderBy: { displayOrder: 'asc' as const },
+    take: 1,
+  },
+} satisfies Prisma.ProductInclude;
+
 export type ProductWithRelations = Prisma.ProductGetPayload<{
   include: typeof productInclude;
 }>;
+
+type ProductPage = {
+  items: ProductWithRelations[];
+  total: number;
+  page: number;
+};
 
 export const PUBLIC_PRODUCT_VISIBILITY = {
   isActive: true,
@@ -85,41 +98,41 @@ export class ProductRepository {
     return product !== null;
   }
 
-  public async findMany(
-    query: ProductQuery,
-  ): Promise<{ items: ProductWithRelations[]; total: number }> {
+  public async findMany(query: ProductQuery): Promise<ProductPage> {
     const where = this.buildWhere(query);
-    const [items, total] = await prisma.$transaction([
-      prisma.product.findMany({
+    return prisma.$transaction(async (transaction) => {
+      const total = await transaction.product.count({ where });
+      const page = getPublicProductEffectivePage(
+        query.page,
+        total,
+        query.limit,
+      );
+      const items = await transaction.product.findMany({
         where,
-        include: productInclude,
+        include: productListInclude,
         orderBy: this.getOrderBy(query.sort),
-        skip: (query.page - 1) * query.limit,
+        skip: (page - 1) * query.limit,
         take: query.limit,
-      }),
-      prisma.product.count({ where }),
-    ]);
-
-    return { items, total };
+      });
+      return { items, total, page };
+    });
   }
 
   public async findByCategory(
     category: string,
     query: ProductQuery,
-  ): Promise<{ items: ProductWithRelations[]; total: number }> {
+  ): Promise<ProductPage> {
     return this.findMany({ ...query, category });
   }
 
-  public async findActive(
-    query: ProductQuery,
-  ): Promise<{ items: ProductWithRelations[]; total: number }> {
+  public async findActive(query: ProductQuery): Promise<ProductPage> {
     return this.findMany(query);
   }
 
   public async search(
     keyword: string,
     query: ProductQuery,
-  ): Promise<{ items: ProductWithRelations[]; total: number }> {
+  ): Promise<ProductPage> {
     return this.findMany({ ...query, keyword });
   }
 
@@ -200,10 +213,10 @@ export class ProductRepository {
 
   private getOrderBy(
     sort: ProductQuery['sort'],
-  ): Prisma.ProductOrderByWithRelationInput {
-    if (sort === 'price_asc') return { price: 'asc' };
-    if (sort === 'price_desc') return { price: 'desc' };
+  ): Prisma.ProductOrderByWithRelationInput[] {
+    if (sort === 'price_asc') return [{ price: 'asc' }, { id: 'asc' }];
+    if (sort === 'price_desc') return [{ price: 'desc' }, { id: 'asc' }];
 
-    return { createdAt: 'desc' };
+    return [{ createdAt: 'desc' }, { id: 'desc' }];
   }
 }

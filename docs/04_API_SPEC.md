@@ -130,7 +130,7 @@ GET
 
 page
 
-limit
+limit（默认 24；消费者页面的 `perPage` 仅允许 24 / 48 / 96，并映射到该参数）
 
 category
 
@@ -145,6 +145,10 @@ sort
 返回：
 
 商品分页列表
+
+返回 pagination：`page`、`limit`、`total`、`totalPages`。page 超出当前筛选结果时按
+最后有效页规范化；total 只统计 active、EC 公开且可独立销售的商品，不包含箱・包装、
+送料或服务专用 SKU。排序包含稳定 secondary key，分页不会因同价商品产生重复或跳项。
 
 ---
 

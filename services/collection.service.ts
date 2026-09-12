@@ -1,6 +1,10 @@
 import { CollectionStatus, CollectionType, Season } from '@prisma/client';
 import { HOME_CONTENT_LIMITS } from '@/config/home';
-import type { SeasonCollectionSlug } from '@/config/collections';
+import {
+  getPublicCollectionPath,
+  isPublicCollectionAt,
+  type SeasonCollectionSlug,
+} from '@/config/collections';
 import { ConflictError, NotFoundError, ValidationError } from '@/lib/errors';
 import { FeaturedCollectionRepository } from '@/repositories/collection.repository';
 import { ProductRepository } from '@/repositories/product.repository';
@@ -135,10 +139,14 @@ export class FeaturedCollectionService {
     private readonly repository = new FeaturedCollectionRepository(),
     private readonly productRepository = new ProductRepository(),
   ) {}
-  async getHome() {
-    const all = sanitizePublicCollections(
-      await this.repository.findHomeCollections(),
+  async getPublicFeaturedCollections() {
+    const collections = await this.repository.findPublished();
+    return sanitizePublicCollections(
+      collections.filter((collection) => isPublicCollectionAt(collection)),
     );
+  }
+  async getHome() {
+    const all = await this.getPublicFeaturedCollections();
     const current = selectCurrentCollections(all);
     return {
       ...current,
@@ -154,7 +162,9 @@ export class FeaturedCollectionService {
     };
   }
   async getHeaderNavigation(): Promise<HeaderNavigationLink[]> {
-    const collections = await this.repository.findNavigationCollections();
+    const collections = (
+      await this.repository.findNavigationCollections()
+    ).filter((collection) => isPublicCollectionAt(collection));
     const byType = (type: CollectionType) =>
       collections.filter((collection) => collection.type === type);
     const seasonal = byType(CollectionType.SEASONAL);
@@ -170,18 +180,16 @@ export class FeaturedCollectionService {
       ...(gift ? [{ label: 'ギフト', href: COLLECTION_PATHS.gift }] : []),
       ...byType(CollectionType.EDITORIAL).map((collection) => ({
         label: collection.title,
-        href: COLLECTION_PATHS.editorial(collection.id),
+        href: getPublicCollectionPath(collection)!,
       })),
       ...byType(CollectionType.STORY).map((collection) => ({
         label: collection.title,
-        href: COLLECTION_PATHS.story(collection.id),
+        href: getPublicCollectionPath(collection)!,
       })),
     ];
   }
   async getPublicCollectionDetail(slug: string) {
-    const all = sanitizePublicCollections(
-      await this.repository.findHomeCollections(),
-    );
+    const all = await this.getPublicFeaturedCollections();
     const current = selectCurrentCollections(all);
     if (slug in seasonBySlug) {
       const season = seasonBySlug[slug as SeasonCollectionSlug];
@@ -195,24 +203,27 @@ export class FeaturedCollectionService {
     if (slug.startsWith('editorial-')) {
       const collectionId = slug.slice('editorial-'.length);
       return (
-        current.editorial.find(
-          (collection) => collection.id === collectionId,
+        all.find(
+          (collection) =>
+            collection.type === CollectionType.EDITORIAL &&
+            collection.id === collectionId,
         ) ?? null
       );
     }
     if (slug.startsWith('story-')) {
       const collectionId = slug.slice('story-'.length);
       return (
-        current.story.find((collection) => collection.id === collectionId) ??
-        null
+        all.find(
+          (collection) =>
+            collection.type === CollectionType.STORY &&
+            collection.id === collectionId,
+        ) ?? null
       );
     }
     return null;
   }
   async getPublicSeasonalCollections() {
-    const all = sanitizePublicCollections(
-      await this.repository.findHomeCollections(),
-    );
+    const all = await this.getPublicFeaturedCollections();
     return selectCurrentCollections(all).seasonal;
   }
   async getAdminCollections() {

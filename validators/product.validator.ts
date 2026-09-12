@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { DEFAULT_PAGE, DEFAULT_PAGE_LIMIT, MAX_PAGE_LIMIT } from '@/config/api';
 import { PUBLIC_PRODUCT_NAVIGATION_IDS } from '@/config/public-navigation';
+import { PUBLIC_PRODUCT_SORT_OPTIONS } from '@/config/public-product-pagination';
 
 const optionalQueryValue = z.preprocess(
   (value) => (value === '' ? undefined : value),
@@ -17,12 +18,7 @@ const optionalNavigationGroup = z.preprocess(
   z.enum(PUBLIC_PRODUCT_NAVIGATION_IDS).optional(),
 );
 
-export const productSortValidator = z.enum([
-  'recommended',
-  'price_asc',
-  'price_desc',
-  'newest',
-]);
+export const productSortValidator = z.enum(PUBLIC_PRODUCT_SORT_OPTIONS);
 
 export const productQueryValidator = z.object({
   page: z.coerce.number().int().positive().default(DEFAULT_PAGE),

@@ -27,7 +27,21 @@ const include = {
   },
 };
 
-const visibleOnHomepage = {
+export const getPublicCollectionWhere = (
+  now = new Date(),
+): Prisma.FeaturedCollectionWhereInput => ({
+  status: CollectionStatus.PUBLISHED,
+  AND: [
+    {
+      OR: [{ publishStartAt: null }, { publishStartAt: { lte: now } }],
+    },
+    {
+      OR: [{ publishEndAt: null }, { publishEndAt: { gte: now } }],
+    },
+  ],
+});
+
+const publishedStatus = {
   status: CollectionStatus.PUBLISHED,
 } as const;
 
@@ -43,7 +57,7 @@ export class FeaturedCollectionRepository {
   }
   findPublished() {
     return prisma.featuredCollection.findMany({
-      where: visibleOnHomepage,
+      where: getPublicCollectionWhere(),
       include,
       orderBy: [{ displayOrder: 'asc' }, { createdAt: 'asc' }],
     });
@@ -51,7 +65,7 @@ export class FeaturedCollectionRepository {
   findByType(type: CollectionType) {
     return prisma.featuredCollection.findMany({
       where: {
-        ...visibleOnHomepage,
+        ...publishedStatus,
         type,
       },
       include,
@@ -61,7 +75,7 @@ export class FeaturedCollectionRepository {
   findBySeason(season: Season) {
     return prisma.featuredCollection.findMany({
       where: {
-        ...visibleOnHomepage,
+        ...publishedStatus,
         type: CollectionType.SEASONAL,
         season,
       },
@@ -74,8 +88,16 @@ export class FeaturedCollectionRepository {
   }
   findNavigationCollections() {
     return prisma.featuredCollection.findMany({
-      where: visibleOnHomepage,
-      select: { id: true, type: true, title: true, season: true },
+      where: getPublicCollectionWhere(),
+      select: {
+        id: true,
+        type: true,
+        title: true,
+        season: true,
+        status: true,
+        publishStartAt: true,
+        publishEndAt: true,
+      },
       orderBy: [{ displayOrder: 'asc' }, { createdAt: 'asc' }],
     });
   }

@@ -247,6 +247,16 @@ package-only SKU 及送料・服务专用 SKU。规则只依赖 Smaregi identity
 Category Repository → Service 读取真实公开独立商品分类，特集菜单由已发布
 FeaturedCollection 生成。
 
+FeaturedCollection 的消费者查询统一使用 Repository 的 PUBLISHED + publish window
+predicate，Service 再做防御性有效期检查，并通过统一 path helper 生成公开 URL。首页显示
+数量限制只影响首页版面，不得限制已公开 Collection 详情解析，否则 Header 或其他入口会
+产生可见但 404 的链接。
+
+商品列表把消费者 URL 的 `page` / `perPage`（24 / 48 / 96）转换为 API 的 `page` /
+`limit`，Repository 在同一数据库 transaction 中先计算符合公开独立商品条件的 total，
+再以规范化页码执行 `skip` / `take`。排序始终追加 Product.id 作为 secondary order，避免
+相同价格或创建时间的商品跨页重复/跳动；列表查询只读取第一张 ProductImage。
+
 非公开商品 preview 使用 `Admin preview route → Preview Service → Product Service`。
 route 只允许 OWNER / MANAGER 发出 5 分钟署名 token；商品页同时验证 token、productId、
 adminId 和当前有效 Admin session。preview 复用同一 ProductDetail，不建立第二套详情 UI，

@@ -142,6 +142,10 @@ Smaregi 管理的商品名、商品代码、Category、价格、有效状态、�
 公开商品查询、搜索、直接详情、首页及 Collection 均必须同时满足
 `isActive=true` 与 `isEcAvailable=true`。
 
+消费者商品列表使用数据库分页，默认每页 24 件，只允许切换 24 / 48 / 96 件。
+`page`、`perPage` 与搜索、顶层商品分组、内部 Category、排序参数共同保存在 URL；
+筛选、排序或每页数量改变时回到第一页，超出结果范围的页码规范化到最后一页。
+
 箱・包装専用 SKU は独立商品ではなく、公開商品一覧、検索、推薦、Collection、
 Seasonal、サイトマップおよび直接商品詳細から常に除外する。通常商品は同期済みの
 箱 Product を任意で一件だけ参照できる。箱は Smaregi の価格・税率・四店在庫を使い、
@@ -160,6 +164,10 @@ Admin session を保持したまま非公開商品の実商品詳細 UI を確�
 トップナビゲーションは実在し、公開可能な独立商品を持つ Category だけを動的に
 メガメニューへ表示する。固定の存在しない小分類を作らず、特集入口は公開中の
 FeaturedCollection の既存 URL を使用する。
+
+Collection の公開入口と详情页必须共用同一公开条件：状态为 PUBLISHED，且当前时间位于
+publishStartAt / publishEndAt 范围内。不存在、未公开或尚未/不再有效的 Collection 不生成
+Header、首页或其他消费者入口，直接访问仍返回 404。
 
 支持：
 
