@@ -165,27 +165,26 @@ export default async function Home() {
 
       <HomeCategoryGrid />
 
-      <section
-        className="wrap grid gap-10 py-24 md:grid-cols-[.8fr_1.2fr]"
-        data-reveal
-      >
-        <div>
-          <p className="eyebrow">SHOPKEEPER&apos;S CHOICE</p>
-          <h2 className="serif mt-5 text-4xl">店主のおすすめ</h2>
-          <p className="mt-6 text-sm leading-8 text-stone-600">
-            造り手の哲学と、食卓の時間まで想像しながら選びました。
-          </p>
-          <Link
-            href={COLLECTION_PATHS.shopkeeper}
-            className="brand-link mt-7 inline-flex"
-          >
-            選び抜いた一本へ <i aria-hidden="true">→</i>
-          </Link>
-        </div>
-        <div className="grid gap-5 sm:grid-cols-3">
-          {shopkeeperProducts.map((product) => (
-            <ProductCard key={product.id} product={product} />
-          ))}
+      <section className="bg-white" data-reveal>
+        <div className="mx-auto grid max-w-[1440px] gap-12 px-5 py-24 sm:px-8 md:py-28 lg:grid-cols-[minmax(250px,0.27fr)_minmax(0,0.73fr)] lg:items-start lg:gap-14 lg:px-12 xl:gap-16 xl:px-16">
+          <div className="max-w-[340px] lg:pt-4">
+            <p className="eyebrow">SHOPKEEPER&apos;S CHOICE</p>
+            <h2 className="serif mt-5 text-4xl">店主のおすすめ</h2>
+            <p className="mt-6 text-sm leading-8 text-stone-600">
+              造り手の哲学と、食卓の時間まで想像しながら選びました。
+            </p>
+            <Link
+              href={COLLECTION_PATHS.shopkeeper}
+              className="brand-link mt-8 inline-flex"
+            >
+              選び抜いた一本へ <i aria-hidden="true">→</i>
+            </Link>
+          </div>
+          <div className="grid grid-cols-1 gap-x-8 gap-y-14 min-[480px]:grid-cols-2 md:grid-cols-3 xl:gap-x-10">
+            {shopkeeperProducts.map((product) => (
+              <ProductCard key={product.id} product={product} />
+            ))}
+          </div>
         </div>
       </section>
 

@@ -45,43 +45,47 @@ function SearchCollection() {
   }, [submittedKeyword]);
 
   return (
-    <div className="wrap py-14 md:py-20">
-      <p className="eyebrow">SEARCH THE COLLECTION</p>
-      <h1 className="serif mt-4 text-5xl">商品を探す</h1>
-      <form
-        noValidate
-        className="mt-12 flex gap-3 border-y line py-7"
-        onSubmit={(event) => {
-          event.preventDefault();
-          setSubmittedKeyword(keyword.trim());
-        }}
-      >
-        <input
-          className="input flex-1"
-          value={keyword}
-          onChange={(event) => setKeyword(event.target.value)}
-          placeholder="商品名・蔵元・産地・商品コード"
-        />
-        <button className="btn">検索</button>
-      </form>
-      {isLoading ? (
-        <p className="py-20 text-center text-sm text-stone-500">検索中です。</p>
-      ) : null}
-      {!isLoading && submittedKeyword && result.items.length === 0 ? (
-        <div className="py-20 text-center">
-          <p className="serif text-2xl">該当する商品がありません</p>
-          <p className="mt-3 text-sm text-stone-500">
-            別のキーワードでお試しください。
+    <div className="storefront-results">
+      <div className="storefront-results-inner">
+        <p className="eyebrow">SEARCH THE COLLECTION</p>
+        <h1 className="serif mt-4 text-5xl">商品を探す</h1>
+        <form
+          noValidate
+          className="mt-12 flex gap-3 border-y line py-7"
+          onSubmit={(event) => {
+            event.preventDefault();
+            setSubmittedKeyword(keyword.trim());
+          }}
+        >
+          <input
+            className="input flex-1"
+            value={keyword}
+            onChange={(event) => setKeyword(event.target.value)}
+            placeholder="商品名・蔵元・産地・商品コード"
+          />
+          <button className="btn">検索</button>
+        </form>
+        {isLoading ? (
+          <p className="py-20 text-center text-sm text-stone-500">
+            検索中です。
           </p>
-        </div>
-      ) : null}
-      {!isLoading && result.items.length > 0 ? (
-        <div className="mt-10 grid gap-x-5 gap-y-12 sm:grid-cols-2 lg:grid-cols-3">
-          {result.items.map((product) => (
-            <ProductCard key={product.id} product={product} />
-          ))}
-        </div>
-      ) : null}
+        ) : null}
+        {!isLoading && submittedKeyword && result.items.length === 0 ? (
+          <div className="py-20 text-center">
+            <p className="serif text-2xl">該当する商品がありません</p>
+            <p className="mt-3 text-sm text-stone-500">
+              別のキーワードでお試しください。
+            </p>
+          </div>
+        ) : null}
+        {!isLoading && result.items.length > 0 ? (
+          <div className="product-results-grid mt-12">
+            {result.items.map((product) => (
+              <ProductCard key={product.id} product={product} />
+            ))}
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }

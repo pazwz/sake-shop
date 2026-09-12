@@ -40,7 +40,9 @@ export function Header({
   };
   const activeGroup = navigation.find(({ id }) => id === active);
   const megaTitle =
-    active === 'features' ? PUBLIC_FEATURE_NAVIGATION.label : activeGroup?.label;
+    active === 'features'
+      ? PUBLIC_FEATURE_NAVIGATION.label
+      : activeGroup?.label;
   const megaLinks = active === 'features' ? features : activeGroup?.links;
 
   return (
@@ -96,21 +98,23 @@ export function Header({
             <Link
               key={group.id}
               href={group.href}
-              onMouseEnter={() => setActive(group.id)}
+              onMouseEnter={() =>
+                setActive(group.links.length ? group.id : null)
+              }
             >
               {group.label}
             </Link>
           ))}
           <Link
             href={PUBLIC_FEATURE_NAVIGATION.href}
-            onMouseEnter={() => setActive('features')}
+            onMouseEnter={() => setActive(features.length ? 'features' : null)}
           >
             {PUBLIC_FEATURE_NAVIGATION.label}
           </Link>
           <Link href="/about">私たちについて</Link>
         </nav>
       </div>
-      {megaTitle && megaLinks ? (
+      {megaTitle && megaLinks?.length ? (
         <Mega title={megaTitle} links={megaLinks} />
       ) : null}
       {mobile ? (
@@ -229,19 +233,13 @@ function Mega({
           <p className="eyebrow">EXPLORE</p>
           <p className="serif mt-4 text-3xl">{title}</p>
         </div>
-        {links.length ? (
-          <div className="grid gap-x-8 gap-y-4 text-sm sm:grid-cols-2 lg:grid-cols-3">
-            {links.map((link) => (
-              <Link key={link.href} href={link.href}>
-                {link.label}　→
-              </Link>
-            ))}
-          </div>
-        ) : (
-          <p className="text-sm text-stone-500">
-            現在ご案内できる商品カテゴリーはありません。
-          </p>
-        )}
+        <div className="grid gap-x-8 gap-y-4 text-sm sm:grid-cols-2 lg:grid-cols-3">
+          {links.map((link) => (
+            <Link key={link.href} href={link.href}>
+              {link.label}　→
+            </Link>
+          ))}
+        </div>
       </div>
     </div>
   );

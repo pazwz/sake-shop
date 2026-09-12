@@ -63,76 +63,78 @@ function ProductsCollection() {
   }, [category, group, keyword, sort]);
 
   return (
-    <div className="wrap py-14 md:py-20">
-      <p className="eyebrow">THE COLLECTION</p>
-      <h1 className="serif mt-4 text-5xl">酒を選ぶ</h1>
-      <div className="mt-12 grid gap-x-7 gap-y-6 border-y line py-7 md:grid-cols-3">
-        <label className="text-xs">
-          キーワード検索
-          <input
-            className="input mt-1"
-            value={keyword}
-            onChange={(event) => setKeyword(event.target.value)}
-            placeholder="商品名・蔵元・産地"
-          />
-        </label>
-        <label className="text-xs">
-          カテゴリー
-          <select
-            className="input mt-1 block"
-            value={category}
-            onChange={(event) => {
-              setCategory(event.target.value);
-              setGroup('');
-            }}
-          >
-            <option value="">すべて</option>
-            {categories.map((item) => (
-              <option key={item.id} value={item.slug}>
-                {item.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="text-xs">
-          並び順
-          <select
-            className="input mt-1 block"
-            value={sort}
-            onChange={(event) => setSort(event.target.value)}
-          >
-            <option value="recommended">おすすめ順</option>
-            <option value="price_asc">価格が低い順</option>
-            <option value="price_desc">価格が高い順</option>
-            <option value="newest">新着順</option>
-          </select>
-        </label>
-      </div>
-      <p className="mt-8 text-xs text-stone-500">
-        {result.pagination.total} ITEMS
-      </p>
-      <AgeNotice className="mt-3" />
-      {isLoading ? <BrandLoader label="商品を読み込んでいます" /> : null}
-      {hasError ? (
-        <p className="py-20 text-center text-sm text-stone-500">
-          商品を読み込めませんでした。時間をおいて再度お試しください。
-        </p>
-      ) : null}
-      {!isLoading && !hasError && result.items.length === 0 ? (
-        <BrandEmptyState
-          title="該当する商品がありません"
-          description="検索条件を少し変えて、もう一度お試しください。"
-          href="/products"
-          linkLabel="条件をリセット"
-        />
-      ) : null}
-      {!isLoading && !hasError && result.items.length > 0 ? (
-        <div className="mt-8 grid gap-x-5 gap-y-12 sm:grid-cols-2 lg:grid-cols-3">
-          {result.items.map((product) => (
-            <ProductCard key={product.id} product={product} />
-          ))}
+    <div className="storefront-results">
+      <div className="storefront-results-inner">
+        <p className="eyebrow">THE COLLECTION</p>
+        <h1 className="serif mt-4 text-5xl">酒を選ぶ</h1>
+        <div className="mt-12 grid gap-x-7 gap-y-6 border-y line py-7 md:grid-cols-3">
+          <label className="text-xs">
+            キーワード検索
+            <input
+              className="input mt-1"
+              value={keyword}
+              onChange={(event) => setKeyword(event.target.value)}
+              placeholder="商品名・蔵元・産地"
+            />
+          </label>
+          <label className="text-xs">
+            カテゴリー
+            <select
+              className="input mt-1 block"
+              value={category}
+              onChange={(event) => {
+                setCategory(event.target.value);
+                setGroup('');
+              }}
+            >
+              <option value="">すべて</option>
+              {categories.map((item) => (
+                <option key={item.id} value={item.slug}>
+                  {item.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="text-xs">
+            並び順
+            <select
+              className="input mt-1 block"
+              value={sort}
+              onChange={(event) => setSort(event.target.value)}
+            >
+              <option value="recommended">おすすめ順</option>
+              <option value="price_asc">価格が低い順</option>
+              <option value="price_desc">価格が高い順</option>
+              <option value="newest">新着順</option>
+            </select>
+          </label>
         </div>
-      ) : null}
+        <p className="mt-8 text-xs text-stone-500">
+          {result.pagination.total} ITEMS
+        </p>
+        <AgeNotice className="mt-3" />
+        {isLoading ? <BrandLoader label="商品を読み込んでいます" /> : null}
+        {hasError ? (
+          <p className="py-20 text-center text-sm text-stone-500">
+            商品を読み込めませんでした。時間をおいて再度お試しください。
+          </p>
+        ) : null}
+        {!isLoading && !hasError && result.items.length === 0 ? (
+          <BrandEmptyState
+            title="該当する商品がありません"
+            description="検索条件を少し変えて、もう一度お試しください。"
+            href="/products"
+            linkLabel="条件をリセット"
+          />
+        ) : null}
+        {!isLoading && !hasError && result.items.length > 0 ? (
+          <div className="product-results-grid mt-10">
+            {result.items.map((product) => (
+              <ProductCard key={product.id} product={product} />
+            ))}
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }

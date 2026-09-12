@@ -43,11 +43,13 @@ export function ProductCard({ product }: { product: ProductCardItem }) {
           </span>
         ) : null}
       </div>
-      <p className="mt-4 text-[10px] tracking-[.15em] text-[#6d2227]">
+      <p className="product-card-meta mt-5 text-[10px] tracking-[.15em] text-[#6d2227]">
         {categoryName} / {product.producer ?? 'LINXAS'}
       </p>
-      <h3 className="product-card-title mt-1 text-sm">{product.name}</h3>
-      <p className="mt-2 text-sm">
+      <h3 className="product-card-title mt-2 text-[15px] font-normal">
+        {product.name}
+      </h3>
+      <p className="mt-3 text-sm">
         {formatPrice(product.price)}{' '}
         <span className="text-[10px] text-stone-500">税込</span>
       </p>

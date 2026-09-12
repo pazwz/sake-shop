@@ -3,7 +3,7 @@ import { PUBLIC_EXPLORE_NAVIGATION } from '@/config/public-navigation';
 
 export function HomeCategoryGrid() {
   return (
-    <section className="border-y line bg-[#faf8f4]" data-reveal>
+    <section className="border-y line bg-white" data-reveal>
       <div className="wrap py-20">
         <p className="eyebrow">Explore by category</p>
         <div className="mt-10 grid grid-cols-2 border-l line md:grid-cols-3">

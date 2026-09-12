@@ -329,28 +329,30 @@ function CollectionDetail({ collection }: { collection: PublicCollection }) {
         <EditorialArticle sections={collection.editorialSections} />
       ) : null}
 
-      <section className="wrap border-t line py-16 md:py-24" data-reveal>
-        <div className="flex items-end justify-between gap-5">
-          <div>
-            <p className="eyebrow">SELECTION</p>
-            <h2 className="serif mt-4 text-4xl">{selectionTitle}</h2>
+      <section className="border-t line bg-white" data-reveal>
+        <div className="storefront-results-inner">
+          <div className="flex items-end justify-between gap-5">
+            <div>
+              <p className="eyebrow">SELECTION</p>
+              <h2 className="serif mt-4 text-4xl">{selectionTitle}</h2>
+            </div>
+            <p className="text-xs text-stone-500">{products.length} items</p>
           </div>
-          <p className="text-xs text-stone-500">{products.length} items</p>
+          {products.length ? (
+            <div className="product-results-grid mt-12">
+              {products.map((product) => (
+                <ProductCard key={product.id} product={product} />
+              ))}
+            </div>
+          ) : (
+            <BrandEmptyState
+              title="現在掲載できる商品はありません"
+              description="次の一本をご紹介できるまで、もうしばらくお待ちください。"
+              href="/products"
+              linkLabel="商品一覧を見る"
+            />
+          )}
         </div>
-        {products.length ? (
-          <div className="mt-12 grid gap-x-6 gap-y-14 sm:grid-cols-2 lg:grid-cols-3">
-            {products.map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))}
-          </div>
-        ) : (
-          <BrandEmptyState
-            title="現在掲載できる商品はありません"
-            description="次の一本をご紹介できるまで、もうしばらくお待ちください。"
-            href="/products"
-            linkLabel="商品一覧を見る"
-          />
-        )}
       </section>
 
       <div className="wrap pb-20 text-center">
