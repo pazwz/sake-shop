@@ -7,6 +7,7 @@ import {
   getCurrentAdmin,
 } from '@/services/admin-authorization.service';
 import { FeaturedCollectionService } from '@/services/collection.service';
+import { isStandaloneEcProduct } from '@/services/product-visibility.service';
 
 const collectionService = new FeaturedCollectionService();
 
@@ -50,7 +51,19 @@ export default async function CollectionDetailPage({
               id: product.id,
               name: product.name,
               slug: product.slug,
+              productCode: product.productCode,
               producer: product.producer,
+              isActive: product.isActive,
+              isEcAvailable: product.isEcAvailable,
+              isEligible:
+                product.isActive &&
+                product.isEcAvailable &&
+                isStandaloneEcProduct(product),
+              category: {
+                id: product.category.id,
+                name: product.category.name,
+                slug: product.category.slug,
+              },
             },
           })),
         }}

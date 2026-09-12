@@ -5,6 +5,7 @@ import { getPublicProductNavigation } from '@/config/public-navigation';
 import { getPublicProductEffectivePage } from '@/config/public-product-pagination';
 import { prisma } from '@/lib/prisma';
 import type { ProductQuery } from '@/validators/product.validator';
+import type { CollectionProductCandidateQuery } from '@/validators/collection.validator';
 
 export const STANDALONE_EC_PRODUCT_WHERE = {
   NOT: {
@@ -64,7 +65,66 @@ export const PUBLIC_PRODUCT_VISIBILITY = {
   isEcAvailable: true,
 } as const;
 
+export const getCollectionProductCandidateWhere = (
+  query: Pick<CollectionProductCandidateQuery, 'q' | 'category'> = {},
+): Prisma.ProductWhereInput => ({
+  ...PUBLIC_PRODUCT_VISIBILITY,
+  ...STANDALONE_EC_PRODUCT_WHERE,
+  ...(query.category ? { categoryId: query.category } : {}),
+  ...(query.q
+    ? {
+        OR: [
+          { name: { contains: query.q, mode: 'insensitive' } },
+          { producer: { contains: query.q, mode: 'insensitive' } },
+          { productCode: { contains: query.q, mode: 'insensitive' } },
+        ],
+      }
+    : {}),
+});
+
 export class ProductRepository {
+  public async findCollectionProductCandidates(
+    query: CollectionProductCandidateQuery,
+  ) {
+    const where = getCollectionProductCandidateWhere(query);
+    return prisma.$transaction(async (transaction) => {
+      const total = await transaction.product.count({ where });
+      const page = getPublicProductEffectivePage(
+        query.page,
+        total,
+        query.limit,
+      );
+      const items = await transaction.product.findMany({
+        where,
+        select: {
+          id: true,
+          name: true,
+          productCode: true,
+          slug: true,
+          producer: true,
+          isActive: true,
+          isEcAvailable: true,
+          category: { select: { id: true, name: true, slug: true } },
+        },
+        orderBy: [{ name: 'asc' }, { id: 'asc' }],
+        skip: (page - 1) * query.limit,
+        take: query.limit,
+      });
+      return { items, total, page };
+    });
+  }
+
+  public async findEligibleCollectionProductIds(ids: string[]) {
+    if (!ids.length) return [];
+    return prisma.product.findMany({
+      where: {
+        id: { in: ids },
+        ...getCollectionProductCandidateWhere(),
+      },
+      select: { id: true },
+    });
+  }
+
   public async findForOrder(ids: string[]) {
     return prisma.product.findMany({
       where: { id: { in: ids } },

@@ -616,6 +616,20 @@ DELETE
 
 /api/v1/admin/collections/{id}
 
+### 掲載商品候補
+
+GET
+
+/api/v1/admin/collections/product-candidates
+
+Role：OWNER / MANAGER / STAFF（读取）。Query：`q`（商品名、producer、商品代码）、
+`category`（实际 Category ID）、`page`、`limit`（默认 50，最大 100）。
+
+只返回 `isActive=true`、`isEcAvailable=true` 且独立销售可能的 Product；库存为 0 的公开
+商品仍返回。Response 同时包含实际可用 Category 和 pagination。Collection create/update
+时，Service 对新增的 productIds 再执行相同 eligibility 校验；既存但后来非公开的关联不会
+静默删除。
+
 ---
 
 ## 推荐商品排序

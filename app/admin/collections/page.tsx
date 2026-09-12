@@ -218,15 +218,20 @@ export default async function AdminCollectionsPage() {
 
   return (
     <main className="wrap py-16">
-      <div>
-        <Link href="/admin" className="text-xs text-stone-500">
-          ← 管理トップ
+      <div className="flex flex-wrap items-end justify-between gap-6">
+        <div>
+          <Link href="/admin" className="text-xs text-stone-500">
+            ← 管理トップ
+          </Link>
+          <p className="eyebrow mt-5">HOMEPAGE CMS</p>
+          <h1 className="serif mt-3 text-5xl">ホームページ管理</h1>
+          <p className="mt-4 max-w-2xl text-sm leading-7 text-stone-600">
+            現在トップページに表示している画像、文章、商品を管理します。
+          </p>
+        </div>
+        <Link href="/admin/collections/all" className="btn btn-outline text-xs">
+          特集・ストーリー一覧
         </Link>
-        <p className="eyebrow mt-5">HOMEPAGE CMS</p>
-        <h1 className="serif mt-3 text-5xl">ホームページ管理</h1>
-        <p className="mt-4 max-w-2xl text-sm leading-7 text-stone-600">
-          現在トップページに表示している画像、文章、商品を管理します。
-        </p>
       </div>
 
       {!canEdit ? (

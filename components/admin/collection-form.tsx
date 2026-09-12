@@ -6,14 +6,12 @@ import { useRouter } from 'next/navigation';
 import { CollectionImageUpload } from '@/components/admin/collection-image-upload';
 import { HOME_CONTENT_LIMITS } from '@/config/home';
 import { getCollectionAreaLabel } from '@/lib/collection-presentation';
+import type {
+  CollectionProductCandidate,
+  CollectionProductCandidateResult,
+} from '@/types/collection';
 
-type Product = {
-  id: string;
-  name: string;
-  slug: string;
-  producer: string | null;
-};
-type CollectionProduct = { product: Product };
+type CollectionProduct = { product: CollectionProductCandidate };
 type Collection = {
   id: string;
   type: string;
@@ -58,10 +56,24 @@ export function CollectionForm({
   initialSaved?: boolean;
 }) {
   const router = useRouter();
-  const [products, setProducts] = useState<Product[]>([]);
-  const [selected, setSelected] = useState<string[]>(
-    collection?.products.map(({ product }) => product.id) ?? [],
+  const initialProducts =
+    collection?.products.map(({ product }) => product) ?? [];
+  const [candidateResult, setCandidateResult] =
+    useState<CollectionProductCandidateResult | null>(null);
+  const [knownProducts, setKnownProducts] = useState<
+    Record<string, CollectionProductCandidate>
+  >(() =>
+    Object.fromEntries(initialProducts.map((product) => [product.id, product])),
   );
+  const [selected, setSelected] = useState<string[]>(
+    initialProducts.map((product) => product.id),
+  );
+  const [productQuery, setProductQuery] = useState('');
+  const [productCategory, setProductCategory] = useState('');
+  const [candidatePage, setCandidatePage] = useState(1);
+  const [selectedOnly, setSelectedOnly] = useState(false);
+  const [productsLoading, setProductsLoading] = useState(true);
+  const [productsError, setProductsError] = useState(false);
   const [feedback, setFeedback] = useState<Feedback | null>(
     initialSaved ? { kind: 'success', text: '変更を保存しました。' } : null,
   );
@@ -103,23 +115,68 @@ export function CollectionForm({
   }, [initialSaved]);
 
   useEffect(() => {
-    const loadProducts = async () => {
+    const controller = new AbortController();
+    const timeout = window.setTimeout(async () => {
+      setProductsLoading(true);
+      setProductsError(false);
       try {
-        const response = await fetch('/api/v1/products?limit=100');
+        const query = new URLSearchParams({
+          page: String(candidatePage),
+          limit: '50',
+        });
+        if (productQuery.trim()) query.set('q', productQuery.trim());
+        if (productCategory) query.set('category', productCategory);
+        const response = await fetch(
+          `/api/v1/admin/collections/product-candidates?${query.toString()}`,
+          { signal: controller.signal },
+        );
         if (!response.ok) throw new Error('Product request failed.');
         const payload = (await response.json()) as {
-          data?: { items?: Product[] };
+          data?: CollectionProductCandidateResult;
         };
-        setProducts(payload.data?.items ?? []);
-      } catch {
-        setFeedback({
-          kind: 'error',
-          text: '商品一覧を読み込めませんでした。ページを再読み込みしてください。',
-        });
+        if (!payload.data) throw new Error('Product response was invalid.');
+        setCandidateResult(payload.data);
+        setKnownProducts((current) => ({
+          ...current,
+          ...Object.fromEntries(
+            payload.data!.items.map((product) => [product.id, product]),
+          ),
+        }));
+        if (payload.data.pagination.page !== candidatePage) {
+          setCandidatePage(payload.data.pagination.page);
+        }
+      } catch (error) {
+        if ((error as Error).name !== 'AbortError') setProductsError(true);
+      } finally {
+        if (!controller.signal.aborted) setProductsLoading(false);
       }
+    }, 250);
+    return () => {
+      window.clearTimeout(timeout);
+      controller.abort();
     };
-    void loadProducts();
-  }, []);
+  }, [candidatePage, productCategory, productQuery]);
+
+  const selectedProducts = selected.flatMap((id) =>
+    knownProducts[id] ? [knownProducts[id]] : [],
+  );
+  const unavailableSelected = selectedProducts.filter(
+    (product) => !product.isEligible,
+  );
+  const visibleProducts = selectedOnly
+    ? selectedProducts.filter((product) => {
+        const keyword = productQuery.trim().toLocaleLowerCase('ja');
+        const matchesKeyword =
+          !keyword ||
+          [product.name, product.producer ?? '', product.productCode].some(
+            (value) => value.toLocaleLowerCase('ja').includes(keyword),
+          );
+        return (
+          matchesKeyword &&
+          (!productCategory || product.category.id === productCategory)
+        );
+      })
+    : (candidateResult?.items ?? []);
 
   const move = (id: string, direction: -1 | 1) => {
     const index = selected.indexOf(id);
@@ -241,7 +298,7 @@ export function CollectionForm({
           value={collection?.displayOrder ?? 0}
         />
         <label className="text-sm">
-          トップページへの表示
+          公開状態
           <select
             name="status"
             defaultValue={collection?.status ?? 'PUBLISHED'}
@@ -305,31 +362,95 @@ export function CollectionForm({
             ? ` トップページには先頭${productLimit}件、特集ページには選択した商品をすべて表示します。`
             : ''}
         </p>
-        <p className="mt-3 text-sm font-semibold text-[#6d2227]">
-          {selected.length}件選択中
-        </p>
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-4">
+          <p className="text-sm font-semibold text-[#6d2227]">
+            {selected.length}件選択中
+          </p>
+          <label className="flex items-center gap-2 text-xs text-stone-600">
+            <input
+              type="checkbox"
+              checked={selectedOnly}
+              onChange={(event) => setSelectedOnly(event.target.checked)}
+            />
+            選択中のみ表示
+          </label>
+        </div>
+        {unavailableSelected.length ? (
+          <p className="mt-4 border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+            非公開または販売終了の商品が{unavailableSelected.length}
+            件設定されています。関連は自動的に解除されません。
+          </p>
+        ) : null}
+        <div className="mt-6 grid gap-4 border-y line py-5 md:grid-cols-[1fr_260px]">
+          <label className="text-xs text-stone-600">
+            商品検索
+            <input
+              value={productQuery}
+              onChange={(event) => {
+                setProductQuery(event.target.value);
+                setCandidatePage(1);
+              }}
+              placeholder="商品名・メーカー・商品コードで検索"
+              className="mt-2 w-full border line bg-white p-3 text-sm text-[#171412]"
+            />
+          </label>
+          <label className="text-xs text-stone-600">
+            カテゴリ
+            <select
+              value={productCategory}
+              onChange={(event) => {
+                setProductCategory(event.target.value);
+                setCandidatePage(1);
+              }}
+              className="mt-2 w-full border line bg-white p-3 text-sm text-[#171412]"
+            >
+              <option value="">すべて</option>
+              {candidateResult?.categories.map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
         <div className="mt-6 grid gap-3 md:grid-cols-2">
-          {products.map((product) => {
+          {visibleProducts.map((product) => {
             const isSelected = selected.includes(product.id);
             return (
               <div
                 key={product.id}
-                className="flex items-center gap-3 border line p-3"
+                className={`flex items-center gap-3 border p-3 ${
+                  product.isEligible ? 'line' : 'border-amber-300 bg-amber-50'
+                }`}
               >
                 <input
                   type="checkbox"
                   checked={isSelected}
+                  disabled={!product.isEligible && !isSelected}
                   onChange={() =>
-                    isSelected
-                      ? setSelected(selected.filter((id) => id !== product.id))
-                      : setSelected([...selected, product.id])
+                    setSelected((current) =>
+                      current.includes(product.id)
+                        ? current.filter((id) => id !== product.id)
+                        : [...current, product.id],
+                    )
                   }
                 />
-                <span className="flex-1 text-sm">
-                  {product.name}
-                  <span className="ml-2 text-xs text-stone-500">
-                    {product.producer ?? ''}
+                <span className="min-w-0 flex-1 text-sm">
+                  <span className="block font-medium">{product.name}</span>
+                  <span className="mt-1 block text-xs text-stone-500">
+                    {[
+                      product.producer,
+                      product.category.name,
+                      product.productCode,
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')}
                   </span>
+                  {!product.isEligible ? (
+                    <span className="mt-1 block text-xs font-semibold text-amber-800">
+                      非公開または販売終了
+                    </span>
+                  ) : null}
                 </span>
                 {isSelected ? (
                   <span className="flex gap-2">
@@ -356,6 +477,65 @@ export function CollectionForm({
             );
           })}
         </div>
+        {productsLoading && !selectedOnly ? (
+          <p className="mt-6 text-sm text-stone-500">商品を読み込み中...</p>
+        ) : null}
+        {productsError && !selectedOnly ? (
+          <p role="alert" className="mt-6 text-sm text-[#6d2227]">
+            商品一覧を読み込めませんでした。もう一度お試しください。
+          </p>
+        ) : null}
+        {!productsLoading && !productsError && visibleProducts.length === 0 ? (
+          <p className="mt-6 text-sm text-stone-500">
+            条件に一致する商品はありません。
+          </p>
+        ) : null}
+        {!selectedOnly && candidateResult?.pagination.total ? (
+          <div className="mt-6 flex items-center justify-between border-t line pt-5 text-xs">
+            <span className="text-stone-500">
+              {candidateResult.pagination.total}件中{' '}
+              {(candidateResult.pagination.page - 1) *
+                candidateResult.pagination.limit +
+                1}
+              ～
+              {Math.min(
+                candidateResult.pagination.page *
+                  candidateResult.pagination.limit,
+                candidateResult.pagination.total,
+              )}
+              件
+            </span>
+            <span className="flex items-center gap-4">
+              <button
+                type="button"
+                disabled={candidateResult.pagination.page <= 1}
+                onClick={() =>
+                  setCandidatePage(candidateResult.pagination.page - 1)
+                }
+                className="underline disabled:text-stone-300 disabled:no-underline"
+              >
+                ← 前へ
+              </button>
+              <span>
+                {candidateResult.pagination.page} /{' '}
+                {candidateResult.pagination.totalPages}
+              </span>
+              <button
+                type="button"
+                disabled={
+                  candidateResult.pagination.page >=
+                  candidateResult.pagination.totalPages
+                }
+                onClick={() =>
+                  setCandidatePage(candidateResult.pagination.page + 1)
+                }
+                className="underline disabled:text-stone-300 disabled:no-underline"
+              >
+                次へ →
+              </button>
+            </span>
+          </div>
+        ) : null}
       </section>
       <button
         disabled={saving || imageUploading}

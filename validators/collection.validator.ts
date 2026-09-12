@@ -9,10 +9,16 @@ const productIds = (minimum = 0) =>
   z
     .array(z.string().cuid())
     .min(minimum)
-    .max(24)
     .refine((ids) => new Set(ids).size === ids.length, {
       message: 'Product IDs must be unique.',
     });
+
+export const collectionProductCandidateQueryValidator = z.object({
+  page: z.coerce.number().int().positive().default(1),
+  limit: z.coerce.number().int().positive().max(100).default(50),
+  q: z.string().trim().max(200).optional(),
+  category: z.string().cuid().optional(),
+});
 
 const collectionFields = z.object({
   type: z.nativeEnum(CollectionType),
@@ -90,3 +96,6 @@ export const editorialSectionsValidator = z.object({
 export type CollectionInput = z.infer<typeof collectionInputValidator>;
 export type CollectionUpdate = z.infer<typeof collectionUpdateValidator>;
 export type EditorialSectionInput = z.infer<typeof editorialSectionValidator>;
+export type CollectionProductCandidateQuery = z.infer<
+  typeof collectionProductCandidateQueryValidator
+>;

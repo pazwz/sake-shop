@@ -16,6 +16,12 @@ export default function AdminPage() {
         ホームページを管理
       </Link>
       <Link
+        href="/admin/collections/all"
+        className="btn ml-3 mt-8 border border-[#171412]"
+      >
+        特集・ストーリーを管理
+      </Link>
+      <Link
         href="/admin/products"
         className="btn ml-3 mt-8 border border-[#171412]"
       >

@@ -46,6 +46,22 @@ const publishedStatus = {
 } as const;
 
 export class FeaturedCollectionRepository {
+  findAdminContentCollections() {
+    return prisma.featuredCollection.findMany({
+      where: { type: { in: [CollectionType.EDITORIAL, CollectionType.STORY] } },
+      select: {
+        id: true,
+        type: true,
+        title: true,
+        status: true,
+        desktopImageUrl: true,
+        mobileImageUrl: true,
+        displayOrder: true,
+        _count: { select: { products: true } },
+      },
+      orderBy: [{ type: 'asc' }, { displayOrder: 'asc' }, { createdAt: 'asc' }],
+    });
+  }
   findAdminCollections() {
     return prisma.featuredCollection.findMany({
       include,

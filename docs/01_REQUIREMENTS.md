@@ -169,6 +169,15 @@ Collection の公開入口と详情页必须共用同一公开条件：状态为
 publishStartAt / publishEndAt 范围内。不存在、未公开或尚未/不再有效的 Collection 不生成
 Header、首页或其他消费者入口，直接访问仍返回 404。
 
+`/admin/collections` はトップページで現在使用する内容だけを管理し、Story は首页设计规定的
+2 件だけを表示する。全 Editorial / Story 本体は独立した「特集・ストーリー管理」一覧から
+同じ FeaturedCollection 记录を編集でき、首页显示上限によって管理入口を失ってはならない。
+
+Collection の掲載商品候補は active、EC 公開中かつ独立販売可能な Product に限る。在庫 0 は
+候補から除外せず、既存関連も維持する。既に関連済みの商品が後から非公開・販売終了になった
+場合は自動削除せず Admin に警告し、新規追加だけを API 层でも拒否する。候補选择支持商品名、
+producer、商品代码搜索和实际 Category 筛选，筛选切换不得清除已选择 ID。
+
 支持：
 
 大分类

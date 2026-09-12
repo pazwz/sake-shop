@@ -8,10 +8,12 @@ import {
 import { ConflictError, NotFoundError, ValidationError } from '@/lib/errors';
 import { FeaturedCollectionRepository } from '@/repositories/collection.repository';
 import { ProductRepository } from '@/repositories/product.repository';
+import { CategoryRepository } from '@/repositories/category.repository';
 import { isStandaloneEcProduct } from '@/services/product-visibility.service';
 import type {
   CollectionInput,
   CollectionUpdate,
+  CollectionProductCandidateQuery,
   EditorialSectionInput,
 } from '@/validators/collection.validator';
 import { COLLECTION_PATHS } from '@/config/collections';
@@ -138,6 +140,7 @@ export class FeaturedCollectionService {
   constructor(
     private readonly repository = new FeaturedCollectionRepository(),
     private readonly productRepository = new ProductRepository(),
+    private readonly categoryRepository = new CategoryRepository(),
   ) {}
   async getPublicFeaturedCollections() {
     const collections = await this.repository.findPublished();
@@ -229,6 +232,27 @@ export class FeaturedCollectionService {
   async getAdminCollections() {
     return this.repository.findAdminCollections();
   }
+  async getAdminContentCollections() {
+    return this.repository.findAdminContentCollections();
+  }
+  async getAdminCollectionProductCandidates(
+    query: CollectionProductCandidateQuery,
+  ) {
+    const [{ items, total, page }, categories] = await Promise.all([
+      this.productRepository.findCollectionProductCandidates(query),
+      this.categoryRepository.findPublicProductCategories(),
+    ]);
+    return {
+      items: items.map((product) => ({ ...product, isEligible: true })),
+      categories: categories.map(({ id, name }) => ({ id, name })),
+      pagination: {
+        page,
+        limit: query.limit,
+        total,
+        totalPages: Math.ceil(total / query.limit),
+      },
+    };
+  }
   async getAdminHomeManagement() {
     const all = await this.repository.findAdminCollections();
     const selected = selectCurrentCollections(all);
@@ -294,6 +318,7 @@ export class FeaturedCollectionService {
     ) {
       await this.ensureEditorialCapacity();
     }
+    await this.ensureCollectionProductCandidates(input.productIds);
     const { productIds, publishStartAt, publishEndAt, ...data } = input;
     return this.repository.create({
       ...data,
@@ -309,6 +334,12 @@ export class FeaturedCollectionService {
   }
   async updateCollection(id: string, input: CollectionUpdate) {
     const existing = await this.getAdminCollection(id);
+    if (input.productIds) {
+      await this.ensureCollectionProductCandidates(
+        input.productIds,
+        existing.products.map(({ productId }) => productId),
+      );
+    }
     const wasPublishedEditorial =
       existing.type === CollectionType.EDITORIAL &&
       existing.status === CollectionStatus.PUBLISHED;
@@ -355,8 +386,28 @@ export class FeaturedCollectionService {
     return this.repository.delete(id);
   }
   async updateProductOrder(id: string, productIds: string[]) {
-    await this.getAdminCollection(id);
+    const existing = await this.getAdminCollection(id);
+    await this.ensureCollectionProductCandidates(
+      productIds,
+      existing.products.map(({ productId }) => productId),
+    );
     return this.repository.replaceProducts(id, productIds);
+  }
+
+  private async ensureCollectionProductCandidates(
+    productIds: string[],
+    existingProductIds: string[] = [],
+  ) {
+    const existing = new Set(existingProductIds);
+    const addedIds = productIds.filter((id) => !existing.has(id));
+    if (!addedIds.length) return;
+    const eligible =
+      await this.productRepository.findEligibleCollectionProductIds(addedIds);
+    if (eligible.length !== addedIds.length) {
+      throw new ValidationError(
+        '非公開または販売終了の商品は新しく掲載できません。',
+      );
+    }
   }
   async updateEditorialOrder(ids: string[]) {
     if (ids.length < 1 || ids.length > HOME_CONTENT_LIMITS.editorial) {

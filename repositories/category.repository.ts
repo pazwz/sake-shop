@@ -1,8 +1,6 @@
 import { Prisma } from '@prisma/client';
-import {
-  SMAREGI_BOX_CATEGORY_ID,
-  SMAREGI_PACKAGE_ONLY_PRODUCT_IDS,
-} from '@/config/box-products';
+import { SMAREGI_BOX_CATEGORY_ID } from '@/config/box-products';
+import { SMAREGI_NON_STANDALONE_PRODUCT_IDS } from '@/config/public-products';
 import { prisma } from '@/lib/prisma';
 
 const categoryInclude = {
@@ -65,7 +63,7 @@ export class CategoryRepository {
               OR: [
                 {
                   smaregiProductId: {
-                    in: [...SMAREGI_PACKAGE_ONLY_PRODUCT_IDS],
+                    in: [...SMAREGI_NON_STANDALONE_PRODUCT_IDS],
                   },
                 },
                 {

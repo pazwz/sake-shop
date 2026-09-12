@@ -252,6 +252,17 @@ predicate，Service 再做防御性有效期检查，并通过统一 path helper
 数量限制只影响首页版面，不得限制已公开 Collection 详情解析，否则 Header 或其他入口会
 产生可见但 404 的链接。
 
+Admin Collection 分为两个投影视图，但不复制数据：`/admin/collections` 通过 Service 的
+home projection 只显示当前首页槽位；`/admin/collections/all` 读取全部 Editorial / Story
+管理记录，并链接到同一个 `/admin/collections/[id]` 编辑器。公开菜单、公开详情和 Admin
+内容列表均可追溯到同一 FeaturedCollection 主键。
+
+掲載商品候補使用独立 Admin Route → FeaturedCollection Service → Product/Category
+Repository 查询。候補 predicate 复用公开 Product 的 active + EC available + standalone
+规则，不包含库存条件。查询在数据库侧完成 keyword、Category、pagination；客户端只维护
+selected IDs 和已知商品快照。既存非公开关联可以保留或由运营解除，但 Service 只允许新增
+仍满足候补 predicate 的 Product，避免绕过 UI 写入无效关联。
+
 商品列表把消费者 URL 的 `page` / `perPage`（24 / 48 / 96）转换为 API 的 `page` /
 `limit`，Repository 在同一数据库 transaction 中先计算符合公开独立商品条件的 total，
 再以规范化页码执行 `skip` / `take`。排序始终追加 Product.id 作为 secondary order，避免
