@@ -27,7 +27,7 @@ export function ProductCard({ product }: { product: ProductCardItem }) {
       className="product-card group block"
       data-reveal
     >
-      <div className="product-card-image relative aspect-[4/5] overflow-hidden bg-[#f3f0ea]">
+      <div className="product-card-image relative aspect-[4/5] overflow-hidden bg-white">
         {imageUrl ? (
           <Image
             fill
