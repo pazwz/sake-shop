@@ -220,6 +220,10 @@ Settings
 商品图片沿用 Admin media presign 流程，由浏览器直接 PUT 私有 S3；数据库只保存
 CloudFront URL。ProductImage.displayOrder 决定主图和显示顺序。
 
+商品图片管理后续采用非破坏性编辑：保留原始 S3 文件，在上传后提供预览、裁剪、缩放与
+主体位置调整，并生成标准画布的派生商品图。标准商品图以主体约占画布 70%～85% 为目标，
+派生处理不得覆盖原始文件。
+
 运营 enrichment 在 ProductImage 写入前通过统一的 ProductIdentityProfile 与字段级
 identity scoring 进行校验。画像身份批准与商品资料完整度分离：producer 缺失不会作为
 全局拒绝条件；只在 Burgundy 等 producer 本身是必要判别字段的类型中 fail closed。

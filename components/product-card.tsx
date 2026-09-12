@@ -32,7 +32,7 @@ export function ProductCard({ product }: { product: ProductCardItem }) {
           <Image
             fill
             sizes="(max-width: 639px) 100vw, (max-width: 1023px) 50vw, 33vw"
-            className="object-contain object-center p-4 sm:p-5"
+            className="object-contain object-center px-0 py-4 sm:py-5"
             src={imageUrl}
             alt={product.name}
           />
