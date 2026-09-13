@@ -252,6 +252,17 @@ DELETE
 
 ## Checkout
 
+### Checkout mode
+
+服务端 `CHECKOUT_MODE` 支持：
+
+- `mock`：仅 local development，或显式配置的 Preview deployment。
+- `disabled`：页面可访问，但禁止任何新交易写入。
+- `live`：预留给真实 Payment Adapter；当前未实现，因此 fail closed。
+
+Production 未配置、非法配置或误配 `mock` 时均按 `disabled` 处理。Checkout 页面只接收
+服务端传入的 `checkoutEnabled` boolean，不向客户端暴露环境变量或 Payment 配置。
+
 ### 创建结算
 
 POST
@@ -281,6 +292,22 @@ POST
 POST
 
 /api/v1/orders
+
+在解析 request body 和进入 Order transaction 前执行 Production Checkout gate。关闭时：
+
+```json
+{
+  "success": false,
+  "data": null,
+  "message": "",
+  "error": {
+    "code": "CHECKOUT_DISABLED",
+    "detail": "現在オンライン注文の受付準備中です。"
+  }
+}
+```
+
+HTTP status 为 503，且不创建 Order、OrderItem、InventoryReservation 或 Payment。
 
 订单创建会在单一数据库 transaction 内对全部 Product 按稳定顺序加行锁，校验：
 
@@ -813,6 +840,10 @@ POST
 
 /api/v1/payments/create
 
+Payment Service 和 Adapter factory 使用同一个 Checkout gate。Production 不能通过伪造
+provider、直接 POST 或误配 `mock` 使用 Mock Adapter。`live` 在真实 Adapter 完成前不会
+fallback 到 Mock。
+
 Supports an optional `idempotencyKey`. Repeated requests with the same key
 return the existing Payment; the server always derives the amount from the
 Order.
@@ -824,6 +855,9 @@ Order.
 POST
 
 /api/v1/payments/webhook
+
+Mock webhook 同样受 Checkout gate 保护，Production disabled/live-unavailable 状态不会处理
+Mock webhook 或更新 Payment / Order。
 
 Webhook requests identify the provider, provider payment ID, and provider event
 ID. Signature verification is delegated to the provider adapter. The endpoint

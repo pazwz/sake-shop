@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+export const checkoutModeSchema = z.enum(['mock', 'disabled', 'live']);
+
 export const environmentSchema = z.object({
   DATABASE_URL: z.string().min(1),
   NEXTAUTH_SECRET: z.string().min(1),
@@ -15,6 +17,7 @@ export const environmentSchema = z.object({
   SMAREGI_CONTRACT_ID: z.string().min(1),
   SMAREGI_STORE_ID: z.string().min(1),
   PAYMENT_PROVIDER: z.string().min(1),
+  CHECKOUT_MODE: checkoutModeSchema.optional(),
 });
 
 export type Environment = z.infer<typeof environmentSchema>;
@@ -50,3 +53,4 @@ export const smaregiProductionApiEnvironmentSchema = z
 export type SmaregiApiEnvironment = z.infer<typeof smaregiApiEnvironmentSchema>;
 
 export type SmaregiEnvironment = z.infer<typeof smaregiEnvironmentSchema>;
+export type CheckoutMode = z.infer<typeof checkoutModeSchema>;

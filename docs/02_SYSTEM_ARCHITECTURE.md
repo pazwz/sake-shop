@@ -425,6 +425,34 @@ OrderItem。Checkout 创建成功只返回 `id` 和 `orderNumber`；完成页使
 Repository query，并使用明确的 Customer Order DTO 替换此临时 gate；不得恢复裸
 `getOrderByNumber`。
 
+## Production checkout safety gate
+
+Checkout 写入边界由 server-side `CHECKOUT_MODE` 集中控制：
+
+```text
+Cart（始终可用）
+        ↓
+Checkout UI status
+        ↓
+POST /api/v1/orders
+        ↓
+CheckoutAccessService（Repository / transaction 前）
+        ↓
+Order + OrderItem + InventoryReservation
+        ↓
+PaymentService / Payment Adapter factory
+```
+
+允许值为 `mock`、`disabled`、`live`。Local 未配置时为 `mock`；Preview 未配置时为
+`disabled`，只有显式 `mock` 才启用开发流程；Production 未配置、非法、`disabled` 或
+误配 `mock` 均 fail closed。由于真实 Payment Adapter 尚未实现，`live` 当前同样 fail
+closed，绝不 fallback 到 Mock。
+
+Route 与 Order Service 在解析/写入前都执行 gate；Payment Service、Mock Adapter factory
+及 Mock Adapter 自身也执行同一策略。关闭时统一返回 HTTP 503 `CHECKOUT_DISABLED`，且
+不得创建 Order、OrderItem、InventoryReservation 或 Payment。该策略不影响 Cart、Admin
+Order、既存订单、库存镜像或 Smaregi production sync。
+
 Stock 中 Product API 已不存在的 orphan 行只记录 warning，不创建 Product 或
 InventoryMirror，也不阻断其余同步。已知与新出现的 orphan 数量分别记录。
 approved deferred / orphan 的负库存只记录 warning；normal Product 出现负库存时，

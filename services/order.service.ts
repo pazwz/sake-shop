@@ -5,6 +5,7 @@ import { getTemporaryShippingQuote } from '@/config/shipping';
 import { AppError, NotFoundError } from '@/lib/errors';
 import { InventoryReservationRepository } from '@/repositories/inventory-reservation.repository';
 import { OrderRepository } from '@/repositories/order.repository';
+import { CheckoutAccessService } from '@/services/checkout-access.service';
 import {
   projectApprovedInventory,
   requiresTransferForQuantity,
@@ -30,8 +31,10 @@ export class OrderService {
   constructor(
     private readonly orders = new OrderRepository(),
     private readonly reservations = new InventoryReservationRepository(),
+    private readonly checkoutAccess = new CheckoutAccessService(),
   ) {}
   async create(input: OrderInput) {
+    this.checkoutAccess.assertOrderCreationAllowed();
     const baseProductIds = input.items.map((item) => item.productId);
     if (new Set(baseProductIds).size !== baseProductIds.length)
       throw new AppError(

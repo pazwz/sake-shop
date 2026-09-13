@@ -79,6 +79,11 @@ stera / PAYGATE
 
 stera EC
 
+真实 Online Payment 上线前，Production Checkout 必须 fail closed，不得使用 Mock
+Payment 创建 Order、OrderItem、Payment 或 InventoryReservation。Cart 和 Checkout 页面
+可以访问，但 Production 只显示准备中状态。Mock Checkout 仅限 local development，或由
+Preview 环境显式配置；Production 即使误配 `mock` 也必须拒绝。
+
 ---
 
 ## 6. 配送

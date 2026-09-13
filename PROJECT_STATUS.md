@@ -302,8 +302,15 @@ things. Do not infer a deletion or failed sync by comparing them directly.
 
 ## Real Checkout and Payment
 
-- All payment providers currently resolve to `MockPaymentAdapter`.
-- Checkout calls the mock webhook itself and labels payment as a development demo.
+- Production Checkout safety gate is active. Until a real Payment Adapter is
+  implemented, Production rejects new consumer Order/OrderItem/Payment/
+  InventoryReservation writes with `CHECKOUT_DISABLED` before persistence.
+- Cart remains usable and Checkout displays a preparation state. Local
+  development defaults to Mock checkout; Preview requires explicit `mock` mode.
+- Production missing/invalid mode, explicit `disabled`, accidental `mock`, and
+  currently unavailable `live` mode all fail closed without Mock fallback.
+- In enabled local/Preview Mock mode, all payment-provider choices currently
+  resolve to `MockPaymentAdapter`, and Checkout calls the Mock webhook itself.
 - Payment create/webhook routes are not ready for a production provider contract.
 - A real provider redirect/3DS flow, signature verification, reconciliation,
   refunds, and operational failure handling are not implemented.
@@ -374,8 +381,8 @@ things. Do not infer a deletion or failed sync by comparing them directly.
 
 ## P0 — Required Before Accepting Real Orders
 
-1. Disable or environment-gate the public Mock checkout path until production
-   payment is ready.
+1. Keep the completed Production Checkout safety gate enabled until a reviewed
+   real Payment Adapter is ready.
 2. Implement server-side Customer authentication and ownership authorization;
    replace the temporary fail-closed Order detail gate and remove browser-stored
    passwords.

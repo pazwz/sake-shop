@@ -7,6 +7,7 @@ import type {
 } from '@/validators/payment.validator';
 import { AppError } from '@/lib/errors';
 import { OrderRepository } from '@/repositories/order.repository';
+import { CheckoutAccessService } from '@/services/checkout-access.service';
 import {
   PaymentRepository,
   PaymentStatusChangedError,
@@ -28,9 +29,11 @@ export class PaymentService {
   constructor(
     private readonly payments = new PaymentRepository(),
     private readonly orders = new OrderRepository(),
+    private readonly checkoutAccess = new CheckoutAccessService(),
   ) {}
 
   async create(input: PaymentCreateInput) {
+    this.checkoutAccess.assertMockPaymentAllowed();
     const idempotencyKey = input.idempotencyKey ?? randomUUID();
     const existing = await this.payments.findByIdempotencyKey(idempotencyKey);
     if (existing) return existing;
@@ -85,6 +88,7 @@ export class PaymentService {
   }
 
   async handleWebhook(input: PaymentWebhookInput, signature: string | null) {
+    this.checkoutAccess.assertMockPaymentAllowed();
     const adapter = getPaymentAdapter(input.provider);
     if (!(await adapter.verifyWebhookSignature(input, signature))) {
       throw new AppError(
