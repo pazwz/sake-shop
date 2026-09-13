@@ -255,6 +255,7 @@ model Order {
   totalAmount             Decimal                @map("total_amount") @db.Decimal(12, 2)
   paymentMethod           String                 @map("payment_method")
   shippingAddressSnapshot Json                   @map("shipping_address_snapshot")
+  shippingQuoteSnapshot   Json?                  @map("shipping_quote_snapshot")
   ageConfirmedAt          DateTime?              @map("age_confirmed_at")
   smaregiOrderId          String?                @unique @map("smaregi_order_id")
   smaregiSyncStatus       SmaregiSyncStatus      @default(NOT_SYNCED) @map("smaregi_sync_status")

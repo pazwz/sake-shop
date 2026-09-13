@@ -39,7 +39,7 @@ export function Footer() {
             <Link href="/products" className="mt-3 block">
               商品一覧
             </Link>
-            <Link href="/cart" className="block">
+            <Link href="/shipping-returns" className="block">
               ご注文・配送について
             </Link>
             <Link href="/about" className="block">
@@ -85,9 +85,20 @@ export function Footer() {
           </div>
         </div>
         <div className="border-t line">
-          <div className="wrap flex flex-wrap justify-between gap-4 py-6 text-[10px] text-stone-500">
-            <AgeNotice />
-            <span>© 2026 LINXAS FUKUOKA</span>
+          <div className="wrap py-6 text-[10px] text-stone-500">
+            <nav
+              aria-label="法的情報"
+              className="flex flex-wrap gap-x-6 gap-y-2"
+            >
+              <Link href="/legal/tokusho">特定商取引法に基づく表記</Link>
+              <Link href="/privacy">プライバシーポリシー</Link>
+              <Link href="/terms">利用規約</Link>
+              <Link href="/shipping-returns">配送・返品について</Link>
+            </nav>
+            <div className="mt-5 flex flex-wrap justify-between gap-4 border-t line pt-5">
+              <AgeNotice />
+              <span>© 2026 LINXAS FUKUOKA</span>
+            </div>
           </div>
         </div>
       </footer>

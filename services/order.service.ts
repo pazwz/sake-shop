@@ -1,12 +1,12 @@
 import { randomUUID } from 'crypto';
 import { OrderStatus } from '@prisma/client';
 import { DEVELOPMENT_DISCOUNT_AMOUNT } from '@/config/order';
-import { getTemporaryShippingQuote } from '@/config/shipping';
 import { getReservationExpiry } from '@/config/reservation';
 import { AppError, NotFoundError } from '@/lib/errors';
 import { InventoryReservationRepository } from '@/repositories/inventory-reservation.repository';
 import { OrderRepository } from '@/repositories/order.repository';
 import { CheckoutAccessService } from '@/services/checkout-access.service';
+import { ShippingQuoteService } from '@/services/shipping-quote.service';
 import {
   projectApprovedInventory,
   requiresTransferForQuantity,
@@ -33,6 +33,7 @@ export class OrderService {
     private readonly orders = new OrderRepository(),
     private readonly reservations = new InventoryReservationRepository(),
     private readonly checkoutAccess = new CheckoutAccessService(),
+    private readonly shippingQuotes = new ShippingQuoteService(),
   ) {}
   async create(input: OrderInput, customerId: string) {
     this.checkoutAccess.assertOrderCreationAllowed();
@@ -132,7 +133,22 @@ export class OrderService {
         });
         const subtotal = lines.reduce((sum, line) => sum + line.subtotal, 0);
         const taxAmount = lines.reduce((sum, line) => sum + line.tax, 0);
-        const shippingFee = getTemporaryShippingQuote().fee;
+        const shippingQuote = this.shippingQuotes.quote({
+          prefecture: input.address.prefecture,
+          items: input.items.map((item) => ({
+            productId: item.productId,
+            quantity: item.quantity,
+            packageType: item.boxProductId ? 'BOXED_BOTTLE' : 'BOTTLE',
+            requiresCoolDelivery: false,
+          })),
+          quantity: input.items.reduce((sum, item) => sum + item.quantity, 0),
+          packageType: input.items.some((item) => item.boxProductId)
+            ? 'BOXED_BOTTLE'
+            : 'BOTTLE',
+          requiresCoolDelivery: false,
+          subtotal,
+        });
+        const shippingFee = shippingQuote.totalShipping;
         const discountAmount = DEVELOPMENT_DISCOUNT_AMOUNT;
         const orderId = randomUUID();
         const now = new Date();
@@ -150,6 +166,7 @@ export class OrderService {
             ...input.address,
             addressLine2: input.address.addressLine2 ?? null,
           },
+          shippingQuoteSnapshot: shippingQuote,
           ageConfirmedAt: now,
           items: lines.map(
             ({

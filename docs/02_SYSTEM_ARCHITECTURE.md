@@ -493,6 +493,37 @@ SyncLog 的 JSON payload，记录 trigger、source/count summary、warning、err
 资源及 production `CRON_SECRET` 配置属于后续独立实施范围。Secret 未配置时 internal
 endpoint 必须 fail closed。
 
+## Reservation expiration scheduler
+
+预约过期通过独立 AWS EventBridge Scheduler 每 5 分钟触发 Node.js Lambda，再由 Lambda
+以 POST 调用 `/api/v1/internal/reservations/expire`。Lambda 每次从既有 SSM SecureString
+读取 `CRON_SECRET`，日志只记录 HTTP status、过期件数与耗时。非 2xx 必须令 Lambda
+失败。Scheduler 使用独立 least-privilege invoke role，maximum event age 为 300 秒，
+maximum retry attempts 为 1。Repository 只对到期的 ACTIVE row 执行条件更新，因此重复
+调用幂等且无到期数据时安全返回 transitioned=0。
+
+## Shipping quote boundary
+
+```text
+Checkout request (address + product selections only)
+        ↓
+OrderValidator (reject client shippingFee/shippingMethod)
+        ↓
+OrderService
+        ↓
+ShippingQuoteService
+        ↓
+central shipping policy config
+        ↓
+Order shippingFee + shippingQuoteSnapshot
+```
+
+ShippingQuoteService 输入配送都道府県、商品与数量、包装类型、クール便要否和 server-side
+subtotal，输出 base/cool/remote fees、合计、配送方式及计算 breakdown。正式佐川料金表尚未
+确认，当前 development placeholder 仅用于非 production mock Checkout，并只允许明确配置
+的普通配送条件；其他地区与クール便 fail closed。Production Checkout 继续由独立 safety
+gate 禁用。
+
 ---
 
 # 七、权限

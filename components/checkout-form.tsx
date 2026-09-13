@@ -121,7 +121,6 @@ export default function CheckoutForm({
             phone: form.phone,
           },
           ageConfirmed: age,
-          shippingMethod: 'development-standard',
           paymentMethod,
         }),
       });

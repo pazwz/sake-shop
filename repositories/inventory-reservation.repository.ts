@@ -34,6 +34,7 @@ export type ReservedOrderInput = {
   totalAmount: number;
   paymentMethod: string;
   shippingAddressSnapshot: Prisma.InputJsonValue;
+  shippingQuoteSnapshot: Prisma.InputJsonValue;
   ageConfirmedAt: Date;
   items: Array<{
     id: string;
@@ -108,6 +109,7 @@ class PrismaLockedInventoryReservationTransaction
         totalAmount: input.totalAmount,
         paymentMethod: input.paymentMethod,
         shippingAddressSnapshot: input.shippingAddressSnapshot,
+        shippingQuoteSnapshot: input.shippingQuoteSnapshot,
         ageConfirmedAt: input.ageConfirmedAt,
         items: {
           create: input.items.map((item) => ({

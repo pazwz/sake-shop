@@ -57,7 +57,6 @@ const input = (items: OrderInput['items']): OrderInput => ({
     phone: '09000000000',
   },
   ageConfirmed: true,
-  shippingMethod: 'standard',
   paymentMethod: 'card',
 });
 

@@ -509,6 +509,9 @@ payment_method
 
 shipping_address_snapshot
 
+shipping_quote_snapshot（nullable JSON；既存订单允许为空，新订单保存 server-side 送料规则、
+base/cool/remote fee、method、carrier 与 policy version 的不可变快照）
+
 smaregi_order_id
 
 smaregi_sync_status

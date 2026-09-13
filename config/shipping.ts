@@ -3,19 +3,20 @@ import { DEVELOPMENT_SHIPPING_FEE } from '@/config/order';
 
 export const DEFAULT_SHIPMENT_CARRIER = ShipmentCarrier.SAGAWA;
 export const DEVELOPMENT_SHIPPING_METHOD = 'development-standard';
+export const DEVELOPMENT_SHIPPING_POLICY_VERSION = 'development-placeholder-v1';
 
 /**
- * Temporary shipping-rule boundary. Replace this implementation with the
- * contracted zone, size, weight, and cool-delivery rate table when available.
+ * This allowlist is intentionally narrow until the contracted Sagawa rate
+ * table, remote-island policy, and cool-delivery rules are approved.
  */
-export type ShippingQuoteInput = {
-  destinationPrefecture?: string;
-  packageSize?: string;
-  weightGrams?: number;
-  requiresCoolDelivery?: boolean;
-};
+export const DEVELOPMENT_SUPPORTED_PREFECTURES = ['福岡県'] as const;
 
-export const getTemporaryShippingQuote = (_input: ShippingQuoteInput = {}) => ({
-  fee: DEVELOPMENT_SHIPPING_FEE,
-  shippingMethod: DEVELOPMENT_SHIPPING_METHOD,
-});
+export const DEVELOPMENT_SHIPPING_RULE = {
+  policyVersion: DEVELOPMENT_SHIPPING_POLICY_VERSION,
+  method: DEVELOPMENT_SHIPPING_METHOD,
+  carrier: DEFAULT_SHIPMENT_CARRIER,
+  baseFee: DEVELOPMENT_SHIPPING_FEE,
+  coolFee: null,
+  remoteAreaFee: null,
+  supportedPrefectures: DEVELOPMENT_SUPPORTED_PREFECTURES,
+} as const;

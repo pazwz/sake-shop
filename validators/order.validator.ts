@@ -34,7 +34,6 @@ export const orderValidator = z
       phone: z.string().trim().min(8).max(30),
     }),
     ageConfirmed: z.literal(true),
-    shippingMethod: z.string().trim().min(1).max(100),
     paymentMethod: z.enum(['card', 'paypay']),
   })
   .strict();

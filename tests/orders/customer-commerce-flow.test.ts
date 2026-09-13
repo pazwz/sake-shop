@@ -112,7 +112,6 @@ test('customer commerce integration: auth, checkout ownership, history and faile
       phone: '09000000000',
     },
     ageConfirmed: true,
-    shippingMethod: 'standard',
     paymentMethod: 'card',
   };
   const created = await new OrderService(
@@ -121,6 +120,21 @@ test('customer commerce integration: auth, checkout ownership, history and faile
   ).createForCustomer(orderInput, current!.id);
   const persistedOrder = persistedOrders[0];
   assert.equal(persistedOrder.customerId, current!.id);
+  assert.deepEqual(persistedOrder.shippingQuoteSnapshot, {
+    baseFee: 880,
+    coolFee: 0,
+    remoteAreaFee: 0,
+    totalShipping: 880,
+    method: 'development-standard',
+    carrier: 'SAGAWA',
+    calculationBreakdown: {
+      policyVersion: 'development-placeholder-v1',
+      baseFee: 880,
+      coolFee: 0,
+      remoteAreaFee: 0,
+      note: '正式な佐川急便送料表の承認前に使用する開発用暫定見積もり',
+    },
+  });
   assert.equal(
     (persistedOrder.items as Array<{ expiresAt: Date }>)[0].expiresAt instanceof
       Date,

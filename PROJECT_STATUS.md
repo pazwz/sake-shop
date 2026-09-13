@@ -327,7 +327,7 @@ things. Do not infer a deletion or failed sync by comparing them directly.
   Smaregi, audit, and reservation data.
 - New reservations receive a centralized 30-minute expiry. The protected
   `POST /api/v1/internal/reservations/expire` endpoint expires overdue ACTIVE
-  rows; an external scheduler still needs to be configured.
+  rows; AWS EventBridge Scheduler invokes its dedicated Lambda every 5 minutes.
 - Payment success confirms the ACTIVE hold by removing its timeout; failure,
   cancellation, and refund release it. Order cancellation releases ACTIVE rows,
   and the final `SHIPPED -> COMPLETED` Order transition consumes them.
@@ -336,15 +336,22 @@ things. Do not infer a deletion or failed sync by comparing them directly.
 
 ## Shipping and Fulfillment
 
-- Shipping currently uses a temporary fixed fee and `development-standard`.
+- Shipping uses a centralized `ShippingQuoteService`. The current fixed fee and
+  `development-standard` policy are explicitly development-only placeholders;
+  unsupported destinations and cool delivery fail closed.
+- Checkout cannot submit a shipping fee or method. New Orders preserve the
+  server-calculated fee, method, carrier, policy version, and breakdown in a
+  nullable JSON snapshot (legacy Orders remain readable).
 - No confirmed Sagawa zone/size/weight/cool-delivery tariff table exists.
 - Label creation, carrier API integration, delivery-time selection, and customer
   shipment notifications are not implemented.
 
 ## Legal, Support, and Marketing Operations
 
-- Dedicated Terms, Privacy Policy, Specified Commercial Transactions, shipping,
-  returns/cancellation, and alcohol-sales policy pages are absent.
+- Terms, Privacy Policy, Specified Commercial Transactions, and shipping/returns
+  pages are published and linked from the Footer. Unconfirmed legal identity,
+  tariff, payment, delivery, and return details remain visibly marked pending
+  rather than being fabricated.
 - Contact form is a demo and sends no message.
 - Newsletter form is a demo and persists/sends nothing.
 - No transactional email exists for registration, order confirmation, payment,

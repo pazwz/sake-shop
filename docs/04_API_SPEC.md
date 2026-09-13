@@ -774,6 +774,24 @@ PATCH
 `POST /api/v1/internal/reservations/expire` 仅接受正确的 `Authorization: Bearer <CRON_SECRET>`，
 将 `expiresAt < now` 的 ACTIVE reservation 转为 EXPIRED。建议外部 scheduler 每 5 分钟调用。
 
+成功响应：
+
+```json
+{
+  "success": true,
+  "data": {
+    "transitioned": 0,
+    "expiredAt": "2026-09-14T00:00:00.000Z"
+  },
+  "message": "",
+  "error": null
+}
+```
+
+调用不接受 request body。缺少或错误 Bearer credential 返回 401。重复调用只转换仍为 ACTIVE
+且已到期的记录，因此幂等。Production 由独立 AWS Scheduler 以 `rate(5 minutes)` 调用，
+retry 1 次、maximum event age 300 秒。
+
 ---
 
 ## 发货

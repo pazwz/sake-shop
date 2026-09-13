@@ -162,13 +162,14 @@ test('checkout body rejects forged customerId, customer and email identity', () 
       phone: '09000000000',
     },
     ageConfirmed: true,
-    shippingMethod: 'standard',
     paymentMethod: 'card',
   };
   for (const injected of [
     { customerId: 'forged' },
     { customer: { email: 'fake@example.com' } },
     { email: 'fake@example.com' },
+    { shippingFee: 1 },
+    { shippingMethod: 'client-selected' },
   ]) {
     assert.equal(
       orderValidator.safeParse({ ...valid, ...injected }).success,
