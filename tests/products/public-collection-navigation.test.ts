@@ -39,7 +39,7 @@ test('unpublished and out-of-window collections do not generate entries', async 
       navigationCollection({ status: CollectionStatus.DRAFT }),
       navigationCollection({
         id: 'future-story',
-        publishStartAt: new Date('2026-09-13T00:00:00.000Z'),
+        publishStartAt: new Date('2100-01-01T00:00:00.000Z'),
       }),
     ],
   } as never);

@@ -12,18 +12,28 @@ const include = {
   payments: { orderBy: { createdAt: 'desc' } },
   shipments: { orderBy: { createdAt: 'desc' } },
 } satisfies Prisma.OrderInclude;
+
+const paymentTargetSelect = {
+  id: true,
+  orderNumber: true,
+  totalAmount: true,
+  paymentStatus: true,
+} satisfies Prisma.OrderSelect;
+
 export class OrderRepository {
   findById(id: string) {
     return prisma.order.findUnique({ where: { id }, include });
   }
-  findByOrderNumber(orderNumber: string) {
-    return prisma.order.findUnique({ where: { orderNumber }, include });
+  findPaymentTargetById(id: string) {
+    return prisma.order.findUnique({
+      where: { id },
+      select: paymentTargetSelect,
+    });
   }
-  findByCustomer(customerId: string) {
-    return prisma.order.findMany({
-      where: { customerId },
-      include,
-      orderBy: { createdAt: 'desc' },
+  findPaymentTargetByOrderNumber(orderNumber: string) {
+    return prisma.order.findUnique({
+      where: { orderNumber },
+      select: paymentTargetSelect,
     });
   }
   findMany(query: { status?: OrderStatus; keyword?: string }) {

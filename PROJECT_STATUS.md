@@ -310,14 +310,20 @@ things. Do not infer a deletion or failed sync by comparing them directly.
 
 ## Reservation and Order Lifecycle
 
+- Consumer Order detail safety gate is complete: without a trusted server-side
+  Customer Session, the public Order API rejects access before querying Order
+  data, and public detail pages do not load or render Order PII.
+- Checkout confirmation remains available as a minimal receipt containing only
+  the newly created order number; it does not refetch Order data.
+- Full Customer ownership authorization is not complete. The temporary gate must
+  be replaced by a trusted Customer Session plus ownership-scoped query and a
+  minimized Customer Order DTO.
 - New reservations have `expiresAt=null`; automatic expiry is not implemented.
 - Payment failure/timeout and order cancellation are not wired to release ACTIVE
   reservations.
 - Payment success/fulfillment is not wired to consume reservations.
 - Order write-back to Smaregi is deliberately blocked pending customer approval
   and official field mapping.
-- Public order lookup is based only on the order number and currently returns
-  customer/address details without an authenticated customer ownership check.
 
 ## Shipping and Fulfillment
 
@@ -371,7 +377,8 @@ things. Do not infer a deletion or failed sync by comparing them directly.
 1. Disable or environment-gate the public Mock checkout path until production
    payment is ready.
 2. Implement server-side Customer authentication and ownership authorization;
-   protect order-detail access and remove browser-stored passwords.
+   replace the temporary fail-closed Order detail gate and remove browser-stored
+   passwords.
 3. Integrate the approved production payment provider and webhook flow.
 4. Finalize shipping fees/rules and checkout totals.
 5. Connect reservation release/consume/expiry to payment and order transitions.

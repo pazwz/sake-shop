@@ -13,6 +13,7 @@ import {
   isPackageOnlyProduct,
   isStandaloneEcProduct,
 } from '@/services/product-visibility.service';
+import type { CustomerOrderCreationResult } from '@/types/order';
 import type { OrderInput } from '@/validators/order.validator';
 
 const transitions: Record<OrderStatus, OrderStatus[]> = {
@@ -176,10 +177,11 @@ export class OrderService {
       },
     );
   }
-  async getByOrderNumber(orderNumber: string) {
-    const order = await this.orders.findByOrderNumber(orderNumber);
-    if (!order) throw new NotFoundError('ORDER_NOT_FOUND');
-    return order;
+  async createForCustomer(
+    input: OrderInput,
+  ): Promise<CustomerOrderCreationResult> {
+    const order = await this.create(input);
+    return { id: order.id, orderNumber: order.orderNumber };
   }
   async getAdminOrders(query: { status?: OrderStatus; keyword?: string }) {
     return this.orders.findMany(query);

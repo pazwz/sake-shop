@@ -1,19 +1,18 @@
 import {
   createAppErrorResponse,
   createErrorResponse,
-  createSuccessResponse,
 } from '@/lib/api-response';
 import { AppError } from '@/lib/errors';
-import { OrderService } from '@/services/order.service';
-const service = new OrderService();
+import { CustomerOrderAccessService } from '@/services/customer-order-access.service';
+
+const service = new CustomerOrderAccessService();
+
 export const GET = async (
   _request: Request,
   { params }: { params: Promise<{ orderNumber: string }> },
 ) => {
   try {
-    return createSuccessResponse(
-      await service.getByOrderNumber((await params).orderNumber),
-    );
+    return await service.getOrderDetail((await params).orderNumber);
   } catch (error) {
     if (error instanceof AppError) return createAppErrorResponse(error);
     return createErrorResponse(

@@ -36,8 +36,8 @@ export class PaymentService {
     if (existing) return existing;
 
     const order = input.orderId
-      ? await this.orders.findById(input.orderId)
-      : await this.orders.findByOrderNumber(input.orderNumber!);
+      ? await this.orders.findPaymentTargetById(input.orderId)
+      : await this.orders.findPaymentTargetByOrderNumber(input.orderNumber!);
     if (!order)
       throw new AppError('Order was not found.', 'ORDER_NOT_FOUND', 404);
     if (order.paymentStatus === PaymentStatus.SUCCEEDED) {

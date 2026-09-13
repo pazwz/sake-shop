@@ -1,103 +1,18 @@
-import { notFound } from 'next/navigation';
-import { formatPrice } from '@/lib/products';
-import { OrderService } from '@/services/order.service';
+import Link from 'next/link';
 
-export default async function OrderConfirmation({
-  params,
-}: {
-  params: Promise<{ orderNumber: string }>;
-}) {
-  let order;
-  try {
-    order = await new OrderService().getByOrderNumber(
-      (await params).orderNumber,
-    );
-  } catch {
-    notFound();
-  }
-  const address = order.shippingAddressSnapshot as {
-    recipientName: string;
-    postalCode: string;
-    prefecture: string;
-    city: string;
-    addressLine1: string;
-    addressLine2?: string;
-    phone: string;
-  };
-  const shipment = order.shipments[0];
-  const payment =
-    order.payments.find((entry) => entry.status === 'SUCCEEDED') ??
-    order.payments[0];
+export default function CustomerOrderSafetyGate() {
   return (
     <main className="wrap py-20">
-      <p className="eyebrow">ORDER CONFIRMATION</p>
-      <h1 className="serif mt-4 text-5xl">ご注文を承りました</h1>
-      <p className="mt-6 text-sm">注文番号：{order.orderNumber}</p>
-      <div className="mt-12 grid gap-12 md:grid-cols-2">
-        <section>
-          <h2 className="serif text-2xl">ご注文商品</h2>
-          <div className="mt-5 divide-y border-y line">
-            {order.items.map((item) => (
-              <p
-                className={`flex justify-between py-4 text-sm ${item.parentOrderItemId ? 'pl-4 text-stone-600' : ''}`}
-                key={item.id}
-              >
-                <span>
-                  {item.parentOrderItemId ? '＋ 純正箱：' : ''}
-                  {item.productName} × {item.quantity}
-                </span>
-                <span>{formatPrice(Number(item.subtotal))}</span>
-              </p>
-            ))}
-          </div>
-          <p className="mt-5 flex justify-between">
-            <span>送料</span>
-            <span>{formatPrice(Number(order.shippingFee))}</span>
-          </p>
-          <p className="mt-4 flex justify-between text-lg">
-            <span>合計</span>
-            <span>{formatPrice(Number(order.totalAmount))}</span>
-          </p>
-        </section>
-        <section>
-          <h2 className="serif text-2xl">配送先</h2>
-          <p className="mt-5 text-sm leading-7">
-            {address.recipientName}
-            <br />〒{address.postalCode} {address.prefecture}
-            {address.city}
-            <br />
-            {address.addressLine1} {address.addressLine2}
-            <br />
-            {address.phone}
-            <br />
-            注文状態：{order.status}
-          </p>
-          {payment ? (
-            <div className="mt-6 border-t line pt-5 text-sm leading-7">
-              <h3 className="serif text-xl">お支払い</h3>
-              <p className="mt-3">状態：{payment.status}</p>
-            </div>
-          ) : null}
-          {shipment?.status === 'SHIPPED' ||
-          shipment?.status === 'DELIVERED' ? (
-            <div className="mt-8 border-t line pt-6 text-sm leading-7">
-              <h3 className="serif text-xl">配送情報</h3>
-              <p className="mt-3">
-                配送会社：{shipment.carrier}
-                <br />
-                伝票番号：{shipment.trackingNumber}
-                <br />
-                発送日：
-                {shipment.shippedAt
-                  ? new Date(shipment.shippedAt).toLocaleDateString('ja-JP')
-                  : '—'}
-                <br />
-                配送状態：{shipment.status}
-              </p>
-            </div>
-          ) : null}
-        </section>
-      </div>
+      <p className="eyebrow">ORDER DETAILS</p>
+      <h1 className="serif mt-4 text-4xl sm:text-5xl">
+        ご注文詳細は現在表示できません
+      </h1>
+      <p className="mt-6 max-w-2xl text-sm leading-7 text-stone-600">
+        お客様の個人情報を保護するため、安全なログイン機能の準備が整うまで注文詳細の表示を停止しています。
+      </p>
+      <Link className="btn-secondary mt-8 inline-flex" href="/">
+        トップページへ戻る
+      </Link>
     </main>
   );
 }

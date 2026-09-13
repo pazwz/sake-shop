@@ -137,7 +137,9 @@ export default function Checkout() {
           webhookPayload.error?.detail ?? 'デモ決済を完了できませんでした。',
         );
       clear();
-      router.push(`/orders/${orderPayload.data.orderNumber}`);
+      router.push(
+        `/order-complete?orderNumber=${encodeURIComponent(orderPayload.data.orderNumber)}`,
+      );
     } catch (submissionError) {
       setError(
         submissionError instanceof TypeError

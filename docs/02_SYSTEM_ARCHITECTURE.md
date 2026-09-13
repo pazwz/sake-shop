@@ -402,6 +402,29 @@ Reservation 生命周期为 ACTIVE → RELEASED / CONSUMED / EXPIRED。只有 AC
 可售库存；release 与 consume 只更新 ACTIVE 行，因此重复调用幂等。expiresAt 暂时可空，
 本阶段不实现自动过期任务。
 
+## Consumer order access safety gate
+
+Customer 身份目前仍是 browser-local demo data，不能作为授权依据。在可信的服务端
+Customer Session 和 Order ownership query 完成前，消费者订单读取采用 fail-closed：
+
+```text
+GET /api/v1/orders/{orderNumber}
+        ↓
+CustomerOrderAccessService
+        ↓
+401 UNAUTHORIZED（Repository query 前拒绝）
+```
+
+`customerId`、email、localStorage 值和订单编号都不是访问凭证。消费者订单详情 SSR
+页面同样不读取数据库，也不显示 Order、Customer、Address、Payment、Shipment 或
+OrderItem。Checkout 创建成功只返回 `id` 和 `orderNumber`；完成页使用该响应显示最小
+确认信息，不按订单编号重新读取数据。Admin Order API 继续通过独立 Admin Session 和
+角色校验读取完整运营数据。
+
+未来 Server-side Customer Auth 完成后，应以可信 session customerId 执行 ownership-scoped
+Repository query，并使用明确的 Customer Order DTO 替换此临时 gate；不得恢复裸
+`getOrderByNumber`。
+
 Stock 中 Product API 已不存在的 orphan 行只记录 warning，不创建 Product 或
 InventoryMirror，也不阻断其余同步。已知与新出现的 orphan 数量分别记录。
 approved deferred / orphan 的负库存只记录 warning；normal Product 出现负库存时，

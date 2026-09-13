@@ -8,19 +8,16 @@ import {
 } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 
-const include = { order: true } satisfies Prisma.PaymentInclude;
-
 export class PaymentStatusChangedError extends Error {}
 
 export class PaymentRepository {
   findById(id: string) {
-    return prisma.payment.findUnique({ where: { id }, include });
+    return prisma.payment.findUnique({ where: { id } });
   }
 
   findByOrderId(orderId: string) {
     return prisma.payment.findMany({
       where: { orderId },
-      include,
       orderBy: { createdAt: 'desc' },
     });
   }
@@ -31,12 +28,11 @@ export class PaymentRepository {
   ) {
     return prisma.payment.findUnique({
       where: { provider_providerPaymentId: { provider, providerPaymentId } },
-      include,
     });
   }
 
   findByIdempotencyKey(idempotencyKey: string) {
-    return prisma.payment.findUnique({ where: { idempotencyKey }, include });
+    return prisma.payment.findUnique({ where: { idempotencyKey } });
   }
 
   findWebhookEvent(provider: PaymentProvider, eventId: string) {
@@ -46,18 +42,17 @@ export class PaymentRepository {
   }
 
   create(data: Prisma.PaymentCreateInput) {
-    return prisma.payment.create({ data, include });
+    return prisma.payment.create({ data });
   }
 
   updateStatus(id: string, status: PaymentStatus) {
-    return prisma.payment.update({ where: { id }, data: { status }, include });
+    return prisma.payment.update({ where: { id }, data: { status } });
   }
 
   markSucceeded(id: string) {
     return prisma.payment.update({
       where: { id },
       data: { status: PaymentStatus.SUCCEEDED, paidAt: new Date() },
-      include,
     });
   }
 
@@ -65,7 +60,6 @@ export class PaymentRepository {
     return prisma.payment.update({
       where: { id },
       data: { status: PaymentStatus.FAILED, failedAt: new Date() },
-      include,
     });
   }
 
@@ -73,7 +67,6 @@ export class PaymentRepository {
     return prisma.payment.update({
       where: { id },
       data: { status: PaymentStatus.CANCELLED, cancelledAt: new Date() },
-      include,
     });
   }
 
@@ -81,7 +74,6 @@ export class PaymentRepository {
     return prisma.payment.update({
       where: { id },
       data: { status: PaymentStatus.REFUNDED },
-      include,
     });
   }
 
@@ -124,7 +116,6 @@ export class PaymentRepository {
 
           const payment = await tx.payment.findUniqueOrThrow({
             where: { id: input.paymentId },
-            include,
           });
           if (input.nextStatus === PaymentStatus.SUCCEEDED) {
             await tx.order.update({

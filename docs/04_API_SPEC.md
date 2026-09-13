@@ -294,6 +294,21 @@ availableQuantity = max(0, approvedPhysicalTotal - activeReservedQuantity)
 
 订单创建不会修改 Smaregi inventory，也不会自动调拨。
 
+成功响应只返回后续 Mock checkout 所需的最小确认标识，不返回 Customer、配送地址、
+OrderItem、Payment 或 Shipment：
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "order-id",
+    "orderNumber": "LINXAS-YYYYMMDD-XXXXXX"
+  },
+  "message": "",
+  "error": null
+}
+```
+
 各 request item は任意の `boxProductId` を一件だけ持てる。指定時は Product の
 `boxProductId` と完全一致し、対象が同期済み package-only SKU、active、価格・税率有効、
 在庫十分であることを検証する。箱だけを `productId` として注文することは禁止する。
@@ -305,9 +320,7 @@ rollback する。小計・税額には箱価格を含める。
 
 ### 我的订单
 
-GET
-
-/api/v1/orders
+未实现。Customer 身份仍是 browser-local demo data，不能用于服务端授权。
 
 ---
 
@@ -315,7 +328,18 @@ GET
 
 GET
 
-/api/v1/orders/{id}
+/api/v1/orders/{orderNumber}
+
+可信 Server-side Customer Session 完成前，此接口在任何 Order Repository 查询之前统一返回：
+
+```text
+401 UNAUTHORIZED
+```
+
+订单编号、order id、query 中的 customerId/email、localStorage 数据都不能作为权限凭证。
+不存在与存在的订单使用相同拒绝响应，避免枚举。`/orders/[orderNumber]` 只显示通用安全
+提示，不读取订单；Checkout 成功后跳转 `/order-complete`，仅显示创建响应中的订单编号。
+Admin 订单接口不受此临时 safety gate 影响。
 
 ---
 

@@ -19,7 +19,7 @@ export const POST = async (request: Request) => {
       );
     }
     return createSuccessResponse(
-      await service.create(orderValidator.parse(body)),
+      await service.createForCustomer(orderValidator.parse(body)),
       201,
     );
   } catch (error) {
