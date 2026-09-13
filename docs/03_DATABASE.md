@@ -93,6 +93,8 @@ InventoryMirror
 
 Customer
 
+CustomerSession（opaque token hash、customer_id、expires_at、revoked_at）
+
 ↓
 
 Address
@@ -370,7 +372,8 @@ created_at
 updated_at
 
 同一 OrderItem 最多一条 reservation。只有 ACTIVE 状态参与可售库存汇总；其他状态
-保留历史但不再占用库存。Product、Order、OrderItem 均使用 Restrict 外键。
+保留历史但不再占用库存。未支付 ACTIVE 有 expires_at；支付确认后的 ACTIVE 将其清空，
+直到 RELEASED 或 CONSUMED。Product、Order、OrderItem 均使用 Restrict 外键。
 
 ---
 
@@ -388,6 +391,14 @@ self relation。箱は独立した product_id、product_code、unit_price、tax_
 ---
 
 ## customers
+
+`password_hash` nullable，用于兼容认证功能上线前的历史 Customer；新注册 Customer 必须
+写 bcrypt hash。明文密码不得保存。
+
+## customer_sessions
+
+只保存高熵 opaque token 的 SHA-256 hash。`token_hash` unique，并按 customer_id 与
+expires_at 建索引。logout 设置 revoked_at，过期或撤销记录不能建立当前身份。
 
 用途：
 

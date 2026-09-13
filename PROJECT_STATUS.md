@@ -86,26 +86,26 @@ Editorial, Story, customer/order/payment/shipment records, and reservations.
 
 Snapshot checked on 2026-09-13 using the configured Production Neon connection:
 
-| Entity | Current count |
-| --- | ---: |
-| Category (all) | 22 |
-| Smaregi-linked Category | 14 |
-| Product (all) | 463 |
-| Active Product | 463 |
-| Public Product | 415 |
-| ProductImage | 424 |
-| InventoryMirror | 1,825 |
-| InventoryReservation | 0 |
-| Customer | 8 |
-| Order | 8 |
-| Payment | 6 |
-| Shipment | 1 |
-| FeaturedCollection | 19 |
-| Published FeaturedCollection | 11 |
-| FeaturedCollectionProduct relation | 53 |
-| EditorialSection | 3 |
-| AdminUser | 6 |
-| SyncLog | 892 |
+| Entity                             | Current count |
+| ---------------------------------- | ------------: |
+| Category (all)                     |            22 |
+| Smaregi-linked Category            |            14 |
+| Product (all)                      |           463 |
+| Active Product                     |           463 |
+| Public Product                     |           415 |
+| ProductImage                       |           424 |
+| InventoryMirror                    |         1,825 |
+| InventoryReservation               |             0 |
+| Customer                           |             8 |
+| Order                              |             8 |
+| Payment                            |             6 |
+| Shipment                           |             1 |
+| FeaturedCollection                 |            19 |
+| Published FeaturedCollection       |            11 |
+| FeaturedCollectionProduct relation |            53 |
+| EditorialSection                   |             3 |
+| AdminUser                          |             6 |
+| SyncLog                            |           892 |
 
 The latest Smaregi production snapshot reported:
 
@@ -293,12 +293,13 @@ things. Do not infer a deletion or failed sync by comparing them directly.
 
 ## Customer Identity and Account
 
-- Registration/login are browser-local demo flows and store demo passwords in
-  localStorage. They are not production authentication.
-- My Page/order history uses local demo storage rather than the Customer and
-  Order tables.
-- No password reset, email verification, authenticated Customer session, address
-  book, or account deletion flow exists.
+- Registration/login/logout use bcrypt-backed Customer credentials and an
+  opaque HttpOnly session cookie. Only a SHA-256 token hash is stored in the
+  CustomerSession table; expired or revoked sessions are anonymous.
+- `/account` and its paginated order history/detail pages use server-side
+  Customer identity and ownership-scoped Order queries.
+- Password reset, email verification, address-book editing, and account deletion
+  are not implemented.
 
 ## Real Checkout and Payment
 
@@ -317,18 +318,19 @@ things. Do not infer a deletion or failed sync by comparing them directly.
 
 ## Reservation and Order Lifecycle
 
-- Consumer Order detail safety gate is complete: without a trusted server-side
-  Customer Session, the public Order API rejects access before querying Order
-  data, and public detail pages do not load or render Order PII.
+- Consumer Order detail requires the trusted Customer Session. Repository reads
+  scope by both order number and session Customer ID; another Customer's order
+  and a nonexistent order both return 404.
 - Checkout confirmation remains available as a minimal receipt containing only
   the newly created order number; it does not refetch Order data.
-- Full Customer ownership authorization is not complete. The temporary gate must
-  be replaced by a trusted Customer Session plus ownership-scoped query and a
-  minimized Customer Order DTO.
-- New reservations have `expiresAt=null`; automatic expiry is not implemented.
-- Payment failure/timeout and order cancellation are not wired to release ACTIVE
-  reservations.
-- Payment success/fulfillment is not wired to consume reservations.
+- Customer order responses use a dedicated DTO and exclude internal Payment,
+  Smaregi, audit, and reservation data.
+- New reservations receive a centralized 30-minute expiry. The protected
+  `POST /api/v1/internal/reservations/expire` endpoint expires overdue ACTIVE
+  rows; an external scheduler still needs to be configured.
+- Payment success confirms the ACTIVE hold by removing its timeout; failure,
+  cancellation, and refund release it. Order cancellation releases ACTIVE rows,
+  and the final `SHIPPED -> COMPLETED` Order transition consumes them.
 - Order write-back to Smaregi is deliberately blocked pending customer approval
   and official field mapping.
 
@@ -383,14 +385,11 @@ things. Do not infer a deletion or failed sync by comparing them directly.
 
 1. Keep the completed Production Checkout safety gate enabled until a reviewed
    real Payment Adapter is ready.
-2. Implement server-side Customer authentication and ownership authorization;
-   replace the temporary fail-closed Order detail gate and remove browser-stored
-   passwords.
-3. Integrate the approved production payment provider and webhook flow.
-4. Finalize shipping fees/rules and checkout totals.
-5. Connect reservation release/consume/expiry to payment and order transitions.
-6. Publish the required legal, privacy, transaction, shipping, and return pages.
-7. Add end-to-end tests for purchase, stock contention, payment failure,
+2. Integrate the approved production payment provider and webhook flow.
+3. Finalize shipping fees/rules and checkout totals.
+4. Configure the external reservation-expiry scheduler.
+5. Publish the required legal, privacy, transaction, shipping, and return pages.
+6. Add end-to-end tests for purchase, stock contention, payment failure,
    cancellation, authorization, and shipment transitions.
 
 ## P1 — Operational Readiness

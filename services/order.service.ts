@@ -2,6 +2,7 @@ import { randomUUID } from 'crypto';
 import { OrderStatus } from '@prisma/client';
 import { DEVELOPMENT_DISCOUNT_AMOUNT } from '@/config/order';
 import { getTemporaryShippingQuote } from '@/config/shipping';
+import { getReservationExpiry } from '@/config/reservation';
 import { AppError, NotFoundError } from '@/lib/errors';
 import { InventoryReservationRepository } from '@/repositories/inventory-reservation.repository';
 import { OrderRepository } from '@/repositories/order.repository';
@@ -33,7 +34,7 @@ export class OrderService {
     private readonly reservations = new InventoryReservationRepository(),
     private readonly checkoutAccess = new CheckoutAccessService(),
   ) {}
-  async create(input: OrderInput) {
+  async create(input: OrderInput, customerId: string) {
     this.checkoutAccess.assertOrderCreationAllowed();
     const baseProductIds = input.items.map((item) => item.productId);
     if (new Set(baseProductIds).size !== baseProductIds.length)
@@ -129,7 +130,6 @@ export class OrderService {
             );
           return [baseLine, createLine(boxProduct, baseOrderItemId)];
         });
-        const customer = await transaction.upsertCustomer(input.customer);
         const subtotal = lines.reduce((sum, line) => sum + line.subtotal, 0);
         const taxAmount = lines.reduce((sum, line) => sum + line.tax, 0);
         const shippingFee = getTemporaryShippingQuote().fee;
@@ -139,7 +139,7 @@ export class OrderService {
         return transaction.createOrderWithReservations({
           id: orderId,
           orderNumber: `LINXAS-${now.toISOString().slice(0, 10).replaceAll('-', '')}-${randomUUID().replaceAll('-', '').slice(0, 6).toUpperCase()}`,
-          customerId: customer.id,
+          customerId,
           subtotal,
           shippingFee,
           taxAmount,
@@ -173,7 +173,7 @@ export class OrderService {
               subtotal: lineSubtotal,
               requiresTransfer,
               parentOrderItemId,
-              expiresAt: null,
+              expiresAt: getReservationExpiry(now),
             }),
           ),
         });
@@ -182,8 +182,9 @@ export class OrderService {
   }
   async createForCustomer(
     input: OrderInput,
+    customerId: string,
   ): Promise<CustomerOrderCreationResult> {
-    const order = await this.create(input);
+    const order = await this.create(input, customerId);
     return { id: order.id, orderNumber: order.orderNumber };
   }
   async getAdminOrders(query: { status?: OrderStatus; keyword?: string }) {
@@ -196,12 +197,21 @@ export class OrderService {
   }
   async updateStatus(id: string, status: OrderStatus) {
     const order = await this.getAdminOrder(id);
+    if (order.status === status) return order;
     if (!transitions[order.status].includes(status))
       throw new AppError(
         'The requested order status transition is not allowed.',
         'INVALID_ORDER_STATUS_TRANSITION',
         422,
       );
-    return this.orders.updateStatus(id, status);
+    return this.orders.updateStatusWithReservationTransition(
+      id,
+      status,
+      status === OrderStatus.CANCELLED
+        ? 'RELEASE'
+        : status === OrderStatus.COMPLETED
+          ? 'CONSUME'
+          : 'NONE',
+    );
   }
 }

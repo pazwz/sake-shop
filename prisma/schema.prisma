@@ -197,12 +197,29 @@ model Customer {
   birthday          DateTime?
   ageConfirmedAt    DateTime?         @map("age_confirmed_at")
   smaregiCustomerId String?           @unique @map("smaregi_customer_id")
+  passwordHash      String?           @map("password_hash")
   createdAt         DateTime          @default(now()) @map("created_at")
   updatedAt         DateTime          @updatedAt @map("updated_at")
   addresses         CustomerAddress[]
   orders            Order[]
+  sessions          CustomerSession[]
 
   @@map("customers")
+}
+
+model CustomerSession {
+  id         String    @id @default(cuid())
+  customerId String    @map("customer_id")
+  tokenHash  String    @unique @map("token_hash")
+  expiresAt  DateTime  @map("expires_at")
+  revokedAt  DateTime? @map("revoked_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+  customer   Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+  @@index([expiresAt])
+  @@map("customer_sessions")
 }
 
 model CustomerAddress {

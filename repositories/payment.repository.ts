@@ -1,22 +1,26 @@
 import {
+  InventoryReservationStatus,
   OrderStatus,
   PaymentProvider,
   PaymentStatus,
   Prisma,
   SyncDirection,
   SyncStatus,
+  type PrismaClient,
 } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 
 export class PaymentStatusChangedError extends Error {}
 
 export class PaymentRepository {
+  public constructor(private readonly database: PrismaClient = prisma) {}
+
   findById(id: string) {
-    return prisma.payment.findUnique({ where: { id } });
+    return this.database.payment.findUnique({ where: { id } });
   }
 
   findByOrderId(orderId: string) {
-    return prisma.payment.findMany({
+    return this.database.payment.findMany({
       where: { orderId },
       orderBy: { createdAt: 'desc' },
     });
@@ -26,52 +30,52 @@ export class PaymentRepository {
     provider: PaymentProvider,
     providerPaymentId: string,
   ) {
-    return prisma.payment.findUnique({
+    return this.database.payment.findUnique({
       where: { provider_providerPaymentId: { provider, providerPaymentId } },
     });
   }
 
   findByIdempotencyKey(idempotencyKey: string) {
-    return prisma.payment.findUnique({ where: { idempotencyKey } });
+    return this.database.payment.findUnique({ where: { idempotencyKey } });
   }
 
   findWebhookEvent(provider: PaymentProvider, eventId: string) {
-    return prisma.paymentWebhookEvent.findUnique({
+    return this.database.paymentWebhookEvent.findUnique({
       where: { provider_eventId: { provider, eventId } },
     });
   }
 
   create(data: Prisma.PaymentCreateInput) {
-    return prisma.payment.create({ data });
+    return this.database.payment.create({ data });
   }
 
   updateStatus(id: string, status: PaymentStatus) {
-    return prisma.payment.update({ where: { id }, data: { status } });
+    return this.database.payment.update({ where: { id }, data: { status } });
   }
 
   markSucceeded(id: string) {
-    return prisma.payment.update({
+    return this.database.payment.update({
       where: { id },
       data: { status: PaymentStatus.SUCCEEDED, paidAt: new Date() },
     });
   }
 
   markFailed(id: string) {
-    return prisma.payment.update({
+    return this.database.payment.update({
       where: { id },
       data: { status: PaymentStatus.FAILED, failedAt: new Date() },
     });
   }
 
   markCancelled(id: string) {
-    return prisma.payment.update({
+    return this.database.payment.update({
       where: { id },
       data: { status: PaymentStatus.CANCELLED, cancelledAt: new Date() },
     });
   }
 
   markRefunded(id: string) {
-    return prisma.payment.update({
+    return this.database.payment.update({
       where: { id },
       data: { status: PaymentStatus.REFUNDED },
     });
@@ -85,9 +89,10 @@ export class PaymentRepository {
     expectedStatus: PaymentStatus;
     nextStatus: PaymentStatus;
     providerPaymentId: string;
+    reservationTransition: 'NONE' | 'HOLD' | 'RELEASE';
   }) {
     try {
-      return await prisma.$transaction(
+      return await this.database.$transaction(
         async (tx) => {
           const event = await tx.paymentWebhookEvent.create({
             data: {
@@ -129,6 +134,26 @@ export class PaymentRepository {
             await tx.order.update({
               where: { id: payment.orderId },
               data: { paymentStatus: PaymentStatus.REFUNDED },
+            });
+          } else if (
+            input.nextStatus === PaymentStatus.FAILED ||
+            input.nextStatus === PaymentStatus.CANCELLED
+          ) {
+            await tx.order.update({
+              where: { id: payment.orderId },
+              data: { paymentStatus: input.nextStatus },
+            });
+          }
+          if (input.reservationTransition !== 'NONE') {
+            await tx.inventoryReservation.updateMany({
+              where: {
+                orderId: payment.orderId,
+                status: InventoryReservationStatus.ACTIVE,
+              },
+              data:
+                input.reservationTransition === 'HOLD'
+                  ? { expiresAt: null }
+                  : { status: InventoryReservationStatus.RELEASED },
             });
           }
           await tx.paymentWebhookEvent.update({

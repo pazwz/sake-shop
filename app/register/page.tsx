@@ -10,6 +10,7 @@ import {
   invalidFieldClass,
   isValidEmail,
 } from '@/lib/form-validation';
+import { safeCustomerRedirect } from '@/lib/customer-navigation';
 
 type RegisterErrors = {
   name?: string;
@@ -35,8 +36,9 @@ function RegisterForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<RegisterErrors>({});
+  const [submitting, setSubmitting] = useState(false);
 
-  const submit = (event: React.FormEvent<HTMLFormElement>) => {
+  const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const nextErrors: RegisterErrors = {};
     if (!name.trim()) nextErrors.name = 'お名前を入力してください。';
@@ -44,8 +46,8 @@ function RegisterForm() {
     else if (!isValidEmail(email))
       nextErrors.email = 'メールアドレスの形式が正しくありません。';
     if (!password) nextErrors.password = 'パスワードを入力してください。';
-    else if (password.length < 8)
-      nextErrors.password = 'パスワードは8文字以上で入力してください。';
+    else if (password.length < 10)
+      nextErrors.password = 'パスワードは10文字以上で入力してください。';
     const firstField = (['name', 'email', 'password'] as const).find(
       (field) => nextErrors[field],
     );
@@ -55,12 +57,14 @@ function RegisterForm() {
       return;
     }
 
-    const result = register(name.trim(), email.trim(), password);
+    setSubmitting(true);
+    const result = await register(name.trim(), email.trim(), password);
+    setSubmitting(false);
     if (!result.ok) {
       setErrors({ form: result.message || '会員登録に失敗しました。' });
       return;
     }
-    router.push(params.get('redirect') || '/mypage');
+    router.push(safeCustomerRedirect(params.get('redirect')));
   };
 
   const fieldClass = (message?: string) =>
@@ -113,10 +117,10 @@ function RegisterForm() {
           <FormFieldError id="register-email-error" message={errors.email} />
         </label>
         <label className="block text-xs">
-          パスワード（8文字以上）
+          パスワード（10文字以上）
           <input
             required
-            minLength={8}
+            minLength={10}
             type="password"
             name="password"
             aria-invalid={Boolean(errors.password)}
@@ -136,11 +140,13 @@ function RegisterForm() {
           />
         </label>
         <FormFieldError id="register-form-error" message={errors.form} />
-        <button className="btn w-full">会員登録する</button>
+        <button
+          disabled={submitting}
+          className="btn w-full disabled:opacity-60"
+        >
+          {submitting ? '登録中…' : '会員登録する'}
+        </button>
       </form>
-      <p className="mt-8 text-xs text-stone-500">
-        これはデモサイトです。登録情報はこのブラウザ内だけに保存されます。
-      </p>
       <p className="mt-5 text-sm">
         すでに会員の方は{' '}
         <Link href="/login" className="underline">

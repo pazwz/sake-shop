@@ -1,8 +1,110 @@
 'use client';
-import {createContext,useContext,useEffect,useMemo,useState} from 'react';
-export type Member={name:string;email:string};
-type Auth={member:Member|null;ready:boolean;login:(email:string,password:string)=>{ok:boolean;message?:string};register:(name:string,email:string,password:string)=>{ok:boolean;message?:string};logout:()=>void};
-const AuthContext=createContext<Auth|undefined>(undefined);
-const MEMBERS_KEY='kura-members'; const SESSION_KEY='kura-member';
-export function AuthProvider({children}:{children:React.ReactNode}){const [member,setMember]=useState<Member|null>(null);const [ready,setReady]=useState(false);useEffect(()=>{const raw=localStorage.getItem(SESSION_KEY);if(raw)setMember(JSON.parse(raw));setReady(true)},[]);const value=useMemo<Auth>(()=>({member,ready,register:(name,email,password)=>{const members=JSON.parse(localStorage.getItem(MEMBERS_KEY)||'[]') as (Member&{password:string})[];if(members.some(x=>x.email===email))return {ok:false,message:'このメールアドレスはすでに登録されています。'};const next={name,email,password};localStorage.setItem(MEMBERS_KEY,JSON.stringify([...members,next]));localStorage.setItem(SESSION_KEY,JSON.stringify({name,email}));setMember({name,email});return {ok:true};},login:(email,password)=>{const members=JSON.parse(localStorage.getItem(MEMBERS_KEY)||'[]') as (Member&{password:string})[];const found=members.find(x=>x.email===email&&x.password===password);if(!found)return {ok:false,message:'メールアドレスまたはパスワードが正しくありません。'};const next={name:found.name,email:found.email};localStorage.setItem(SESSION_KEY,JSON.stringify(next));setMember(next);return {ok:true};},logout:()=>{localStorage.removeItem(SESSION_KEY);setMember(null)}}),[member,ready]);return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>}
-export const useAuth=()=>{const value=useContext(AuthContext);if(!value)throw new Error('Auth unavailable');return value};
+
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
+
+export type Member = {
+  id: string;
+  name: string;
+  email: string;
+  phone: string | null;
+};
+type AuthResult = { ok: boolean; message?: string };
+type Auth = {
+  member: Member | null;
+  ready: boolean;
+  login(email: string, password: string): Promise<AuthResult>;
+  register(name: string, email: string, password: string): Promise<AuthResult>;
+  logout(): Promise<void>;
+};
+
+const AuthContext = createContext<Auth | undefined>(undefined);
+
+const requestAuth = async (path: string, body: object) => {
+  try {
+    const response = await fetch(path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const payload = await response.json();
+    return {
+      ok: response.ok,
+      member: response.ok ? (payload.data as Member) : undefined,
+      message: response.ok
+        ? undefined
+        : (payload.error?.detail as string | undefined),
+    };
+  } catch {
+    return {
+      ok: false,
+      message: '通信に失敗しました。もう一度お試しください。',
+    };
+  }
+};
+
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [member, setMember] = useState<Member | null>(null);
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    fetch('/api/v1/customer/me', { cache: 'no-store' })
+      .then(async (response) => ({ response, payload: await response.json() }))
+      .then(({ response, payload }) => {
+        if (active && response.ok) setMember(payload.data);
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        if (active) setReady(true);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const login = useCallback(async (email: string, password: string) => {
+    const result = await requestAuth('/api/v1/customer/login', {
+      email,
+      password,
+    });
+    if (result.ok && result.member) setMember(result.member);
+    return { ok: result.ok, message: result.message };
+  }, []);
+
+  const register = useCallback(
+    async (name: string, email: string, password: string) => {
+      const result = await requestAuth('/api/v1/customer/register', {
+        name,
+        email,
+        password,
+      });
+      if (result.ok && result.member) setMember(result.member);
+      return { ok: result.ok, message: result.message };
+    },
+    [],
+  );
+
+  const logout = useCallback(async () => {
+    await fetch('/api/v1/customer/logout', { method: 'POST' });
+    setMember(null);
+  }, []);
+
+  const value = useMemo<Auth>(
+    () => ({ member, ready, login, register, logout }),
+    [member, ready, login, register, logout],
+  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
+export const useAuth = () => {
+  const value = useContext(AuthContext);
+  if (!value) throw new Error('Auth unavailable');
+  return value;
+};

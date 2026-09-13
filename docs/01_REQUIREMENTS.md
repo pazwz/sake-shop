@@ -55,7 +55,7 @@ Last Update: 2026-08-08
 
 实体店
 
-+
+-
 
 EC
 
@@ -83,6 +83,11 @@ stera EC
 Payment 创建 Order、OrderItem、Payment 或 InventoryReservation。Cart 和 Checkout 页面
 可以访问，但 Production 只显示准备中状态。Mock Checkout 仅限 local development，或由
 Preview 环境显式配置；Production 即使误配 `mock` 也必须拒绝。
+
+Customer 登录必须使用服务端 HttpOnly opaque session，浏览器存储不得作为身份依据。
+Checkout 的 customerId 只能来自该 session。消费者订单列表与详情必须在数据库查询中按
+Customer ownership 限定；他人订单与不存在订单均返回 404。订单创建的 ACTIVE reservation
+默认 30 分钟到期，支付成功确认 hold，支付失败/取消释放，履约完成后消费。
 
 ---
 

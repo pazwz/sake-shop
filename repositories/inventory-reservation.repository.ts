@@ -56,11 +56,6 @@ export interface LockedInventoryReservationTransaction {
   getActiveReservedQuantities(
     productIds: string[],
   ): Promise<Map<string, number>>;
-  upsertCustomer(input: {
-    email: string;
-    name: string;
-    phone: string;
-  }): Promise<{ id: string }>;
   createOrderWithReservations(
     input: ReservedOrderInput,
   ): Promise<Prisma.OrderGetPayload<{ include: typeof orderInclude }>>;
@@ -98,15 +93,6 @@ class PrismaLockedInventoryReservationTransaction
       _sum: { quantity: true },
     });
     return new Map(rows.map((row) => [row.productId, row._sum.quantity ?? 0]));
-  }
-
-  public upsertCustomer(input: { email: string; name: string; phone: string }) {
-    return this.transaction.customer.upsert({
-      where: { email: input.email },
-      update: { name: input.name, phone: input.phone },
-      create: input,
-      select: { id: true },
-    });
   }
 
   public async createOrderWithReservations(input: ReservedOrderInput) {
@@ -208,6 +194,23 @@ export class InventoryReservationRepository {
       orderId,
       InventoryReservationStatus.CONSUMED,
     );
+  }
+
+  public holdForOrder(orderId: string) {
+    return this.database.inventoryReservation.updateMany({
+      where: { orderId, status: InventoryReservationStatus.ACTIVE },
+      data: { expiresAt: null },
+    });
+  }
+
+  public expireDue(now = new Date()) {
+    return this.database.inventoryReservation.updateMany({
+      where: {
+        status: InventoryReservationStatus.ACTIVE,
+        expiresAt: { not: null, lt: now },
+      },
+      data: { status: InventoryReservationStatus.EXPIRED },
+    });
   }
 
   private transitionActiveForOrder(

@@ -14,4 +14,14 @@ export class InventoryReservationService {
     const result = await this.repository.consumeForOrder(orderId);
     return { transitioned: result.count };
   }
+
+  public async confirmForOrder(orderId: string) {
+    const result = await this.repository.holdForOrder(orderId);
+    return { transitioned: result.count };
+  }
+
+  public async expireDue(now = new Date()) {
+    const result = await this.repository.expireDue(now);
+    return { transitioned: result.count, expiredAt: now.toISOString() };
+  }
 }

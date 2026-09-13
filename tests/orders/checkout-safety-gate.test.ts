@@ -17,12 +17,15 @@ const productionEnvironment = {
 } as const;
 
 const expectCheckoutDisabled = async (operation: () => unknown) => {
-  await assert.rejects(async () => operation(), (error: unknown) => {
-    assert.ok(error instanceof AppError);
-    assert.equal(error.code, 'CHECKOUT_DISABLED');
-    assert.equal(error.statusCode, 503);
-    return true;
-  });
+  await assert.rejects(
+    async () => operation(),
+    (error: unknown) => {
+      assert.ok(error instanceof AppError);
+      assert.equal(error.code, 'CHECKOUT_DISABLED');
+      assert.equal(error.statusCode, 503);
+      return true;
+    },
+  );
 };
 
 test('production with disabled mode rejects checkout', async () => {
@@ -48,7 +51,7 @@ test('disabled production checkout does not enter Order persistence', async () =
       CHECKOUT_MODE: 'disabled',
     }),
   );
-  await expectCheckoutDisabled(() => service.create({} as never));
+  await expectCheckoutDisabled(() => service.create({} as never, 'customer-1'));
   assert.equal(transactionCalls, 0);
 });
 
@@ -67,7 +70,9 @@ test('disabled production checkout creates no InventoryReservation', async () =>
       CHECKOUT_MODE: 'disabled',
     }),
   );
-  await expectCheckoutDisabled(() => service.createForCustomer({} as never));
+  await expectCheckoutDisabled(() =>
+    service.createForCustomer({} as never, 'customer-1'),
+  );
   assert.equal(reservationCalls, 0);
 });
 
@@ -87,10 +92,13 @@ test('disabled production payment creates no Payment record', async () => {
     }),
   );
   await expectCheckoutDisabled(() =>
-    service.create({
-      orderId: 'cm1234567890abcdefghijklmnop',
-      provider: PaymentProvider.STERA,
-    }),
+    service.create(
+      {
+        orderId: 'cm1234567890abcdefghijklmnop',
+        provider: PaymentProvider.STERA,
+      },
+      'customer-1',
+    ),
   );
   assert.equal(paymentRepositoryCalls, 0);
 });

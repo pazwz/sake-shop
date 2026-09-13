@@ -16,15 +16,16 @@ Last Update: 2026-08-08
         ┌───────────────┼────────────────┐
         │               │                │
         ▼               ▼                ▼
-   PostgreSQL         Object Storage   Payment
-        │               │                │
-        └───────────────┼────────────────┘
-                        │
-                        ▼
-                 Smaregi Platform API
-                        │
-                        ▼
-                    Smaregi POS
+
+PostgreSQL Object Storage Payment
+│ │ │
+└───────────────┼────────────────┘
+│
+▼
+Smaregi Platform API
+│
+▼
+Smaregi POS
 
 ---
 
@@ -399,31 +400,31 @@ reservation、校验整单并创建 Order / OrderItem / InventoryReservation。�
 最终仓库选择继续由工作人员人工决定。
 
 Reservation 生命周期为 ACTIVE → RELEASED / CONSUMED / EXPIRED。只有 ACTIVE 计入
-可售库存；release 与 consume 只更新 ACTIVE 行，因此重复调用幂等。expiresAt 暂时可空，
-本阶段不实现自动过期任务。
+可售库存；release、consume 与 expire 只更新 ACTIVE 行，因此重复调用幂等。订单创建时
+设置集中配置的 30 分钟 expiresAt；支付成功后 ACTIVE 继续表示 confirmed hold，并将
+expiresAt 清空。支付失败/取消/退款与 Order CANCELLED 释放，Order COMPLETED 消费。
+受 CRON_SECRET 保护的 internal endpoint 批量过期超时 ACTIVE rows，且从不修改
+InventoryMirror。
 
-## Consumer order access safety gate
+## Customer authentication and order ownership
 
-Customer 身份目前仍是 browser-local demo data，不能作为授权依据。在可信的服务端
-Customer Session 和 Order ownership query 完成前，消费者订单读取采用 fail-closed：
+Customer 登录使用独立于 Admin 的 opaque session：
 
 ```text
-GET /api/v1/orders/{orderNumber}
+HttpOnly cookie (raw random token)
         ↓
-CustomerOrderAccessService
+SHA-256 token hash
         ↓
-401 UNAUTHORIZED（Repository query 前拒绝）
+CustomerSession → Customer
+        ↓
+Order WHERE orderNumber = ? AND customerId = ?
 ```
 
-`customerId`、email、localStorage 值和订单编号都不是访问凭证。消费者订单详情 SSR
-页面同样不读取数据库，也不显示 Order、Customer、Address、Payment、Shipment 或
-OrderItem。Checkout 创建成功只返回 `id` 和 `orderNumber`；完成页使用该响应显示最小
-确认信息，不按订单编号重新读取数据。Admin Order API 继续通过独立 Admin Session 和
-角色校验读取完整运营数据。
-
-未来 Server-side Customer Auth 完成后，应以可信 session customerId 执行 ownership-scoped
-Repository query，并使用明确的 Customer Order DTO 替换此临时 gate；不得恢复裸
-`getOrderByNumber`。
+数据库只保存 token hash。Cookie 为 HttpOnly、Production Secure、SameSite=Lax、Path=/。
+过期/撤销 session 视为匿名；登录和注册建立全新 session，logout 在服务端撤销。
+`customerId`、email、localStorage 值和订单编号都不是访问凭证。Customer Order API 返回
+明确 DTO；他人订单和不存在订单表现为同一 404。Admin Order API 继续走独立 Admin
+Session。CustomerAddress lookup 同样必须同时限定 address id 与 customerId。
 
 ## Production checkout safety gate
 

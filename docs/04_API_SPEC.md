@@ -252,6 +252,16 @@ DELETE
 
 ## Checkout
 
+### Customer authentication
+
+- `POST /api/v1/customer/register`：name/email/password；成功建立 HttpOnly session。
+- `POST /api/v1/customer/login`：失败统一返回相同凭证错误；成功轮换 session。
+- `POST /api/v1/customer/logout`：服务端撤销 session 并清 Cookie。
+- `GET /api/v1/customer/me`：只返回 id/name/email/phone；匿名为 401。
+
+注册、登录与 logout mutation 验证 same-origin；注册/登录带最小进程内 rate limit。该
+rate limit 在 Vercel 多实例间不共享，正式高流量上线前应换为共享存储。
+
 ### Checkout mode
 
 服务端 `CHECKOUT_MODE` 支持：
@@ -308,6 +318,8 @@ POST
 ```
 
 HTTP status 为 503，且不创建 Order、OrderItem、InventoryReservation 或 Payment。
+Gate 通过后必须 requireCustomer；customerId 从 session 注入，body 中的 customerId、
+customer 或 email 身份字段会被 strict validator 拒绝。
 
 订单创建会在单一数据库 transaction 内对全部 Product 按稳定顺序加行锁，校验：
 
@@ -347,7 +359,7 @@ rollback する。小計・税額には箱価格を含める。
 
 ### 我的订单
 
-未实现。Customer 身份仍是 browser-local demo data，不能用于服务端授权。
+`GET /api/v1/customer/orders?page=1` 返回当前 Customer 的分页订单摘要。
 
 ---
 
@@ -357,16 +369,16 @@ GET
 
 /api/v1/orders/{orderNumber}
 
-可信 Server-side Customer Session 完成前，此接口在任何 Order Repository 查询之前统一返回：
+匿名请求返回 401。登录后只执行 `orderNumber + customerId` scoped query；他人订单与
+不存在订单统一返回：
 
 ```text
-401 UNAUTHORIZED
+404 NOT_FOUND
 ```
 
-订单编号、order id、query 中的 customerId/email、localStorage 数据都不能作为权限凭证。
-不存在与存在的订单使用相同拒绝响应，避免枚举。`/orders/[orderNumber]` 只显示通用安全
-提示，不读取订单；Checkout 成功后跳转 `/order-complete`，仅显示创建响应中的订单编号。
-Admin 订单接口不受此临时 safety gate 影响。
+响应是 CustomerOrder DTO，不含 raw Payment payload、Smaregi 信息、reservation、audit 或
+Admin 数据。`/account`、`/account/orders` 与 `/account/orders/[orderNumber]` 使用同一规则。
+Admin 订单接口不受 Customer ownership 边界影响。
 
 ---
 
@@ -755,8 +767,12 @@ PATCH
 
 /api/v1/admin/orders/{id}
 
-订单详情中的 OrderItem 返回 `requiresTransfer`。Reservation release / consume 由
-Service 提供幂等基础操作；支付超时和订单状态自动接线不在本阶段范围内。
+订单详情中的 OrderItem 返回 `requiresTransfer`。Payment success 令 ACTIVE reservation
+成为无超时 confirmed hold；Payment failure/cancel/refund 与 Order CANCELLED 令 ACTIVE
+转为 RELEASED；Order COMPLETED 令 ACTIVE 转为 CONSUMED。重复事件只处理 ACTIVE，保持幂等。
+
+`POST /api/v1/internal/reservations/expire` 仅接受正确的 `Authorization: Bearer <CRON_SECRET>`，
+将 `expiresAt < now` 的 ACTIVE reservation 转为 EXPIRED。建议外部 scheduler 每 5 分钟调用。
 
 ---
 

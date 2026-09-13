@@ -80,7 +80,7 @@ export function Header({
             <option value="ko">한국어</option>
           </select>
           <Link
-            href={member ? '/mypage' : '/login'}
+            href={member ? '/account' : '/login'}
             className="hidden sm:inline"
           >
             {member ? 'MY PAGE' : 'LOGIN'}
@@ -167,7 +167,7 @@ export function Header({
               私たちについて
             </Link>
             <Link
-              href={member ? '/mypage' : '/login'}
+              href={member ? '/account' : '/login'}
               onClick={() => setMobile(false)}
             >
               {member ? 'マイページ' : 'ログイン'}

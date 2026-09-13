@@ -25,6 +25,15 @@ const transitions: Record<PaymentStatus, PaymentStatus[]> = {
   REFUNDED: [],
 };
 
+const reservationTransitionFor = (status: PaymentStatus) =>
+  status === PaymentStatus.SUCCEEDED
+    ? ('HOLD' as const)
+    : status === PaymentStatus.FAILED ||
+        status === PaymentStatus.CANCELLED ||
+        status === PaymentStatus.REFUNDED
+      ? ('RELEASE' as const)
+      : ('NONE' as const);
+
 export class PaymentService {
   constructor(
     private readonly payments = new PaymentRepository(),
@@ -32,15 +41,18 @@ export class PaymentService {
     private readonly checkoutAccess = new CheckoutAccessService(),
   ) {}
 
-  async create(input: PaymentCreateInput) {
+  async create(input: PaymentCreateInput, customerId: string) {
     this.checkoutAccess.assertMockPaymentAllowed();
     const idempotencyKey = input.idempotencyKey ?? randomUUID();
     const existing = await this.payments.findByIdempotencyKey(idempotencyKey);
     if (existing) return existing;
 
     const order = input.orderId
-      ? await this.orders.findPaymentTargetById(input.orderId)
-      : await this.orders.findPaymentTargetByOrderNumber(input.orderNumber!);
+      ? await this.orders.findPaymentTargetById(input.orderId, customerId)
+      : await this.orders.findPaymentTargetByOrderNumber(
+          input.orderNumber!,
+          customerId,
+        );
     if (!order)
       throw new AppError('Order was not found.', 'ORDER_NOT_FOUND', 404);
     if (order.paymentStatus === PaymentStatus.SUCCEEDED) {
@@ -113,6 +125,7 @@ export class PaymentService {
     if (await this.payments.findWebhookEvent(input.provider, input.eventId)) {
       return { payment, duplicate: true };
     }
+    if (payment.status === input.status) return { payment, duplicate: true };
     if (!transitions[payment.status].includes(input.status)) {
       throw new AppError(
         payment.status === PaymentStatus.SUCCEEDED
@@ -142,6 +155,7 @@ export class PaymentService {
           .digest('hex'),
         expectedStatus: payment.status,
         nextStatus: input.status,
+        reservationTransition: reservationTransitionFor(input.status),
       });
     } catch (error) {
       if (error instanceof PaymentStatusChangedError) {

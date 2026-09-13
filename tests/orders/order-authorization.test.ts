@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
-import { AppError } from '@/lib/errors';
+import { AppError, UnauthorizedError } from '@/lib/errors';
 import { getSafeOrderConfirmationNumber } from '@/lib/order-confirmation';
 import { CustomerOrderAccessService } from '@/services/customer-order-access.service';
 import { OrderService } from '@/services/order.service';
@@ -17,7 +17,9 @@ const requestOrder = async (
   _query = '',
 ): Promise<{ status: number; payload: ErrorPayload }> => {
   try {
-    await new CustomerOrderAccessService().getOrderDetail(identifier);
+    await new CustomerOrderAccessService({} as never, async () => {
+      throw new UnauthorizedError('Customer authentication is required.');
+    }).getOrderDetail(identifier);
     throw new Error('The customer order safety gate unexpectedly opened.');
   } catch (error) {
     if (!(error instanceof AppError)) throw error;
@@ -83,6 +85,67 @@ test('admin order route retains server-side authentication before detail read', 
   );
 });
 
+test('authenticated customer can read only an ownership-scoped order', async () => {
+  let scope: { customerId: string; orderNumber: string } | null = null;
+  const record = {
+    orderNumber: 'LINXAS-20260913-ABC123',
+    createdAt: new Date('2026-09-13T00:00:00.000Z'),
+    status: 'PENDING',
+    paymentStatus: 'PENDING',
+    subtotal: 1000,
+    shippingFee: 500,
+    taxAmount: 91,
+    discountAmount: 0,
+    totalAmount: 1500,
+    shippingAddressSnapshot: null,
+    items: [],
+    shipments: [],
+  };
+  const service = new CustomerOrderAccessService(
+    {
+      findOwnedByOrderNumber: async (
+        customerId: string,
+        orderNumber: string,
+      ) => {
+        scope = { customerId, orderNumber };
+        return record;
+      },
+    } as never,
+    async () => ({ id: 'customer-a' }),
+  );
+  const result = await service.getOrderDetail(record.orderNumber);
+  assert.deepEqual(scope, {
+    customerId: 'customer-a',
+    orderNumber: record.orderNumber,
+  });
+  assert.equal(result.orderNumber, record.orderNumber);
+});
+
+test('another customer order and nonexistent order both return the same 404', async () => {
+  const service = new CustomerOrderAccessService(
+    { findOwnedByOrderNumber: async () => null } as never,
+    async () => ({ id: 'customer-b' }),
+  );
+  const errors = await Promise.all(
+    ['LINXAS-OWNED-BY-A', 'LINXAS-NOT-FOUND'].map(async (orderNumber) => {
+      try {
+        await service.getOrderDetail(orderNumber);
+      } catch (error) {
+        return error;
+      }
+    }),
+  );
+  assert.ok(
+    errors.every(
+      (error) => error instanceof AppError && error.statusCode === 404,
+    ),
+  );
+  assert.equal(
+    (errors[0] as AppError).message,
+    (errors[1] as AppError).message,
+  );
+});
+
 test('admin order service can still load an order through the admin method', async () => {
   const expected = { id: 'order-1', orderNumber: 'LINXAS-20260913-ABC123' };
   const service = new OrderService(
@@ -103,7 +166,7 @@ test('checkout order creation response is reduced to id and order number', async
       items: [{ id: 'item-1' }],
     }),
   });
-  assert.deepEqual(await service.createForCustomer({} as never), {
+  assert.deepEqual(await service.createForCustomer({} as never, 'customer-1'), {
     id: 'order-1',
     orderNumber: 'LINXAS-20260913-ABC123',
   });
@@ -114,7 +177,10 @@ test('checkout confirmation accepts only a valid non-sensitive order number', ()
     getSafeOrderConfirmationNumber('LINXAS-20260913-ABC123'),
     'LINXAS-20260913-ABC123',
   );
-  assert.equal(getSafeOrderConfirmationNumber('<script>alert(1)</script>'), null);
+  assert.equal(
+    getSafeOrderConfirmationNumber('<script>alert(1)</script>'),
+    null,
+  );
   assert.equal(getSafeOrderConfirmationNumber(undefined), null);
 });
 

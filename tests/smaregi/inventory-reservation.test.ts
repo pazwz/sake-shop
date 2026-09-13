@@ -48,7 +48,6 @@ const product = (
 
 const input = (items: OrderInput['items']): OrderInput => ({
   items,
-  customer: { email: 'buyer@example.com', name: 'Buyer', phone: '09000000000' },
   address: {
     postalCode: '810-0001',
     prefecture: '福岡県',
@@ -83,7 +82,6 @@ class FakeLockedReservationRepository {
       getActiveReservedQuantities(
         productIds: string[],
       ): Promise<Map<string, number>>;
-      upsertCustomer(): Promise<{ id: string }>;
       createOrderWithReservations(order: {
         id: string;
         items: Array<{
@@ -113,7 +111,6 @@ class FakeLockedReservationRepository {
               this.active.get(productId) ?? 0,
             ]),
           ),
-        upsertCustomer: async () => ({ id: 'customer-1' }),
         createOrderWithReservations: async (order) => {
           await new Promise((resolve) => setTimeout(resolve, 5));
           for (const item of order.items)
@@ -145,9 +142,13 @@ const service = (
   active.forEach(([productId, quantity]) =>
     repository.active.set(productId, quantity),
   );
+  const orderService = new OrderService({} as never, repository as never);
   return {
     repository,
-    service: new OrderService({} as never, repository as never),
+    service: {
+      create: (orderInput: OrderInput) =>
+        orderService.create(orderInput, 'customer-1'),
+    },
   };
 };
 

@@ -7,13 +7,23 @@ import {
 import { AppError, ValidationError } from '@/lib/errors';
 import { PaymentService } from '@/services/payment.service';
 import { paymentCreateValidator } from '@/validators/payment.validator';
+import { requireCustomer } from '@/services/customer-authorization.service';
+import { assertSameOriginMutation } from '@/lib/request-security';
+import { CheckoutAccessService } from '@/services/checkout-access.service';
 
 const service = new PaymentService();
+const checkoutAccess = new CheckoutAccessService();
 
 export const POST = async (request: Request) => {
   try {
+    checkoutAccess.assertMockPaymentAllowed();
+    assertSameOriginMutation(request);
+    const customer = await requireCustomer();
     return createSuccessResponse(
-      await service.create(paymentCreateValidator.parse(await request.json())),
+      await service.create(
+        paymentCreateValidator.parse(await request.json()),
+        customer.id,
+      ),
       201,
     );
   } catch (error) {

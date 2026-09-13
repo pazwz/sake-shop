@@ -2,16 +2,13 @@
 
 import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useCart } from '@/components/cart-provider';
 import { useAuth } from '@/components/auth-provider';
 import { formatPrice } from '@/lib/products';
 import { FormFieldError } from '@/components/form-field-error';
 import { AgeNotice } from '@/components/age-notice';
-import {
-  focusFormField,
-  invalidFieldClass,
-  isValidEmail,
-} from '@/lib/form-validation';
+import { focusFormField, invalidFieldClass } from '@/lib/form-validation';
 
 const fields = [
   ['name', '氏名'],
@@ -20,7 +17,6 @@ const fields = [
   ['city', '市区町村'],
   ['addressLine1', '番地・建物名'],
   ['phone', '電話番号'],
-  ['email', 'メールアドレス'],
 ] as const;
 
 type FieldName = (typeof fields)[number][0];
@@ -47,7 +43,6 @@ export default function CheckoutForm({
     city: '',
     addressLine1: '',
     phone: '',
-    email: '',
   });
 
   if (!checkoutEnabled)
@@ -69,8 +64,23 @@ export default function CheckoutForm({
         </button>
       </main>
     );
-  if (!ready || !member)
-    return <div className="wrap py-20">ログイン後にご注文いただけます。</div>;
+  if (!ready) return null;
+  if (!member)
+    return (
+      <main className="wrap py-20">
+        <h1 className="serif text-4xl">
+          ログインして購入手続きへ進んでください
+        </h1>
+        <div className="mt-8 flex flex-wrap gap-4">
+          <Link className="btn" href="/login?redirect=/checkout">
+            ログイン
+          </Link>
+          <Link className="btn btn-outline" href="/register?redirect=/checkout">
+            新規会員登録
+          </Link>
+        </div>
+      </main>
+    );
   if (!items.length)
     return <div className="wrap py-20">バッグに商品がありません。</div>;
 
@@ -80,9 +90,6 @@ export default function CheckoutForm({
     fields.forEach(([key, label]) => {
       if (!form[key].trim()) nextErrors[key] = `${label}を入力してください。`;
     });
-    if (form.email.trim() && !isValidEmail(form.email)) {
-      nextErrors.email = 'メールアドレスの形式が正しくありません。';
-    }
     if (!age) nextErrors.age = '年齢確認に同意してください。';
     const firstField =
       fields.find(([key]) => nextErrors[key])?.[0] ??
@@ -105,7 +112,6 @@ export default function CheckoutForm({
             quantity,
             ...(boxProduct ? { boxProductId: boxProduct.id } : {}),
           })),
-          customer: { email: form.email, name: form.name, phone: form.phone },
           address: {
             postalCode: form.postalCode,
             prefecture: form.prefecture,
@@ -191,19 +197,13 @@ export default function CheckoutForm({
             {fields.map(([key, label]) => (
               <label
                 key={key}
-                className={
-                  key === 'addressLine1' || key === 'email'
-                    ? 'sm:col-span-2'
-                    : ''
-                }
+                className={key === 'addressLine1' ? 'sm:col-span-2' : ''}
               >
                 <span className="text-xs">{label}</span>
                 <input
                   required
                   name={key}
-                  type={
-                    key === 'email' ? 'email' : key === 'phone' ? 'tel' : 'text'
-                  }
+                  type={key === 'phone' ? 'tel' : 'text'}
                   aria-invalid={Boolean(fieldErrors[key])}
                   aria-describedby={
                     fieldErrors[key] ? `checkout-${key}-error` : undefined

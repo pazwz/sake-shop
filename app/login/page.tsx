@@ -10,6 +10,7 @@ import {
   invalidFieldClass,
   isValidEmail,
 } from '@/lib/form-validation';
+import { safeCustomerRedirect } from '@/lib/customer-navigation';
 
 type LoginErrors = { email?: string; password?: string; form?: string };
 
@@ -29,8 +30,9 @@ function LoginForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<LoginErrors>({});
+  const [submitting, setSubmitting] = useState(false);
 
-  const submit = (event: React.FormEvent<HTMLFormElement>) => {
+  const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const nextErrors: LoginErrors = {};
     if (!email.trim()) nextErrors.email = 'メールアドレスを入力してください。';
@@ -44,14 +46,16 @@ function LoginForm() {
       return;
     }
 
-    const result = login(email.trim(), password);
+    setSubmitting(true);
+    const result = await login(email.trim(), password);
+    setSubmitting(false);
     if (!result.ok) {
       setErrors({
         form: 'メールアドレスまたはパスワードが正しくありません。',
       });
       return;
     }
-    router.push(params.get('redirect') || '/mypage');
+    router.push(safeCustomerRedirect(params.get('redirect')));
   };
 
   return (
@@ -104,7 +108,12 @@ function LoginForm() {
           <FormFieldError id="login-password-error" message={errors.password} />
         </label>
         <FormFieldError id="login-form-error" message={errors.form} />
-        <button className="btn w-full">ログインする</button>
+        <button
+          disabled={submitting}
+          className="btn w-full disabled:opacity-60"
+        >
+          {submitting ? 'ログイン中…' : 'ログインする'}
+        </button>
       </form>
       <div className="mt-10 border-t line pt-7">
         <p className="text-sm">会員登録がお済みでない方</p>
