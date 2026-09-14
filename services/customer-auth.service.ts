@@ -10,6 +10,7 @@ import {
   PASSWORD_RESET_TTL_MS,
 } from '@/config/email';
 import { ConflictError, UnauthorizedError } from '@/lib/errors';
+import { CustomerRegistrationError } from '@/lib/customer-registration-error';
 import {
   createCustomerSessionToken,
   hashCustomerSessionToken,
@@ -36,22 +37,32 @@ export class CustomerAuthService {
   public constructor(private readonly customers = new CustomerRepository()) {}
 
   async register(input: CustomerRegisterInput, previousToken?: string) {
-    const token = createCustomerSessionToken();
-    const expiresAt = new Date(
-      Date.now() + CUSTOMER_SESSION_TTL_SECONDS * 1000,
-    );
-
-    const verificationId = randomUUID();
-    const verificationToken = createEmailActionToken(
-      verificationId,
-      'verify-email',
-    );
-    const newsletterId = input.marketingOptIn ? randomUUID() : null;
+    let stage: 'TOKEN_GENERATION' | 'PASSWORD_HASH' = 'TOKEN_GENERATION';
     try {
+      const token = createCustomerSessionToken();
+      const expiresAt = new Date(
+        Date.now() + CUSTOMER_SESSION_TTL_SECONDS * 1000,
+      );
+      const verificationId = randomUUID();
+      const verificationToken = createEmailActionToken(
+        verificationId,
+        'verify-email',
+      );
+      const newsletterId = input.marketingOptIn ? randomUUID() : null;
+      const marketingTokenHash = newsletterId
+        ? hashEmailActionToken(
+            createEmailActionToken(newsletterId, 'newsletter-unsubscribe'),
+          )
+        : null;
+      stage = 'PASSWORD_HASH';
+      const passwordHash = await hash(
+        input.password,
+        CUSTOMER_PASSWORD_HASH_ROUNDS,
+      );
       const customer = await this.customers.registerWithSession({
         name: input.name,
         email: input.email,
-        passwordHash: await hash(input.password, CUSTOMER_PASSWORD_HASH_ROUNDS),
+        passwordHash,
         tokenHash: hashCustomerSessionToken(token),
         expiresAt,
         previousTokenHash: previousToken
@@ -66,12 +77,7 @@ export class CustomerAuthService {
           ? {
               marketing: {
                 id: newsletterId,
-                tokenHash: hashEmailActionToken(
-                  createEmailActionToken(
-                    newsletterId,
-                    'newsletter-unsubscribe',
-                  ),
-                ),
+                tokenHash: marketingTokenHash!,
                 consentAt: new Date(),
               },
             }
@@ -79,13 +85,17 @@ export class CustomerAuthService {
       });
       return { customer, token, expiresAt };
     } catch (error) {
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === 'P2002'
-      ) {
+      const prismaCode =
+        error instanceof CustomerRegistrationError
+          ? error.prismaCode
+          : error instanceof Prisma.PrismaClientKnownRequestError
+            ? error.code
+            : null;
+      if (prismaCode === 'P2002') {
         throw new ConflictError('このメールアドレスはすでに登録されています。');
       }
-      throw error;
+      if (error instanceof CustomerRegistrationError) throw error;
+      throw new CustomerRegistrationError(stage, error);
     }
   }
 

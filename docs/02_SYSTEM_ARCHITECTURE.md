@@ -449,6 +449,11 @@ SHA-256 hash；Outbox payload 仅保存 token record id，Worker 渲染模板时
 签名链接。Password reset 成功时，password update、token consume 与全部 CustomerSession
 revoke 在同一个 transaction 中完成。
 
+HMAC action token 在 Customer transaction 前要求 server-only `JWT_SECRET`；Production
+缺失时注册必须 fail closed，不能创建半成品 Customer。注册 Route 对未知异常写结构化安全
+日志，只包含 route、随机 request id、operation stage、error name、Prisma error code 与受控
+message，不记录密码、token、hash、email、数据库 URL 或邮件 Provider credential。
+
 ## Email outbox and Newsletter
 
 ```text

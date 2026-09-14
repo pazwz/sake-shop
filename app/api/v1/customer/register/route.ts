@@ -20,11 +20,16 @@ import {
 } from '@/lib/request-security';
 import { CustomerAuthService } from '@/services/customer-auth.service';
 import { customerRegisterValidator } from '@/validators/customer-auth.validator';
+import {
+  createServerRequestId,
+  logSafeServerError,
+} from '@/lib/server-error-logger';
 
 const service = new CustomerAuthService();
 
 export const POST = async (request: Request) => {
   let attemptKey: string | null = null;
+  const requestId = createServerRequestId();
   try {
     assertSameOriginMutation(request);
     const input = customerRegisterValidator.parse(await request.json());
@@ -56,6 +61,11 @@ export const POST = async (request: Request) => {
     if (error instanceof ZodError)
       return createAppErrorResponse(new ValidationError());
     if (error instanceof AppError) return createAppErrorResponse(error);
+    logSafeServerError({
+      route: '/api/v1/customer/register',
+      requestId,
+      error,
+    });
     return createErrorResponse(
       'INTERNAL_SERVER_ERROR',
       '会員登録に失敗しました。',

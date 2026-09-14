@@ -266,6 +266,12 @@ DELETE
 forgot-password 带最小进程内 rate limit。该 rate limit 在 Vercel 多实例间不共享，正式
 高流量上线前应换为共享存储。
 
+Customer 注册在创建 session、verification token 与 EmailOutbox 前必须具备 server-side
+`JWT_SECRET`。注册 transaction 的 Customer、CustomerSession、EmailVerificationToken、
+EmailOutbox、可选 NewsletterSubscription 与 Newsletter contact Outbox 任一步失败时整体
+rollback。未知错误的客户端响应仍为通用 500；服务端只记录不含输入值和 secret 的 operation
+stage、request id、error name 与 Prisma code。
+
 ### Checkout mode
 
 服务端 `CHECKOUT_MODE` 支持：
