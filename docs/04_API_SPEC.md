@@ -258,9 +258,13 @@ DELETE
 - `POST /api/v1/customer/login`：失败统一返回相同凭证错误；成功轮换 session。
 - `POST /api/v1/customer/logout`：服务端撤销 session 并清 Cookie。
 - `GET /api/v1/customer/me`：只返回 id/name/email/phone；匿名为 401。
+- `POST /api/v1/customer/verify-email`：验证 signed token，写 emailVerifiedAt；重复验证幂等。
+- `POST /api/v1/customer/forgot-password`：存在与不存在 email 均返回相同成功文案。
+- `POST /api/v1/customer/reset-password`：验证 token、更新 bcrypt hash 并撤销全部 session。
 
-注册、登录与 logout mutation 验证 same-origin；注册/登录带最小进程内 rate limit。该
-rate limit 在 Vercel 多实例间不共享，正式高流量上线前应换为共享存储。
+注册、登录、logout、forgot/reset 与 verification mutation 验证 same-origin；注册、登录、
+forgot-password 带最小进程内 rate limit。该 rate limit 在 Vercel 多实例间不共享，正式
+高流量上线前应换为共享存储。
 
 ### Checkout mode
 
@@ -814,13 +818,25 @@ PATCH
 
 ## Newsletter
 
-GET
+- `POST /api/v1/newsletter/subscribe`：`email + consent:true`，允许匿名；幂等订阅并排入
+  Resend Contact 同步 Outbox。
+- `POST /api/v1/newsletter/unsubscribe`：只接受 signed opaque token；幂等退订并排入
+  Resend Contact 同步 Outbox。
+- `POST /api/v1/webhooks/resend`：使用 `svix-id`、`svix-timestamp`、`svix-signature` 与
+  `RESEND_WEBHOOK_SECRET` 进行官方 SDK 验签；无效签名 401，未配置 503。处理 delivery、
+  bounce、complaint、suppression 与 contact unsubscribe 的必要状态，不记录 raw payload。
 
-/api/v1/admin/newsletters
+### Email worker
 
-DELETE
+`POST /api/v1/internal/email/process` 仅接受 `Authorization: Bearer <CRON_SECRET>`，每次
+最多 claim 20 条到期 Outbox。Production Email disabled 时返回成功的 `DISABLED` 结果且
+不 claim、不发送。Provider 错误按 bounded backoff 标记 FAILED，不回滚 Customer、Order、
+Payment 或 Shipment。
 
-/api/v1/admin/newsletters/{id}
+### Admin email preview
+
+`/admin/email-preview` 仅 OWNER 可访问，只渲染 Verification、Password Reset、Order
+Received、Shipment Sent 模板，不提供任意收件人发送功能。
 
 ---
 

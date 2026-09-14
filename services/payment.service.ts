@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from 'crypto';
-import { PaymentStatus, Prisma } from '@prisma/client';
+import { EmailTemplate, PaymentStatus, Prisma } from '@prisma/client';
 import { getPaymentAdapter } from '@/services/payment-adapters/payment-adapter.factory';
 import type {
   PaymentCreateInput,
@@ -156,6 +156,13 @@ export class PaymentService {
         expectedStatus: payment.status,
         nextStatus: input.status,
         reservationTransition: reservationTransitionFor(input.status),
+        emailTemplate:
+          input.status === PaymentStatus.SUCCEEDED
+            ? EmailTemplate.PAYMENT_SUCCEEDED
+            : input.status === PaymentStatus.FAILED ||
+                input.status === PaymentStatus.CANCELLED
+              ? EmailTemplate.PAYMENT_FAILED
+              : null,
       });
     } catch (error) {
       if (error instanceof PaymentStatusChangedError) {

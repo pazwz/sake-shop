@@ -70,6 +70,11 @@ Last Update: 2026-08-14
 | admin_users                  | 后台用户               |
 | audit_logs                   | 操作日志               |
 | sync_logs                    | API同步日志            |
+| email_verification_tokens    | 邮箱验证 token hash    |
+| password_reset_tokens        | 密码重置 token hash    |
+| email_outbox                 | 异步邮件投递队列       |
+| email_webhook_events         | Resend webhook 去重    |
+| newsletter_subscriptions     | Newsletter consent     |
 
 ---
 
@@ -393,7 +398,8 @@ self relation。箱は独立した product_id、product_code、unit_price、tax_
 ## customers
 
 `password_hash` nullable，用于兼容认证功能上线前的历史 Customer；新注册 Customer 必须
-写 bcrypt hash。明文密码不得保存。
+写 bcrypt hash。明文密码不得保存。`email_verified_at` nullable；既存 Customer 不会因
+migration 自动标记已验证。
 
 ## customer_sessions
 
@@ -436,6 +442,25 @@ updated_at
 Unique
 
 email
+
+---
+
+## email_verification_tokens / password_reset_tokens
+
+只保存 action token 的 SHA-256 hash、Customer、有效期限与 used_at。raw token 不入库。
+验证、密码更新与 session revoke 由 transaction 保证原子性。
+
+## email_outbox / email_webhook_events
+
+EmailOutbox 以 `event_key` 去重业务事件，记录 template、最小 payload、状态、attempt、
+next_attempt_at、provider message id 与 delivery state。不得保存 password、raw token、
+API key 或 Payment internal metadata。Webhook event 仅保存 provider event id、type 与 raw
+payload hash，provider event id unique。
+
+## newsletter_subscriptions
+
+email unique，保存明确 consent 时间、状态、退订时间、来源、Resend contact mirror id 与
+signed unsubscribe token hash。Customer 与 NewsletterSubscription 不建立隐式订阅关系。
 
 ---
 

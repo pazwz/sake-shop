@@ -426,6 +426,37 @@ Order WHERE orderNumber = ? AND customerId = ?
 明确 DTO；他人订单和不存在订单表现为同一 404。Admin Order API 继续走独立 Admin
 Session。CustomerAddress lookup 同样必须同时限定 address id 与 customerId。
 
+Email verification 与 password reset 使用 purpose-bound HMAC action token。数据库只保存
+SHA-256 hash；Outbox payload 仅保存 token record id，Worker 渲染模板时才在内存中重建
+签名链接。Password reset 成功时，password update、token consume 与全部 CustomerSession
+revoke 在同一个 transaction 中完成。
+
+## Email outbox and Newsletter
+
+```text
+Business transaction
+        ↓
+EmailNotification / EmailOutbox (same DB transaction)
+        ↓ commit
+AWS Scheduler → Lambda → POST /api/v1/internal/email/process
+        ↓
+EmailOutboxService (bounded claim/retry)
+        ↓
+EmailProviderAdapter → Resend
+```
+
+外部 Resend 调用永远在业务 transaction 之外。每条 outbox 使用 unique eventKey 和稳定的
+`email-outbox:{id}` provider idempotency key；每批最多 20 条，重试为 1m / 5m / 30m /
+2h，最多 5 次。SENDING lock 超时后允许以相同 idempotency key 安全恢复。Production
+缺少明确 `EMAIL_MODE=resend`、API key 或 From 时 fail closed 为 disabled，不把 console
+adapter 的结果标记成真实发送。
+
+NewsletterSubscription 是 Marketing consent 的 Neon source of truth；Resend Contacts 只是
+异步镜像。Customer 不因注册自动订阅，只有 Footer 明示 consent 或注册表单明确 opt-in
+才写入。unsubscribe、bounce、complaint 与 suppression 更新订阅状态，不删除 Customer。
+Resend webhook 必须使用官方签名校验，数据库以 provider event id 去重，且只保存 payload
+hash 与必要 delivery state。
+
 ## Production checkout safety gate
 
 Checkout 写入边界由 server-side `CHECKOUT_MODE` 集中控制：

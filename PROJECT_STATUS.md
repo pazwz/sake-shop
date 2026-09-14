@@ -298,8 +298,12 @@ things. Do not infer a deletion or failed sync by comparing them directly.
   CustomerSession table; expired or revoked sessions are anonymous.
 - `/account` and its paginated order history/detail pages use server-side
   Customer identity and ownership-scoped Order queries.
-- Password reset, email verification, address-book editing, and account deletion
-  are not implemented.
+- Email verification and password reset are implemented with purpose-bound signed
+  tokens; only token hashes are stored. Password reset revokes all active Customer
+  sessions.
+- A guarded, idempotent QA Customer seed can create three My Page order states in
+  local/Preview only. Production execution fails closed and has not been run.
+- Address-book editing and account deletion are not implemented.
 
 ## Real Checkout and Payment
 
@@ -353,9 +357,14 @@ things. Do not infer a deletion or failed sync by comparing them directly.
   tariff, payment, delivery, and return details remain visibly marked pending
   rather than being fabricated.
 - Contact form is a demo and sends no message.
-- Newsletter form is a demo and persists/sends nothing.
-- No transactional email exists for registration, order confirmation, payment,
-  cancellation, shipment, or password reset.
+- Footer Newsletter now requires explicit consent and persists an independent
+  NewsletterSubscription; Customer registration opt-in is unchecked by default.
+- Resend is the selected provider behind an adapter. Transactional events write
+  a durable EmailOutbox in the business transaction; the external send is handled
+  later by a protected worker with bounded retry and provider idempotency.
+- Verification, password reset, welcome, order received, payment result, order
+  cancellation, and shipment templates exist. Production delivery remains
+  disabled until Resend credentials and a verified sender are explicitly set.
 - Xiaohongshu is not linked because no approved official URL is configured.
 
 ## Testing and Observability
@@ -381,7 +390,8 @@ things. Do not infer a deletion or failed sync by comparing them directly.
 - Decision on Customer authentication provider and account/session policy.
 - Decision and official field mapping for any future LINXAS-to-Smaregi order
   write-back.
-- Newsletter/contact delivery provider and consent/retention requirements.
+- Production Resend sender domain, SPF, DKIM, DMARC, webhook secret, From/Reply-To,
+  and consent/retention operating rules.
 - Official production logo asset and any additional approved social URLs.
 
 ---
@@ -401,7 +411,8 @@ things. Do not infer a deletion or failed sync by comparing them directly.
 
 ## P1 — Operational Readiness
 
-- Implement transactional email and working contact/newsletter delivery.
+- Configure and verify the production Resend sender domain and enable delivery.
+- Replace process-local Customer/Newsletter throttling with shared rate limiting.
 - Add distributed Admin login throttling and security-event monitoring.
 - Add Admin customer/payment/audit views required by operations.
 - Add scheduled-sync alerting and an operator runbook.

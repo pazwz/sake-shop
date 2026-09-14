@@ -1,5 +1,5 @@
 import { randomUUID } from 'crypto';
-import { OrderStatus } from '@prisma/client';
+import { EmailTemplate, OrderStatus } from '@prisma/client';
 import { DEVELOPMENT_DISCOUNT_AMOUNT } from '@/config/order';
 import { getReservationExpiry } from '@/config/reservation';
 import { AppError, NotFoundError } from '@/lib/errors';
@@ -229,6 +229,7 @@ export class OrderService {
         : status === OrderStatus.COMPLETED
           ? 'CONSUME'
           : 'NONE',
+      status === OrderStatus.CANCELLED ? EmailTemplate.ORDER_CANCELLED : null,
     );
   }
 }

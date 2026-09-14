@@ -61,6 +61,31 @@ enum InventoryReservationStatus {
   EXPIRED
 }
 
+enum EmailOutboxStatus {
+  PENDING
+  SENDING
+  SENT
+  FAILED
+}
+
+enum EmailTemplate {
+  EMAIL_VERIFICATION
+  PASSWORD_RESET
+  WELCOME
+  ORDER_RECEIVED
+  PAYMENT_SUCCEEDED
+  PAYMENT_FAILED
+  ORDER_CANCELLED
+  SHIPMENT_SENT
+  NEWSLETTER_CONTACT_SYNC
+}
+
+enum NewsletterStatus {
+  SUBSCRIBED
+  UNSUBSCRIBED
+  SUPPRESSED
+}
+
 enum CollectionType {
   HERO
   SEASONAL
@@ -189,22 +214,51 @@ model InventoryMirror {
 }
 
 model Customer {
-  id                String            @id @default(cuid())
-  email             String            @unique
-  name              String
-  nameKana          String?           @map("name_kana")
-  phone             String?
-  birthday          DateTime?
-  ageConfirmedAt    DateTime?         @map("age_confirmed_at")
-  smaregiCustomerId String?           @unique @map("smaregi_customer_id")
-  passwordHash      String?           @map("password_hash")
-  createdAt         DateTime          @default(now()) @map("created_at")
-  updatedAt         DateTime          @updatedAt @map("updated_at")
-  addresses         CustomerAddress[]
-  orders            Order[]
-  sessions          CustomerSession[]
+  id                      String                   @id @default(cuid())
+  email                   String                   @unique
+  name                    String
+  nameKana                String?                  @map("name_kana")
+  phone                   String?
+  birthday                DateTime?
+  ageConfirmedAt          DateTime?                @map("age_confirmed_at")
+  smaregiCustomerId       String?                  @unique @map("smaregi_customer_id")
+  passwordHash            String?                  @map("password_hash")
+  emailVerifiedAt         DateTime?                @map("email_verified_at")
+  createdAt               DateTime                 @default(now()) @map("created_at")
+  updatedAt               DateTime                 @updatedAt @map("updated_at")
+  addresses               CustomerAddress[]
+  orders                  Order[]
+  sessions                CustomerSession[]
+  emailVerificationTokens EmailVerificationToken[]
+  passwordResetTokens     PasswordResetToken[]
 
   @@map("customers")
+}
+
+model EmailVerificationToken {
+  id         String    @id @default(cuid())
+  customerId String    @map("customer_id")
+  tokenHash  String    @unique @map("token_hash")
+  expiresAt  DateTime  @map("expires_at")
+  usedAt     DateTime? @map("used_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  customer   Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId, expiresAt])
+  @@map("email_verification_tokens")
+}
+
+model PasswordResetToken {
+  id         String    @id @default(cuid())
+  customerId String    @map("customer_id")
+  tokenHash  String    @unique @map("token_hash")
+  expiresAt  DateTime  @map("expires_at")
+  usedAt     DateTime? @map("used_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  customer   Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId, expiresAt])
+  @@map("password_reset_tokens")
 }
 
 model CustomerSession {
@@ -485,4 +539,56 @@ model SyncLog {
   @@index([entityId])
   @@index([createdAt])
   @@map("sync_logs")
+}
+
+model EmailOutbox {
+  id                String            @id @default(cuid())
+  eventKey          String            @unique @map("event_key")
+  type              String
+  recipient         String
+  subject           String
+  template          EmailTemplate
+  payload           Json
+  status            EmailOutboxStatus @default(PENDING)
+  attemptCount      Int               @default(0) @map("attempt_count")
+  nextAttemptAt     DateTime?         @default(now()) @map("next_attempt_at")
+  lockedAt          DateTime?         @map("locked_at")
+  provider          String?
+  providerMessageId String?           @unique @map("provider_message_id")
+  deliveryStatus    String?           @map("delivery_status")
+  lastError         String?           @map("last_error")
+  createdAt         DateTime          @default(now()) @map("created_at")
+  sentAt            DateTime?         @map("sent_at")
+  deliveredAt       DateTime?         @map("delivered_at")
+  updatedAt         DateTime          @updatedAt @map("updated_at")
+
+  @@index([status, nextAttemptAt])
+  @@map("email_outbox")
+}
+
+model EmailWebhookEvent {
+  id              String   @id @default(cuid())
+  providerEventId String   @unique @map("provider_event_id")
+  type            String
+  payloadHash     String   @map("payload_hash")
+  processedAt     DateTime @default(now()) @map("processed_at")
+
+  @@index([processedAt])
+  @@map("email_webhook_events")
+}
+
+model NewsletterSubscription {
+  id                   String           @id @default(cuid())
+  email                String           @unique
+  status               NewsletterStatus @default(SUBSCRIBED)
+  consentAt            DateTime         @map("consent_at")
+  unsubscribedAt       DateTime?        @map("unsubscribed_at")
+  source               String
+  resendContactId      String?          @map("resend_contact_id")
+  unsubscribeTokenHash String           @unique @map("unsubscribe_token_hash")
+  createdAt            DateTime         @default(now()) @map("created_at")
+  updatedAt            DateTime         @updatedAt @map("updated_at")
+
+  @@index([status])
+  @@map("newsletter_subscriptions")
 }

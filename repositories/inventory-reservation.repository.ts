@@ -139,6 +139,30 @@ class PrismaLockedInventoryReservationTransaction
         expiresAt: item.expiresAt,
       })),
     });
+    await this.transaction.emailOutbox.create({
+      data: {
+        eventKey: `order-received:${order.id}`,
+        type: 'ORDER_CREATED',
+        recipient: order.customer.email,
+        subject: 'ご注文を承りました',
+        template: 'ORDER_RECEIVED',
+        payload: {
+          orderNumber: order.orderNumber,
+          orderedAt: order.orderedAt.toISOString(),
+          items: order.items.map((item) => ({
+            productName: item.productName,
+            quantity: item.quantity,
+            unitPrice: Number(item.unitPrice),
+            subtotal: Number(item.subtotal),
+          })),
+          subtotal: Number(order.subtotal),
+          shipping: Number(order.shippingFee),
+          totalAmount: Number(order.totalAmount),
+          shippingAddress: input.shippingAddressSnapshot,
+          status: order.status,
+        },
+      },
+    });
     return order;
   }
 }

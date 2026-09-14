@@ -89,6 +89,11 @@ Checkout 的 customerId 只能来自该 session。消费者订单列表与详情
 Customer ownership 限定；他人订单与不存在订单均返回 404。订单创建的 ACTIVE reservation
 默认 30 分钟到期，支付成功确认 hold，支付失败/取消释放，履约完成后消费。
 
+新注册 Customer 同时建立 email verification token 与 EmailOutbox。验证 token、password
+reset token 与 Newsletter 退订 token 的 raw value 禁止保存或记录；数据库只保存 hash。
+密码重置成功后必须撤销该 Customer 的全部 session。邮件 Provider 为 Resend，但业务
+transaction 只能写 EmailOutbox，不能在 transaction 内调用外部邮件 API。
+
 ---
 
 ## 6. 配送
@@ -283,17 +288,10 @@ Follow Us
 
 Newsletter
 
-按钮
-
-↓
-
-登录
-
-↓
-
-注册
-
-Demo
+允许匿名 email 主动订阅，也允许注册时通过默认未勾选的 opt-in 主动订阅。
+Customer Account 与 NewsletterSubscription 必须独立；既存 Customer 不得自动加入。
+Neon 的 NewsletterSubscription 是 consent source of truth，Resend Contact 只作为投递镜像。
+退订必须使用 signed opaque token，不能只依赖 query email。
 
 ---
 

@@ -13,7 +13,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "prisma:generate": "prisma generate",
-    "prisma:seed": "prisma db seed"
+    "prisma:seed": "prisma db seed",
+    "seed:qa-customer": "tsx scripts/seed-qa-customer.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
@@ -34,6 +35,7 @@
     "postcss": "latest",
     "react": "latest",
     "react-dom": "latest",
+    "resend": "^6.28.0",
     "tailwindcss": "latest",
     "typescript": "^5.7.0",
     "zod": "3.24.1"

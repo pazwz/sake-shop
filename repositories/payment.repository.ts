@@ -1,5 +1,6 @@
 import {
   InventoryReservationStatus,
+  EmailTemplate,
   OrderStatus,
   PaymentProvider,
   PaymentStatus,
@@ -90,6 +91,7 @@ export class PaymentRepository {
     nextStatus: PaymentStatus;
     providerPaymentId: string;
     reservationTransition: 'NONE' | 'HOLD' | 'RELEASE';
+    emailTemplate: EmailTemplate | null;
   }) {
     try {
       return await this.database.$transaction(
@@ -176,6 +178,32 @@ export class PaymentRepository {
               completedAt: new Date(),
             },
           });
+          if (input.emailTemplate) {
+            const order = await tx.order.findUniqueOrThrow({
+              where: { id: payment.orderId },
+              include: { customer: true },
+            });
+            await tx.emailOutbox.upsert({
+              where: {
+                eventKey: `payment:${payment.id}:${input.nextStatus}`,
+              },
+              update: {},
+              create: {
+                eventKey: `payment:${payment.id}:${input.nextStatus}`,
+                type: `PAYMENT_${input.nextStatus}`,
+                recipient: order.customer.email,
+                subject:
+                  input.emailTemplate === EmailTemplate.PAYMENT_SUCCEEDED
+                    ? 'お支払いを確認しました'
+                    : 'お支払いを確認できませんでした',
+                template: input.emailTemplate,
+                payload: {
+                  orderNumber: order.orderNumber,
+                  totalAmount: Number(order.totalAmount),
+                },
+              },
+            });
+          }
           return { payment, duplicate: false };
         },
         { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },

@@ -114,6 +114,12 @@ function LoginForm() {
         >
           {submitting ? 'ログイン中…' : 'ログインする'}
         </button>
+        <Link
+          href="/forgot-password"
+          className="block text-center text-xs underline"
+        >
+          パスワードをお忘れの方
+        </Link>
       </form>
       <div className="mt-10 border-t line pt-7">
         <p className="text-sm">会員登録がお済みでない方</p>

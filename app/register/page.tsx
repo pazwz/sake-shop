@@ -35,6 +35,7 @@ function RegisterForm() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [marketingOptIn, setMarketingOptIn] = useState(false);
   const [errors, setErrors] = useState<RegisterErrors>({});
   const [submitting, setSubmitting] = useState(false);
 
@@ -58,7 +59,12 @@ function RegisterForm() {
     }
 
     setSubmitting(true);
-    const result = await register(name.trim(), email.trim(), password);
+    const result = await register(
+      name.trim(),
+      email.trim(),
+      password,
+      marketingOptIn,
+    );
     setSubmitting(false);
     if (!result.ok) {
       setErrors({ form: result.message || '会員登録に失敗しました。' });
@@ -98,6 +104,17 @@ function RegisterForm() {
             }}
           />
           <FormFieldError id="register-name-error" message={errors.name} />
+        </label>
+        <label className="flex items-start gap-3 text-xs leading-6 text-stone-600">
+          <input
+            type="checkbox"
+            className="mt-1"
+            checked={marketingOptIn}
+            onChange={(event) => setMarketingOptIn(event.target.checked)}
+          />
+          <span>
+            新商品・季節のおすすめ・キャンペーン情報をメールで受け取る
+          </span>
         </label>
         <label className="block text-xs">
           メールアドレス

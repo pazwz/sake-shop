@@ -20,7 +20,12 @@ type Auth = {
   member: Member | null;
   ready: boolean;
   login(email: string, password: string): Promise<AuthResult>;
-  register(name: string, email: string, password: string): Promise<AuthResult>;
+  register(
+    name: string,
+    email: string,
+    password: string,
+    marketingOptIn: boolean,
+  ): Promise<AuthResult>;
   logout(): Promise<void>;
 };
 
@@ -79,11 +84,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const register = useCallback(
-    async (name: string, email: string, password: string) => {
+    async (
+      name: string,
+      email: string,
+      password: string,
+      marketingOptIn: boolean,
+    ) => {
       const result = await requestAuth('/api/v1/customer/register', {
         name,
         email,
         password,
+        marketingOptIn,
       });
       if (result.ok && result.member) setMember(result.member);
       return { ok: result.ok, message: result.message };

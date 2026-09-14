@@ -1,4 +1,5 @@
 import {
+  EmailTemplate,
   OrderStatus,
   PaymentStatus,
   Prisma,
@@ -110,6 +111,7 @@ export class OrderRepository {
     id: string,
     status: OrderStatus,
     transition: 'NONE' | 'RELEASE' | 'CONSUME',
+    emailTemplate: EmailTemplate | null = null,
   ) {
     return this.database.$transaction(async (tx) => {
       const order = await tx.order.update({
@@ -125,6 +127,23 @@ export class OrderRepository {
               transition === 'RELEASE'
                 ? InventoryReservationStatus.RELEASED
                 : InventoryReservationStatus.CONSUMED,
+          },
+        });
+      }
+      if (emailTemplate) {
+        await tx.emailOutbox.upsert({
+          where: { eventKey: `order:${id}:${status}` },
+          update: {},
+          create: {
+            eventKey: `order:${id}:${status}`,
+            type: `ORDER_${status}`,
+            recipient: order.customer.email,
+            subject: 'ご注文をキャンセルしました',
+            template: emailTemplate,
+            payload: {
+              orderNumber: order.orderNumber,
+              totalAmount: Number(order.totalAmount),
+            },
           },
         });
       }

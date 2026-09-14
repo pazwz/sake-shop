@@ -83,6 +83,7 @@ export class ShipmentRepository {
       ShipmentStatus.SHIPPED,
       { shippedAt },
       audit,
+      true,
     );
   }
 
@@ -100,6 +101,7 @@ export class ShipmentRepository {
     status: ShipmentStatus,
     dates: { shippedAt?: Date; deliveredAt?: Date },
     audit: AuditInput,
+    notifyShipped = false,
   ) {
     return prisma.$transaction(async (tx) => {
       const shipment = await tx.shipment.update({
@@ -112,6 +114,28 @@ export class ShipmentRepository {
         data: { shipmentStatus: status },
       });
       await this.createAuditLog(tx, audit);
+      if (notifyShipped) {
+        const order = await tx.order.findUniqueOrThrow({
+          where: { id: shipment.orderId },
+          include: { customer: true },
+        });
+        await tx.emailOutbox.upsert({
+          where: { eventKey: `shipment-sent:${shipment.id}` },
+          update: {},
+          create: {
+            eventKey: `shipment-sent:${shipment.id}`,
+            type: 'SHIPMENT_SHIPPED',
+            recipient: order.customer.email,
+            subject: '商品を発送しました',
+            template: 'SHIPMENT_SENT',
+            payload: {
+              orderNumber: order.orderNumber,
+              carrier: shipment.carrier,
+              trackingNumber: shipment.trackingNumber,
+            },
+          },
+        });
+      }
       return shipment;
     });
   }

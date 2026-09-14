@@ -7,13 +7,19 @@ import {
 type Attempt = { count: number; resetAt: number };
 const attempts = new Map<string, Attempt>();
 
-const limitFor = (action: 'login' | 'register') =>
+export type CustomerRateLimitAction =
+  | 'login'
+  | 'register'
+  | 'forgot-password'
+  | 'newsletter';
+
+const limitFor = (action: CustomerRateLimitAction) =>
   action === 'login'
     ? CUSTOMER_LOGIN_MAX_ATTEMPTS
     : CUSTOMER_REGISTER_MAX_ATTEMPTS;
 
 export const canAttemptCustomerAuth = (
-  action: 'login' | 'register',
+  action: CustomerRateLimitAction,
   key: string,
 ) => {
   const attempt = attempts.get(`${action}:${key}`);
@@ -22,7 +28,7 @@ export const canAttemptCustomerAuth = (
 };
 
 export const recordCustomerAuthFailure = (
-  action: 'login' | 'register',
+  action: CustomerRateLimitAction,
   key: string,
 ) => {
   const mapKey = `${action}:${key}`;
@@ -37,6 +43,6 @@ export const recordCustomerAuthFailure = (
 };
 
 export const clearCustomerAuthFailures = (
-  action: 'login' | 'register',
+  action: CustomerRateLimitAction,
   key: string,
 ) => attempts.delete(`${action}:${key}`);

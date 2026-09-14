@@ -116,6 +116,9 @@ function NewsletterDrawer({
   const closeRef = useRef<HTMLButtonElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [consent, setConsent] = useState(false);
+  const [serverError, setServerError] = useState('');
   const [errors, setErrors] = useState<NewsletterErrors>({});
   const [form, setForm] = useState({
     email: '',
@@ -140,7 +143,7 @@ function NewsletterDrawer({
     };
   }, [open, onClose]);
   if (!open) return null;
-  const submit = (event: React.FormEvent) => {
+  const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     const nextErrors: NewsletterErrors = {};
     if (!form.email.trim())
@@ -149,6 +152,10 @@ function NewsletterDrawer({
       nextErrors.email = 'メールアドレスの形式が正しくありません。';
     if (!form.lastName.trim()) nextErrors.lastName = '姓を入力してください。';
     if (!form.firstName.trim()) nextErrors.firstName = '名を入力してください。';
+    if (!consent) {
+      setServerError('メール配信への同意が必要です。');
+      return;
+    }
     const kanaPattern = /^[ァ-ヶー　]+$/;
     if (form.lastKana && !kanaPattern.test(form.lastKana))
       nextErrors.lastKana = '姓は全角カナで入力してください。';
@@ -163,15 +170,34 @@ function NewsletterDrawer({
       return;
     }
     setErrors({});
-    setSubmitted(true);
-    setForm({
-      email: '',
-      gender: '',
-      lastName: '',
-      firstName: '',
-      lastKana: '',
-      firstKana: '',
-    });
+    setServerError('');
+    setSubmitting(true);
+    try {
+      const response = await fetch('/api/v1/newsletter/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: form.email, consent }),
+      });
+      if (!response.ok) {
+        const payload = await response.json();
+        setServerError(payload.error?.detail ?? '登録に失敗しました。');
+        return;
+      }
+      setSubmitted(true);
+      setForm({
+        email: '',
+        gender: '',
+        lastName: '',
+        firstName: '',
+        lastKana: '',
+        firstKana: '',
+      });
+      setConsent(false);
+    } catch {
+      setServerError('通信に失敗しました。もう一度お試しください。');
+    } finally {
+      setSubmitting(false);
+    }
   };
   return (
     <div className="fixed inset-0 z-50" role="presentation">
@@ -364,9 +390,29 @@ function NewsletterDrawer({
                 </Field>
               </div>
               <p className="text-[11px] leading-5 text-stone-500">
-                ご入力いただいた情報は、ニュースレター配信に関するご案内のために利用します。これはデモフォームであり、実際の登録・メール送信は行われません。
+                ご入力いただいた情報は、ニュースレター配信に関するご案内のために利用します。
               </p>
-              <button className="btn w-full">登録</button>
+              <label className="flex items-start gap-3 text-xs leading-6 text-stone-600">
+                <input
+                  type="checkbox"
+                  className="mt-1"
+                  checked={consent}
+                  onChange={(event) => {
+                    setConsent(event.target.checked);
+                    setServerError('');
+                  }}
+                />
+                <span>ニュースレターの配信に同意します。</span>
+              </label>
+              {serverError ? (
+                <p className="text-xs text-red-700">{serverError}</p>
+              ) : null}
+              <button
+                disabled={submitting}
+                className="btn w-full disabled:opacity-60"
+              >
+                {submitting ? '登録中…' : '登録'}
+              </button>
             </form>
           </>
         )}
