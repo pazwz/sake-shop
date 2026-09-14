@@ -101,7 +101,16 @@ test('writes Category, Product, and Inventory in one ordered transaction', async
   const result = await repository.applyValidatedPlan(plan);
 
   assert.deepEqual(database.committed, ['category', 'product', 'inventory']);
-  assert.deepEqual(result, { categories: 1, products: 1, inventory: 1 });
+  assert.deepEqual(result, {
+    categories: 1,
+    products: 1,
+    inventory: 1,
+    reconciliation: {
+      deletedProductCount: 0,
+      retiredProductCount: 0,
+      deletedImages: [],
+    },
+  });
 });
 
 test('rolls back all staged writes when Product or Inventory fails', async () => {

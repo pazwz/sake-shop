@@ -55,6 +55,12 @@ export const SMAREGI_PRODUCTION_SYNC_ENTITY_ID = 'CURRENT';
 export const SMAREGI_PRODUCTION_SYNC_ACTION = 'ATOMIC_INCREMENTAL_SYNC';
 export const SMAREGI_PRODUCTION_SYNC_LOCK_KEY = 1_835_102_321;
 export const SMAREGI_PRODUCTION_SYNC_MAX_DURATION_SECONDS = 300;
+export const SMAREGI_MISSING_PRODUCT_MODES = ['report', 'apply'] as const;
+export type SmaregiMissingProductMode =
+  (typeof SMAREGI_MISSING_PRODUCT_MODES)[number];
+
+export const getSmaregiMissingProductMode = (): SmaregiMissingProductMode =>
+  process.env.SMAREGI_MISSING_PRODUCT_MODE === 'apply' ? 'apply' : 'report';
 
 export const getSmaregiConfigurationStatus = () => ({
   environment: process.env.SMAREGI_ENVIRONMENT ?? 'sandbox',

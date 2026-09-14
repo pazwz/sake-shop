@@ -370,6 +370,24 @@ Prisma interactive transaction 按 Category → Product → InventoryMirror
 不得在该入口内部重新获取另一份 Smaregi 数据。首次大量新增的 InventoryMirror
 在同一 transaction 内批量创建；既存行仍保留 reservedQuantity 后更新。
 
+Production full sync 另外保存 Product pagination 完整性证明。只有 OAuth、全部分页、
+schema validation 和 source identity set 均成功，且 snapshot 明确为 `complete=true` 时，
+才计算 Smaregi missing Product。比较基准必须是原始完整 Product identity set，不能使用
+通过税率解析后的 write plan；因此 deferred、quarantine 与 orphan stock 永远不等于
+source missing。`SMAREGI_MISSING_PRODUCT_MODE` 缺失或无效时按 `report` 处理，只有明确的
+`apply` 才执行 reconciliation。
+
+missing Product 仅限有效 Smaregi identity 的普通独立商品。网站自建、package-only、
+service-only 与箱分类商品排除。无 OrderItem、任何状态 InventoryReservation、Collection、
+Editorial 或 box relation 的商品可在 Category → Product → InventoryMirror 之后的同一 DB
+transaction 中删除 ProductImage、InventoryMirror 和 Product；有任一业务引用则只设
+`isActive=false`、`isEcAvailable=false`。重新出现在 Smaregi 的 retired Product 可恢复
+isActive，但同步永不恢复 isEcAvailable；hard-delete 后重建也默认 isEcAvailable=false。
+
+已提交 DB 删除的图片只在 transaction commit 后清理 S3，且删除前再次确认 URL 未被
+ProductImage、Collection、Editorial 或 Shipment 复用。S3 失败不回滚 DB，安全的 object key
+与重试提示写入 SyncLog，不记录 credentials。
+
 正式库存镜像只接受批准的 Store ID `1`、`2`、`3`、`6`，并继续按
 Product + Store 分行保存原始物理库存，不把四个地点永久合并为一行。
 EC 查询层按以下规则计算：

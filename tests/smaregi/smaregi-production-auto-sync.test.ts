@@ -108,6 +108,21 @@ const createHarness = (options?: {
         return options?.snapshot ?? emptySnapshot;
       },
     },
+    new SmaregiProductionValidationService(),
+    {
+      async buildPlan(source, mode) {
+        return {
+          mode,
+          snapshotComplete: true as const,
+          sourceProductCount: source.products.length,
+          sourceIdentityCount: source.sourceIdentityCount,
+          sourceProductIds: source.products.map((item) => item.productId),
+          safeToDelete: [],
+          retire: [],
+          blocked: [],
+        };
+      },
+    },
   );
   return { service, applied, succeeded, failed };
 };
@@ -148,7 +163,21 @@ test('maps an occupied manual synchronization lock to HTTP 409 semantics', () =>
         startedAt: '2026-09-03T00:00:00.000Z',
         finishedAt: '2026-09-03T00:00:01.000Z',
         sourceProductCount: 0,
+        sourceIdentityCount: 0,
+        snapshotComplete: false,
         sourceStockCount: 0,
+        mode: 'report',
+        missingProductMode: 'report',
+        missingProductCount: 0,
+        missingSafeDeleteCount: 0,
+        missingRetireCount: 0,
+        missingBlockedCount: 0,
+        deletedProductCount: 0,
+        retiredProductCount: 0,
+        s3DeleteSuccessCount: 0,
+        s3DeleteFailureCount: 0,
+        s3RetainedSharedCount: 0,
+        s3CleanupFailures: [],
         productsCreated: 0,
         productsUpdated: 0,
         productsUnchanged: 0,

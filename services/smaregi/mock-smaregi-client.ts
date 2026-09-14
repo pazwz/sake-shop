@@ -34,6 +34,18 @@ export class MockSmaregiClient implements SmaregiApiClient {
     return this.data.products ?? [];
   }
 
+  public async getProductsSnapshot() {
+    const products = this.data.products ?? [];
+    return {
+      products,
+      sourceIdentityCount: new Set(products.map((product) => product.productId))
+        .size,
+      pagesFetched: 1,
+      pageSize: 1000,
+      complete: true as const,
+    };
+  }
+
   public async getStock(storeId: string) {
     return (this.data.stock ?? []).filter((item) => item.storeId === storeId);
   }

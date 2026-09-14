@@ -14,6 +14,9 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 const numberField = (value: Record<string, unknown>, key: string) =>
   typeof value[key] === 'number' ? value[key] : 0;
 
+const booleanField = (value: Record<string, unknown>, key: string) =>
+  value[key] === true;
+
 const productionOutcomes = new Set<SmaregiProductionSyncOutcome>([
   'SUCCESS',
   'SUCCESS_WITH_WARNINGS',
@@ -72,6 +75,22 @@ export class SyncService {
           knownOrphanCount: numberField(payload, 'knownOrphanCount'),
           newOrphanCount: numberField(payload, 'newOrphanCount'),
           negativeCount: numberField(payload, 'negativeCount'),
+          sourceProductCount: numberField(payload, 'sourceProductCount'),
+          sourceIdentityCount: numberField(payload, 'sourceIdentityCount'),
+          snapshotComplete: booleanField(payload, 'snapshotComplete'),
+          missingProductMode:
+            payload.missingProductMode === 'apply' ? 'apply' : 'report',
+          missingProductCount: numberField(payload, 'missingProductCount'),
+          missingSafeDeleteCount: numberField(
+            payload,
+            'missingSafeDeleteCount',
+          ),
+          missingRetireCount: numberField(payload, 'missingRetireCount'),
+          missingBlockedCount: numberField(payload, 'missingBlockedCount'),
+          deletedProductCount: numberField(payload, 'deletedProductCount'),
+          retiredProductCount: numberField(payload, 'retiredProductCount'),
+          s3DeleteSuccessCount: numberField(payload, 's3DeleteSuccessCount'),
+          s3DeleteFailureCount: numberField(payload, 's3DeleteFailureCount'),
         }
       : null;
     return {

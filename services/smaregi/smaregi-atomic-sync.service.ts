@@ -5,11 +5,19 @@ import { getSmaregiTargetDate } from '@/services/smaregi/smaregi-tax-resolver';
 import { selectApprovedSmaregiStores } from '@/services/smaregi/smaregi-store-policy';
 import type { SmaregiApiClient } from '@/types/smaregi';
 import type { ValidatedSmaregiSyncPlan } from '@/types/smaregi-sync-plan';
+import type { SmaregiMissingProductPlan } from '@/types/smaregi-missing-product';
+import type { SmaregiAtomicSyncResult } from '@/types/smaregi-missing-product';
 
-type AtomicSyncPersistence = Pick<
-  SmaregiAtomicSyncRepository,
-  'applyValidatedPlan'
->;
+type AtomicSyncPersistence = {
+  applyValidatedPlan(
+    plan: ValidatedSmaregiSyncPlan,
+    missingPlan?: SmaregiMissingProductPlan,
+  ): Promise<
+    Omit<SmaregiAtomicSyncResult, 'reconciliation'> & {
+      reconciliation?: SmaregiAtomicSyncResult['reconciliation'];
+    }
+  >;
+};
 
 export class SmaregiAtomicSyncService {
   public constructor(
@@ -46,7 +54,10 @@ export class SmaregiAtomicSyncService {
     });
   }
 
-  public executeApprovedSync(plan: ValidatedSmaregiSyncPlan) {
-    return this.repository.applyValidatedPlan(plan);
+  public executeApprovedSync(
+    plan: ValidatedSmaregiSyncPlan,
+    missingPlan?: SmaregiMissingProductPlan,
+  ) {
+    return this.repository.applyValidatedPlan(plan, missingPlan);
   }
 }

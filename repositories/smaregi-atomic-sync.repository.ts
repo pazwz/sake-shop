@@ -9,6 +9,10 @@ import {
 } from '@/services/smaregi/smaregi-mapper';
 import type { SmaregiCategory } from '@/types/smaregi';
 import type { ValidatedSmaregiSyncPlan } from '@/types/smaregi-sync-plan';
+import type {
+  SmaregiAtomicSyncResult,
+  SmaregiMissingProductPlan,
+} from '@/types/smaregi-missing-product';
 
 type TransactionDatabase = {
   $transaction<T>(
@@ -23,7 +27,10 @@ const SMAREGI_ATOMIC_TRANSACTION_TIMEOUT_MS = 300_000;
 export class SmaregiAtomicSyncRepository {
   public constructor(private readonly database: TransactionDatabase = prisma) {}
 
-  public applyValidatedPlan(plan: ValidatedSmaregiSyncPlan) {
+  public applyValidatedPlan(
+    plan: ValidatedSmaregiSyncPlan,
+    missingPlan?: SmaregiMissingProductPlan,
+  ): Promise<SmaregiAtomicSyncResult> {
     return this.database.$transaction(
       async (transaction) => {
         const categoryIds = new Map<string, string>();
@@ -143,10 +150,15 @@ export class SmaregiAtomicSyncRepository {
             data: inventoryToCreate,
           });
 
+        const reconciliation = await this.reconcileMissingProducts(
+          transaction,
+          missingPlan,
+        );
         return {
           categories: plan.categories.length,
           products: plan.products.length,
           inventory: plan.inventory.length,
+          reconciliation,
         };
       },
       {
@@ -154,6 +166,93 @@ export class SmaregiAtomicSyncRepository {
         timeout: SMAREGI_ATOMIC_TRANSACTION_TIMEOUT_MS,
       },
     );
+  }
+
+  private async reconcileMissingProducts(
+    transaction: Prisma.TransactionClient,
+    plan?: SmaregiMissingProductPlan,
+  ) {
+    const result = {
+      deletedProductCount: 0,
+      retiredProductCount: 0,
+      deletedImages: [] as Array<{
+        productId: string;
+        smaregiProductId: string;
+        imageUrl: string;
+      }>,
+    };
+    if (!plan || plan.mode === 'report') return result;
+    if (!plan.snapshotComplete || plan.sourceProductCount === 0)
+      throw new Error(
+        'Missing Product reconciliation requires a complete snapshot.',
+      );
+
+    const sourceIds = new Set(plan.sourceProductIds);
+    for (const candidate of [...plan.retire, ...plan.safeToDelete]) {
+      if (sourceIds.has(candidate.smaregiProductId))
+        throw new Error(
+          'Missing Product plan contains a current source identity.',
+        );
+      const current = await transaction.product.findUnique({
+        where: { id: candidate.id },
+        select: {
+          id: true,
+          smaregiProductId: true,
+          images: { select: { imageUrl: true } },
+          boxProductId: true,
+          boxedProduct: { select: { id: true } },
+          _count: {
+            select: {
+              orderItems: true,
+              inventoryReservations: true,
+              featuredCollectionProducts: true,
+              editorialSections: true,
+            },
+          },
+        },
+      });
+      if (!current) continue;
+      if (current.smaregiProductId !== candidate.smaregiProductId)
+        throw new Error(
+          'Missing Product identity changed before reconciliation.',
+        );
+      const mustRetire =
+        candidate.references.orderItems > 0 ||
+        candidate.references.reservations > 0 ||
+        candidate.references.collections > 0 ||
+        candidate.references.editorialSections > 0 ||
+        candidate.references.boxRelations > 0 ||
+        current._count.orderItems > 0 ||
+        current._count.inventoryReservations > 0 ||
+        current._count.featuredCollectionProducts > 0 ||
+        current._count.editorialSections > 0 ||
+        Boolean(current.boxProductId) ||
+        Boolean(current.boxedProduct);
+      if (mustRetire) {
+        await transaction.product.update({
+          where: { id: current.id },
+          data: { isActive: false, isEcAvailable: false },
+        });
+        result.retiredProductCount += 1;
+        continue;
+      }
+      result.deletedImages.push(
+        ...current.images.map((image) => ({
+          productId: current.id,
+          smaregiProductId: current.smaregiProductId,
+          imageUrl: image.imageUrl,
+        })),
+      );
+      await transaction.productImage.deleteMany({
+        where: { productId: current.id },
+      });
+      await transaction.inventoryMirror.deleteMany({
+        where: { productId: current.id },
+      });
+      await transaction.product.delete({ where: { id: current.id } });
+      result.deletedProductCount += 1;
+    }
+    return result;
   }
 
   private inventoryKey(productId: string, storeId: string) {

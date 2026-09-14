@@ -1049,6 +1049,14 @@ GET
 - Schedule：Vercel Hobby 不配置 Cron
 
 internal endpoint 和 Admin 共用同一 source validation、quarantine、atomic plan 与 SyncLog
+流程。Production Product 读取会记录分页完成状态与完整 source identity set。响应及
+SyncLog summary 额外包含 `sourceProductCount`、`sourceIdentityCount`、
+`snapshotComplete`、`missingProductMode`、`missingProductCount`、
+`missingSafeDeleteCount`、`missingRetireCount`、`missingBlockedCount`、
+`deletedProductCount`、`retiredProductCount`、`s3DeleteSuccessCount` 与
+`s3DeleteFailureCount`。默认 `report` 只报告且不执行 missing mutation；明确配置 `apply`
+后，无业务引用商品 hard delete，有历史/CMS/box 引用商品 retire。任何 Product 分页失败、
+timeout、异常空快照或 identity set 不完整都会在 reconciliation 前 fail closed。
 逻辑。未来由 AWS EventBridge Scheduler + Lambda 每 15 分钟调用该 endpoint；AWS 资源与
 production `CRON_SECRET` 另行配置。Secret 未配置时请求仍拒绝，不会跳过认证。
 

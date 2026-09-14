@@ -948,7 +948,10 @@ updated_at
 
 Soft Delete
 
-禁止物理删除。
+原则上禁止物理删除。唯一批准的例外是 production Smaregi 完整 Product snapshot 已明确
+确认 source missing，且 Product 没有 OrderItem、InventoryReservation、Collection、
+Editorial、box relation 或其他业务引用时，可由自动同步在单一 transaction 中物理删除其
+ProductImage、InventoryMirror 与 Product。存在任何业务引用时必须 RETIRE，不得物理删除。
 
 ---
 

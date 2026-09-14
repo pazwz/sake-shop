@@ -83,6 +83,14 @@ export type SmaregiCategory = z.infer<typeof smaregiCategorySchema>;
 export type SmaregiProduct = z.infer<typeof smaregiProductSchema>;
 export type SmaregiStock = z.infer<typeof smaregiStockSchema>;
 
+export type SmaregiProductSnapshot = {
+  products: SmaregiProduct[];
+  sourceIdentityCount: number;
+  pagesFetched: number;
+  pageSize: number;
+  complete: true;
+};
+
 const smaregiDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const smaregiTaxRateSchema = z.string().regex(/^\d{1,3}(\.\d{1,3})?$/);
 
@@ -115,6 +123,7 @@ export interface SmaregiApiClient {
   getStores(): Promise<SmaregiStore[]>;
   getCategories(): Promise<SmaregiCategory[]>;
   getProducts(): Promise<SmaregiProduct[]>;
+  getProductsSnapshot(): Promise<SmaregiProductSnapshot>;
   getStock(storeId: string): Promise<SmaregiStock[]>;
   getConsumptionTaxRates(): Promise<SmaregiConsumptionTaxRate[]>;
   getReduceTaxRates(): Promise<SmaregiReduceTaxRate[]>;

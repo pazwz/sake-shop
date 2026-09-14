@@ -16,7 +16,21 @@ export type SmaregiProductionSyncSummary = {
   startedAt: string;
   finishedAt: string;
   sourceProductCount: number;
+  sourceIdentityCount: number;
+  snapshotComplete: boolean;
   sourceStockCount: number;
+  mode: 'report' | 'apply';
+  missingProductMode: 'report' | 'apply';
+  missingProductCount: number;
+  missingSafeDeleteCount: number;
+  missingRetireCount: number;
+  missingBlockedCount: number;
+  deletedProductCount: number;
+  retiredProductCount: number;
+  s3DeleteSuccessCount: number;
+  s3DeleteFailureCount: number;
+  s3RetainedSharedCount: number;
+  s3CleanupFailures: Array<{ key: string; message: string }>;
   productsCreated: number;
   productsUpdated: number;
   productsUnchanged: number;
@@ -47,7 +61,21 @@ export type SmaregiProductionSyncSkipped = {
   startedAt: string;
   finishedAt: string;
   sourceProductCount: 0;
+  sourceIdentityCount: 0;
+  snapshotComplete: false;
   sourceStockCount: 0;
+  mode: 'report' | 'apply';
+  missingProductMode: 'report' | 'apply';
+  missingProductCount: 0;
+  missingSafeDeleteCount: 0;
+  missingRetireCount: 0;
+  missingBlockedCount: 0;
+  deletedProductCount: 0;
+  retiredProductCount: 0;
+  s3DeleteSuccessCount: 0;
+  s3DeleteFailureCount: 0;
+  s3RetainedSharedCount: 0;
+  s3CleanupFailures: [];
   productsCreated: 0;
   productsUpdated: 0;
   productsUnchanged: 0;
@@ -84,5 +112,17 @@ export type SmaregiProductionSyncStatus = {
     | 'knownOrphanCount'
     | 'newOrphanCount'
     | 'negativeCount'
+    | 'sourceProductCount'
+    | 'sourceIdentityCount'
+    | 'snapshotComplete'
+    | 'missingProductMode'
+    | 'missingProductCount'
+    | 'missingSafeDeleteCount'
+    | 'missingRetireCount'
+    | 'missingBlockedCount'
+    | 'deletedProductCount'
+    | 'retiredProductCount'
+    | 's3DeleteSuccessCount'
+    | 's3DeleteFailureCount'
   > | null;
 };

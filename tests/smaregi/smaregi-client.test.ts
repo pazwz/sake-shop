@@ -82,3 +82,79 @@ test('does not retry authentication failures', async () => {
   assert.equal(calls, 2);
   assert.equal(client.retryCount, 0);
 });
+
+const apiProduct = (productId: string) => ({
+  productId,
+  categoryId: '10',
+  productCode: `CODE-${productId}`,
+  productName: `Product ${productId}`,
+  price: '1000',
+  displayFlag: '1',
+  salesDivision: '0',
+  division: '0',
+  taxDivision: '0',
+  useCategoryReduceTax: '1',
+  reduceTaxId: null,
+});
+
+test('marks a Product snapshot complete only after the terminal pagination page', async () => {
+  configure();
+  const pageOne = Array.from({ length: 1000 }, (_, index) =>
+    apiProduct(String(index + 1)),
+  );
+  let apiCalls = 0;
+  const client = new SmaregiClient(
+    async () => {
+      apiCalls += 1;
+      if (apiCalls === 1) return tokenResponse();
+      return new Response(
+        JSON.stringify(apiCalls === 2 ? pageOne : [apiProduct('1001')]),
+        { status: 200 },
+      );
+    },
+    async () => undefined,
+  );
+
+  const result = await client.getProductsSnapshot();
+  assert.equal(result.complete, true);
+  assert.equal(result.pagesFetched, 2);
+  assert.equal(result.products.length, 1001);
+  assert.equal(result.sourceIdentityCount, 1001);
+});
+
+test('pagination failure produces no complete Product snapshot', async () => {
+  configure();
+  const pageOne = Array.from({ length: 1000 }, (_, index) =>
+    apiProduct(String(index + 1)),
+  );
+  let apiCalls = 0;
+  const client = new SmaregiClient(
+    async () => {
+      apiCalls += 1;
+      if (apiCalls === 1) return tokenResponse();
+      if (apiCalls === 2)
+        return new Response(JSON.stringify(pageOne), { status: 200 });
+      return new Response('{}', { status: 503 });
+    },
+    async () => undefined,
+  );
+  await assert.rejects(() => client.getProductsSnapshot(), {
+    code: 'SMAREGI_API_ERROR',
+  });
+});
+
+test('timeout produces no complete Product snapshot', async () => {
+  configure();
+  const client = new SmaregiClient(
+    async (input) => {
+      if (String(input).includes('/token')) return tokenResponse();
+      const error = new Error('timeout');
+      error.name = 'TimeoutError';
+      throw error;
+    },
+    async () => undefined,
+  );
+  await assert.rejects(() => client.getProductsSnapshot(), {
+    code: 'SMAREGI_API_ERROR',
+  });
+});

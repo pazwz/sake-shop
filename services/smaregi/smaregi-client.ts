@@ -21,6 +21,7 @@ import {
   type SmaregiCategory,
   type SmaregiConsumptionTaxRate,
   type SmaregiProduct,
+  type SmaregiProductSnapshot,
   type SmaregiReduceTaxRate,
   type SmaregiStock,
   type SmaregiStore,
@@ -57,7 +58,24 @@ export class SmaregiClient implements SmaregiApiClient {
   }
 
   public getProducts() {
-    return this.getAll<SmaregiProduct>('/products', smaregiProductSchema);
+    return this.getProductsSnapshot().then((snapshot) => snapshot.products);
+  }
+
+  public async getProductsSnapshot(): Promise<SmaregiProductSnapshot> {
+    const result = await this.getAllWithPagination<SmaregiProduct>(
+      '/products',
+      smaregiProductSchema,
+    );
+    const sourceIdentityCount = new Set(
+      result.items.map((product) => product.productId),
+    ).size;
+    return {
+      products: result.items,
+      sourceIdentityCount,
+      pagesFetched: result.pagesFetched,
+      pageSize: SMAREGI_PAGE_SIZE,
+      complete: true,
+    };
   }
 
   public getStock(storeId: string) {
@@ -85,6 +103,14 @@ export class SmaregiClient implements SmaregiApiClient {
     schema: z.ZodType<T, z.ZodTypeDef, unknown>,
     query: Record<string, string> = {},
   ): Promise<T[]> {
+    return (await this.getAllWithPagination(path, schema, query)).items;
+  }
+
+  private async getAllWithPagination<T>(
+    path: string,
+    schema: z.ZodType<T, z.ZodTypeDef, unknown>,
+    query: Record<string, string> = {},
+  ): Promise<{ items: T[]; pagesFetched: number }> {
     const result: T[] = [];
     let page = 1;
     while (true) {
@@ -96,7 +122,8 @@ export class SmaregiClient implements SmaregiApiClient {
         }),
       );
       result.push(...items);
-      if (items.length < SMAREGI_PAGE_SIZE) return result;
+      if (items.length < SMAREGI_PAGE_SIZE)
+        return { items: result, pagesFetched: page };
       page += 1;
     }
   }
