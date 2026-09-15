@@ -17,6 +17,11 @@ export type SmaregiProductExclusionRecord = {
 export type SmaregiProductExclusionApplyResult = {
   exclusion: SmaregiProductExclusionRecord;
   localOutcome: 'DELETED' | 'RETIRED';
+  deletedImages: Array<{
+    productId: string;
+    smaregiProductId: string;
+    imageUrl: string;
+  }>;
   product: {
     id: string;
     smaregiProductId: string;
@@ -31,7 +36,7 @@ const productSelect = {
   productCode: true,
   name: true,
   lastSyncedAt: true,
-  images: { select: { id: true } },
+  images: { select: { imageUrl: true } },
   boxProductId: true,
   boxedProduct: { select: { id: true } },
   _count: {
@@ -126,17 +131,24 @@ export class SmaregiProductExclusionRepository {
         return {
           exclusion,
           localOutcome: 'RETIRED' as const,
+          deletedImages: [],
           product: this.productIdentity(product),
         };
       }
 
+      const deletedImages = product.images.map(({ imageUrl }) => ({
+        productId: product.id,
+        smaregiProductId: product.smaregiProductId,
+        imageUrl,
+      }));
       await transaction.productImage.deleteMany({ where: { productId: product.id } });
       await transaction.inventoryMirror.deleteMany({ where: { productId: product.id } });
       await transaction.product.delete({ where: { id: product.id } });
       return {
-        exclusion,
-        localOutcome: 'DELETED' as const,
-        product: this.productIdentity(product),
+          exclusion,
+          localOutcome: 'DELETED' as const,
+          deletedImages,
+          product: this.productIdentity(product),
       };
     });
   }
