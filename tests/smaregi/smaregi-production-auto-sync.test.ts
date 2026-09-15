@@ -123,6 +123,12 @@ const createHarness = (options?: {
         };
       },
     },
+    undefined,
+    {
+      async findActiveSmaregiProductIds() {
+        return new Set<string>();
+      },
+    },
   );
   return { service, applied, succeeded, failed };
 };
@@ -165,6 +171,8 @@ test('maps an occupied manual synchronization lock to HTTP 409 semantics', () =>
         sourceProductCount: 0,
         sourceIdentityCount: 0,
         snapshotComplete: false,
+        suppressedProductCount: 0,
+        syncCandidateProductCount: 0,
         sourceStockCount: 0,
         mode: 'report',
         missingProductMode: 'report',
@@ -174,6 +182,8 @@ test('maps an occupied manual synchronization lock to HTTP 409 semantics', () =>
         missingBlockedCount: 0,
         deletedProductCount: 0,
         retiredProductCount: 0,
+        suppressedDeletedProductCount: 0,
+        suppressedRetiredProductCount: 0,
         s3DeleteSuccessCount: 0,
         s3DeleteFailureCount: 0,
         s3RetainedSharedCount: 0,
@@ -192,6 +202,7 @@ test('maps an occupied manual synchronization lock to HTTP 409 semantics', () =>
         newOrphanCount: 0,
         negativeCount: 0,
         warningsCount: 0,
+        detailLoggingFailed: false,
         errorCode: 'SYNC_ALREADY_RUNNING',
         errorSummary: 'Another production Smaregi sync is already running.',
       }),

@@ -36,6 +36,26 @@ export type SmaregiMissingProductWriteResult = {
     smaregiProductId: string;
     imageUrl: string;
   }>;
+  events: SmaregiProductLifecycleEvent[];
+};
+
+export type SmaregiProductLifecycleEvent = {
+  smaregiProductId: string;
+  productCode: string;
+  productName: string;
+  type: 'PRODUCT_DELETED' | 'PRODUCT_RETIRED' | 'PRODUCT_SUPPRESSED';
+  reason: 'MISSING_FROM_SOURCE' | 'OFFLINE_ONLY';
+};
+
+export type SmaregiSuppressionWriteResult = {
+  deletedProductCount: number;
+  retiredProductCount: number;
+  deletedImages: Array<{
+    productId: string;
+    smaregiProductId: string;
+    imageUrl: string;
+  }>;
+  events: SmaregiProductLifecycleEvent[];
 };
 
 export type SmaregiAtomicSyncResult = {
@@ -43,6 +63,7 @@ export type SmaregiAtomicSyncResult = {
   products: number;
   inventory: number;
   reconciliation: SmaregiMissingProductWriteResult;
+  suppression: SmaregiSuppressionWriteResult;
 };
 
 export type SmaregiS3CleanupResult = {

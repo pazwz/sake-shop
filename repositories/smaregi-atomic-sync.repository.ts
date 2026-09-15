@@ -12,6 +12,7 @@ import type { ValidatedSmaregiSyncPlan } from '@/types/smaregi-sync-plan';
 import type {
   SmaregiAtomicSyncResult,
   SmaregiMissingProductPlan,
+  SmaregiSuppressionWriteResult,
 } from '@/types/smaregi-missing-product';
 
 type TransactionDatabase = {
@@ -150,6 +151,10 @@ export class SmaregiAtomicSyncRepository {
             data: inventoryToCreate,
           });
 
+        const suppression = await this.reconcileSuppressedProducts(
+          transaction,
+          plan,
+        );
         const reconciliation = await this.reconcileMissingProducts(
           transaction,
           missingPlan,
@@ -159,6 +164,7 @@ export class SmaregiAtomicSyncRepository {
           products: plan.products.length,
           inventory: plan.inventory.length,
           reconciliation,
+          suppression,
         };
       },
       {
@@ -179,6 +185,13 @@ export class SmaregiAtomicSyncRepository {
         productId: string;
         smaregiProductId: string;
         imageUrl: string;
+      }>,
+      events: [] as Array<{
+        smaregiProductId: string;
+        productCode: string;
+        productName: string;
+        type: 'PRODUCT_DELETED' | 'PRODUCT_RETIRED' | 'PRODUCT_SUPPRESSED';
+        reason: 'MISSING_FROM_SOURCE' | 'OFFLINE_ONLY';
       }>,
     };
     if (!plan || plan.mode === 'report') return result;
@@ -234,6 +247,13 @@ export class SmaregiAtomicSyncRepository {
           data: { isActive: false, isEcAvailable: false },
         });
         result.retiredProductCount += 1;
+        result.events.push({
+          smaregiProductId: current.smaregiProductId,
+          productCode: candidate.productCode,
+          productName: candidate.name,
+          type: 'PRODUCT_RETIRED',
+          reason: 'MISSING_FROM_SOURCE',
+        });
         continue;
       }
       result.deletedImages.push(
@@ -251,6 +271,91 @@ export class SmaregiAtomicSyncRepository {
       });
       await transaction.product.delete({ where: { id: current.id } });
       result.deletedProductCount += 1;
+      result.events.push({
+        smaregiProductId: current.smaregiProductId,
+        productCode: candidate.productCode,
+        productName: candidate.name,
+        type: 'PRODUCT_DELETED',
+        reason: 'MISSING_FROM_SOURCE',
+      });
+    }
+    return result;
+  }
+
+  private async reconcileSuppressedProducts(
+    transaction: Prisma.TransactionClient,
+    plan: ValidatedSmaregiSyncPlan,
+  ): Promise<SmaregiSuppressionWriteResult> {
+    const result: SmaregiSuppressionWriteResult = {
+      deletedProductCount: 0,
+      retiredProductCount: 0,
+      deletedImages: [],
+      events: [],
+    };
+    for (const suppressed of plan.suppressedProducts) {
+      const current = await transaction.product.findUnique({
+        where: { smaregiProductId: suppressed.smaregiProductId },
+        select: {
+          id: true,
+          smaregiProductId: true,
+          images: { select: { imageUrl: true } },
+          boxProductId: true,
+          boxedProduct: { select: { id: true } },
+          _count: {
+            select: {
+              orderItems: true,
+              inventoryReservations: true,
+              featuredCollectionProducts: true,
+              editorialSections: true,
+            },
+          },
+        },
+      });
+      if (!current) continue;
+      const mustRetire =
+        current._count.orderItems > 0 ||
+        current._count.inventoryReservations > 0 ||
+        current._count.featuredCollectionProducts > 0 ||
+        current._count.editorialSections > 0 ||
+        Boolean(current.boxProductId) ||
+        Boolean(current.boxedProduct);
+      if (mustRetire) {
+        await transaction.product.update({
+          where: { id: current.id },
+          data: { isActive: false, isEcAvailable: false },
+        });
+        result.retiredProductCount += 1;
+        result.events.push({
+          smaregiProductId: current.smaregiProductId,
+          productCode: suppressed.productCode,
+          productName: suppressed.productName,
+          type: 'PRODUCT_SUPPRESSED',
+          reason: 'OFFLINE_ONLY',
+        });
+        continue;
+      }
+      result.deletedImages.push(
+        ...current.images.map((image) => ({
+          productId: current.id,
+          smaregiProductId: current.smaregiProductId,
+          imageUrl: image.imageUrl,
+        })),
+      );
+      await transaction.productImage.deleteMany({
+        where: { productId: current.id },
+      });
+      await transaction.inventoryMirror.deleteMany({
+        where: { productId: current.id },
+      });
+      await transaction.product.delete({ where: { id: current.id } });
+      result.deletedProductCount += 1;
+      result.events.push({
+        smaregiProductId: current.smaregiProductId,
+        productCode: suppressed.productCode,
+        productName: suppressed.productName,
+        type: 'PRODUCT_SUPPRESSED',
+        reason: 'OFFLINE_ONLY',
+      });
     }
     return result;
   }

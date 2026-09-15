@@ -177,6 +177,7 @@ const emptySyncPlan: ValidatedSmaregiSyncPlan = {
   storesUsed: [],
   warnings: { orphanStock: [], negativeStock: [] },
   categories: [],
+  suppressedProducts: [],
   approvedDeferredProducts: [],
   quarantinedProducts: [],
   products: [],

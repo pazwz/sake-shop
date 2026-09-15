@@ -46,6 +46,7 @@ export class SyncService {
     );
     if (!log) {
       return {
+        syncLogId: null,
         status: null,
         outcome: null,
         completedAt: null,
@@ -78,6 +79,11 @@ export class SyncService {
           sourceProductCount: numberField(payload, 'sourceProductCount'),
           sourceIdentityCount: numberField(payload, 'sourceIdentityCount'),
           snapshotComplete: booleanField(payload, 'snapshotComplete'),
+          suppressedProductCount: numberField(payload, 'suppressedProductCount'),
+          syncCandidateProductCount: numberField(
+            payload,
+            'syncCandidateProductCount',
+          ),
           missingProductMode:
             payload.missingProductMode === 'apply' ? 'apply' : 'report',
           missingProductCount: numberField(payload, 'missingProductCount'),
@@ -89,11 +95,20 @@ export class SyncService {
           missingBlockedCount: numberField(payload, 'missingBlockedCount'),
           deletedProductCount: numberField(payload, 'deletedProductCount'),
           retiredProductCount: numberField(payload, 'retiredProductCount'),
+          suppressedDeletedProductCount: numberField(
+            payload,
+            'suppressedDeletedProductCount',
+          ),
+          suppressedRetiredProductCount: numberField(
+            payload,
+            'suppressedRetiredProductCount',
+          ),
           s3DeleteSuccessCount: numberField(payload, 's3DeleteSuccessCount'),
           s3DeleteFailureCount: numberField(payload, 's3DeleteFailureCount'),
         }
       : null;
     return {
+      syncLogId: log.id,
       status: log.status,
       outcome,
       completedAt: (log.completedAt ?? log.createdAt).toISOString(),

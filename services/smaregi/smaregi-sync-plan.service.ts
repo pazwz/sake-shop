@@ -28,6 +28,7 @@ type SmaregiSyncPlanInput = {
   stock: SmaregiStock[];
   standardTaxRates: SmaregiConsumptionTaxRate[];
   reduceTaxRates: SmaregiReduceTaxRate[];
+  suppressedSmaregiProductIds?: ReadonlySet<string>;
 };
 
 export const buildValidatedSmaregiSyncPlan = (
@@ -41,7 +42,19 @@ export const buildValidatedSmaregiSyncPlan = (
     [];
   const quarantinedProducts: ValidatedSmaregiSyncPlan['quarantinedProducts'] =
     [];
-  for (const product of input.products) {
+  const suppressedProducts: ValidatedSmaregiSyncPlan['suppressedProducts'] =
+    [];
+  const suppressedIds = input.suppressedSmaregiProductIds ?? new Set<string>();
+  const syncCandidates = input.products.filter((product) => {
+    if (!suppressedIds.has(product.productId)) return true;
+    suppressedProducts.push({
+      smaregiProductId: product.productId,
+      productCode: product.productCode,
+      productName: product.productName,
+    });
+    return false;
+  });
+  for (const product of syncCandidates) {
     try {
       const resolvedTaxRate = resolveProductTax(
         product,
@@ -135,13 +148,16 @@ export const buildValidatedSmaregiSyncPlan = (
     }),
   );
   const productById = new Map(
-    input.products.map((product) => [product.productId, product]),
+    syncCandidates.map((product) => [product.productId, product]),
   );
   const storeById = new Map(
     approvedStores.map((store) => [store.storeId, store]),
   );
   const stockWarnings = input.stock
-    .filter((stock) => storeById.has(stock.storeId))
+    .filter(
+      (stock) =>
+        storeById.has(stock.storeId) && !suppressedIds.has(stock.productId),
+    )
     .map((stock) => {
       const product = productById.get(stock.productId);
       return {
@@ -165,6 +181,7 @@ export const buildValidatedSmaregiSyncPlan = (
       ),
     },
     categories: input.categories,
+    suppressedProducts,
     approvedDeferredProducts,
     quarantinedProducts,
     products: safeProducts,

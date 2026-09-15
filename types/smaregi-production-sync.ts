@@ -18,6 +18,8 @@ export type SmaregiProductionSyncSummary = {
   sourceProductCount: number;
   sourceIdentityCount: number;
   snapshotComplete: boolean;
+  suppressedProductCount: number;
+  syncCandidateProductCount: number;
   sourceStockCount: number;
   mode: 'report' | 'apply';
   missingProductMode: 'report' | 'apply';
@@ -27,6 +29,8 @@ export type SmaregiProductionSyncSummary = {
   missingBlockedCount: number;
   deletedProductCount: number;
   retiredProductCount: number;
+  suppressedDeletedProductCount: number;
+  suppressedRetiredProductCount: number;
   s3DeleteSuccessCount: number;
   s3DeleteFailureCount: number;
   s3RetainedSharedCount: number;
@@ -45,6 +49,7 @@ export type SmaregiProductionSyncSummary = {
   newOrphanCount: number;
   negativeCount: number;
   warningsCount: number;
+  detailLoggingFailed: boolean;
   errorCode: null;
   errorSummary: null;
   quarantinedProducts: Array<{
@@ -63,6 +68,8 @@ export type SmaregiProductionSyncSkipped = {
   sourceProductCount: 0;
   sourceIdentityCount: 0;
   snapshotComplete: false;
+  suppressedProductCount: 0;
+  syncCandidateProductCount: 0;
   sourceStockCount: 0;
   mode: 'report' | 'apply';
   missingProductMode: 'report' | 'apply';
@@ -72,6 +79,8 @@ export type SmaregiProductionSyncSkipped = {
   missingBlockedCount: 0;
   deletedProductCount: 0;
   retiredProductCount: 0;
+  suppressedDeletedProductCount: 0;
+  suppressedRetiredProductCount: 0;
   s3DeleteSuccessCount: 0;
   s3DeleteFailureCount: 0;
   s3RetainedSharedCount: 0;
@@ -90,11 +99,13 @@ export type SmaregiProductionSyncSkipped = {
   newOrphanCount: 0;
   negativeCount: 0;
   warningsCount: 0;
+  detailLoggingFailed: false;
   errorCode: 'SYNC_ALREADY_RUNNING';
   errorSummary: 'Another production Smaregi sync is already running.';
 };
 
 export type SmaregiProductionSyncStatus = {
+  syncLogId: string | null;
   status: 'PENDING' | 'SUCCESS' | 'FAILED' | 'RETRYING' | null;
   outcome: SmaregiProductionSyncOutcome | 'FAILED' | null;
   completedAt: string | null;
@@ -115,6 +126,8 @@ export type SmaregiProductionSyncStatus = {
     | 'sourceProductCount'
     | 'sourceIdentityCount'
     | 'snapshotComplete'
+    | 'suppressedProductCount'
+    | 'syncCandidateProductCount'
     | 'missingProductMode'
     | 'missingProductCount'
     | 'missingSafeDeleteCount'
@@ -122,6 +135,8 @@ export type SmaregiProductionSyncStatus = {
     | 'missingBlockedCount'
     | 'deletedProductCount'
     | 'retiredProductCount'
+    | 'suppressedDeletedProductCount'
+    | 'suppressedRetiredProductCount'
     | 's3DeleteSuccessCount'
     | 's3DeleteFailureCount'
   > | null;

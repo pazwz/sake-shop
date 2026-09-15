@@ -63,6 +63,7 @@ export function ProductEditor({
   );
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [excluding, setExcluding] = useState(false);
   const [settingsFeedback, setSettingsFeedback] = useState<Feedback | null>(
     null,
   );
@@ -139,6 +140,45 @@ export function ProductEditor({
     } finally {
       busyRef.current = false;
       setSaving(false);
+    }
+  };
+
+  const excludeFromEc = async () => {
+    if (busyRef.current || excluding) return;
+    if (
+      !window.confirm(
+        'この商品をLINXAS ECの同期対象から除外します。スマレジの商品は削除されません。続行しますか？',
+      )
+    )
+      return;
+    busyRef.current = true;
+    setExcluding(true);
+    setSettingsFeedback(null);
+    try {
+      const response = await fetch(
+        `/api/v1/admin/products/${initialProduct.id}/exclusion`,
+        { method: 'POST' },
+      );
+      if (!response.ok)
+        throw new Error(
+          await errorDetail(
+            response,
+            'EC販売対象から除外できませんでした。',
+          ),
+        );
+      router.replace(returnTo);
+      router.refresh();
+    } catch (error) {
+      setSettingsFeedback({
+        kind: 'error',
+        text:
+          error instanceof Error
+            ? error.message
+            : 'EC販売対象から除外できませんでした。',
+      });
+    } finally {
+      busyRef.current = false;
+      setExcluding(false);
     }
   };
 
@@ -449,6 +489,24 @@ export function ProductEditor({
           </p>
         ) : null}
       </section>
+
+      {initialProduct.source === 'smaregi' ? (
+        <section className="mt-8 border border-[#6d2227] p-6 md:p-8">
+          <p className="eyebrow">EC CHANNEL CONTROL</p>
+          <h2 className="serif mt-3 text-2xl">EC販売対象から除外</h2>
+          <p className="mt-3 text-sm leading-6 text-stone-600">
+            スマレジの商品は削除されません。LINXAS ECの同期対象から除外され、次回同期で再作成されません。
+          </p>
+          <button
+            type="button"
+            className="btn mt-5 border border-[#6d2227] text-[#6d2227] disabled:cursor-not-allowed disabled:opacity-50"
+            disabled={excluding || saving || uploading}
+            onClick={() => void excludeFromEc()}
+          >
+            {excluding ? '除外中…' : 'EC販売対象から除外'}
+          </button>
+        </section>
+      ) : null}
 
       <form action={submit} className="mt-8 border line p-6 md:p-8">
         <p className="eyebrow">LINXAS EC SETTINGS</p>

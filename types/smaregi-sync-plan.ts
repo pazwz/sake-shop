@@ -9,6 +9,11 @@ export type ValidatedSmaregiSyncPlan = {
     negativeStock: SmaregiStockAnomaly[];
   };
   categories: SmaregiCategory[];
+  suppressedProducts: Array<{
+    smaregiProductId: string;
+    productCode: string;
+    productName: string;
+  }>;
   approvedDeferredProducts: Array<{
     smaregiProductId: string;
     productCode: string;

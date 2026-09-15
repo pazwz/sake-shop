@@ -170,6 +170,21 @@ GET
 
 ---
 
+## Smaregi 管理（Admin）
+
+すべて OWNER / MANAGER 専用で、Customer / public client は利用できない。
+
+- `POST /api/v1/admin/products/{id}/exclusion`：Smaregi-backed Product を
+  「EC販売対象から除外」として tombstone 化する。Smaregi には write せず、local mirror は
+  business reference がなければ削除、あれば退役する。
+- `GET /api/v1/admin/integrations/smaregi/exclusions`：active EC exclusion 一覧。
+- `DELETE /api/v1/admin/integrations/smaregi/exclusions`：`smaregiProductId` の exclusion を
+  明示解除する。次回同期から通常 candidate になるが、自動公開しない。
+- `GET /api/v1/admin/integrations/smaregi/sync/{syncLogId}/items?page=1&limit=50`：
+  個別 SyncLog の変更・warning明細。最大 100 件/page、未変更データは返さない。
+
+---
+
 ### 搜索
 
 GET

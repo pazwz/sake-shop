@@ -10,7 +10,9 @@ import {
 import { AppError } from '@/lib/errors';
 import { SmaregiDryRunRepository } from '@/repositories/smaregi-dry-run.repository';
 import { SmaregiProductionSyncLockRepository } from '@/repositories/smaregi-production-sync-lock.repository';
+import { SmaregiProductExclusionRepository } from '@/repositories/smaregi-product-exclusion.repository';
 import { SyncRepository } from '@/repositories/sync.repository';
+import { SyncLogItemRepository } from '@/repositories/sync-log-item.repository';
 import { SmaregiAtomicSyncService } from '@/services/smaregi/smaregi-atomic-sync.service';
 import { SmaregiClient } from '@/services/smaregi/smaregi-client';
 import { SmaregiDryRunService } from '@/services/smaregi/smaregi-dry-run.service';
@@ -18,6 +20,7 @@ import { SmaregiProductionValidationService } from '@/services/smaregi/smaregi-p
 import { SmaregiMissingProductService } from '@/services/smaregi/smaregi-missing-product.service';
 import { SmaregiProductImageCleanupService } from '@/services/smaregi/smaregi-product-image-cleanup.service';
 import { buildValidatedSmaregiSyncPlan } from '@/services/smaregi/smaregi-sync-plan.service';
+import { SmaregiSyncLogItemService } from '@/services/smaregi/smaregi-sync-log-item.service';
 import { getSmaregiTargetDate } from '@/services/smaregi/smaregi-tax-resolver';
 import type { SmaregiApiClient } from '@/types/smaregi';
 import type {
@@ -51,6 +54,11 @@ type SnapshotRepository = { getSnapshot(): Promise<SmaregiDryRunSnapshot> };
 type AtomicSync = Pick<SmaregiAtomicSyncService, 'executeApprovedSync'>;
 type MissingProducts = Pick<SmaregiMissingProductService, 'buildPlan'>;
 type ImageCleanup = Pick<SmaregiProductImageCleanupService, 'cleanup'>;
+type DetailLogs = Pick<SyncLogItemRepository, 'createMany'>;
+type Exclusions = Pick<
+  SmaregiProductExclusionRepository,
+  'findActiveSmaregiProductIds'
+>;
 type PreparedSync = {
   plan: ValidatedSmaregiSyncPlan;
   comparison: SmaregiDryRunResult;
@@ -59,6 +67,7 @@ type PreparedSync = {
   snapshotComplete: true;
   sourceStockCount: number;
   missingPlan: SmaregiMissingProductPlan;
+  storeNames: Map<string, string | null>;
 };
 type CompletedSync = PreparedSync & {
   writeResult: SmaregiAtomicSyncResult;
@@ -81,6 +90,9 @@ export class ProductionSmaregiSyncService {
     private readonly validation = new SmaregiProductionValidationService(),
     private readonly missingProducts: MissingProducts = new SmaregiMissingProductService(),
     private readonly imageCleanup: ImageCleanup = new SmaregiProductImageCleanupService(),
+    private readonly exclusions: Exclusions = new SmaregiProductExclusionRepository(),
+    private readonly detailLogs: DetailLogs = new SyncLogItemRepository(),
+    private readonly detailBuilder = new SmaregiSyncLogItemService(),
     private readonly missingMode: () => SmaregiMissingProductMode = getSmaregiMissingProductMode,
   ) {}
 
@@ -103,6 +115,8 @@ export class ProductionSmaregiSyncService {
       sourceIdentityCount: 0,
       snapshotComplete: false,
       sourceStockCount: 0,
+      suppressedProductCount: 0,
+      syncCandidateProductCount: 0,
       mode: this.missingMode(),
       missingProductMode: this.missingMode(),
       missingProductCount: 0,
@@ -111,6 +125,8 @@ export class ProductionSmaregiSyncService {
       missingBlockedCount: 0,
       deletedProductCount: 0,
       retiredProductCount: 0,
+      suppressedDeletedProductCount: 0,
+      suppressedRetiredProductCount: 0,
       s3DeleteSuccessCount: 0,
       s3DeleteFailureCount: 0,
       s3RetainedSharedCount: 0,
@@ -129,6 +145,7 @@ export class ProductionSmaregiSyncService {
       newOrphanCount: 0,
       negativeCount: 0,
       warningsCount: 0,
+      detailLoggingFailed: false,
       errorCode: 'SYNC_ALREADY_RUNNING',
       errorSummary: 'Another production Smaregi sync is already running.',
     };
@@ -167,10 +184,28 @@ export class ProductionSmaregiSyncService {
           deletedProductCount: 0,
           retiredProductCount: 0,
           deletedImages: [],
+          events: [],
+        },
+        suppression: rawWriteResult.suppression ?? {
+          deletedProductCount: 0,
+          retiredProductCount: 0,
+          deletedImages: [],
+          events: [],
         },
       };
       const cleanupResult = await this.imageCleanup.cleanup(
-        writeResult.reconciliation,
+        {
+          deletedProductCount:
+            writeResult.reconciliation.deletedProductCount +
+            writeResult.suppression.deletedProductCount,
+          retiredProductCount:
+            writeResult.reconciliation.retiredProductCount +
+            writeResult.suppression.retiredProductCount,
+          deletedImages: [
+            ...writeResult.reconciliation.deletedImages,
+            ...writeResult.suppression.deletedImages,
+          ],
+        },
       );
       const completed: CompletedSync = {
         ...prepared,
@@ -178,6 +213,19 @@ export class ProductionSmaregiSyncService {
         cleanupResult,
       };
       const summary = this.summary(trigger, startedAt, new Date(), completed);
+      try {
+        await this.detailLogs.createMany(
+          log.id,
+          this.detailBuilder.build({
+            plan: completed.plan,
+            comparison: completed.comparison,
+            writeResult,
+            storeNames: completed.storeNames,
+          }),
+        );
+      } catch {
+        summary.detailLoggingFailed = true;
+      }
       await this.logs.succeed(
         log.id,
         summary as unknown as Prisma.InputJsonValue,
@@ -245,6 +293,8 @@ export class ProductionSmaregiSyncService {
     });
     const snapshot = await this.snapshots.getSnapshot();
     this.validation.validateSnapshot(snapshot, products);
+    const suppressedSmaregiProductIds =
+      await this.exclusions.findActiveSmaregiProductIds();
     const plan = buildValidatedSmaregiSyncPlan({
       targetDate,
       syncedAt: new Date(),
@@ -254,6 +304,7 @@ export class ProductionSmaregiSyncService {
       stock,
       standardTaxRates,
       reduceTaxRates,
+      suppressedSmaregiProductIds,
     });
     this.validation.validatePlan(plan);
     const missingPlan = await this.missingProducts.buildPlan(
@@ -295,6 +346,9 @@ export class ProductionSmaregiSyncService {
       snapshotComplete: productSnapshot.complete,
       sourceStockCount: stock.length,
       missingPlan,
+      storeNames: new Map(
+        stores.map((store) => [store.storeId, store.storeName ?? null]),
+      ),
     };
   }
 
@@ -334,6 +388,8 @@ export class ProductionSmaregiSyncService {
         sourceIdentityCount: 0,
         snapshotComplete: false,
         sourceStockCount: 0,
+        suppressedProductCount: 0,
+        syncCandidateProductCount: 0,
         mode: this.missingMode(),
         missingProductMode: this.missingMode(),
         missingProductCount: 0,
@@ -342,6 +398,8 @@ export class ProductionSmaregiSyncService {
         missingBlockedCount: 0,
         deletedProductCount: 0,
         retiredProductCount: 0,
+        suppressedDeletedProductCount: 0,
+        suppressedRetiredProductCount: 0,
         s3DeleteSuccessCount: 0,
         s3DeleteFailureCount: 0,
         s3RetainedSharedCount: 0,
@@ -360,6 +418,7 @@ export class ProductionSmaregiSyncService {
         newOrphanCount: 0,
         negativeCount: 0,
         warningsCount: 0,
+        detailLoggingFailed: false,
       };
     }
     const counts = this.syncCounts(prepared);
@@ -385,6 +444,8 @@ export class ProductionSmaregiSyncService {
       sourceIdentityCount: prepared.sourceIdentityCount,
       snapshotComplete: prepared.snapshotComplete,
       sourceStockCount: prepared.sourceStockCount,
+      suppressedProductCount: plan.suppressedProducts.length,
+      syncCandidateProductCount: plan.products.length,
       mode: prepared.missingPlan.mode,
       missingProductMode: prepared.missingPlan.mode,
       missingProductCount:
@@ -398,6 +459,10 @@ export class ProductionSmaregiSyncService {
         completed?.writeResult.reconciliation.deletedProductCount ?? 0,
       retiredProductCount:
         completed?.writeResult.reconciliation.retiredProductCount ?? 0,
+      suppressedDeletedProductCount:
+        completed?.writeResult.suppression.deletedProductCount ?? 0,
+      suppressedRetiredProductCount:
+        completed?.writeResult.suppression.retiredProductCount ?? 0,
       s3DeleteSuccessCount: completed?.cleanupResult.successCount ?? 0,
       s3DeleteFailureCount: completed?.cleanupResult.failureCount ?? 0,
       s3RetainedSharedCount: completed?.cleanupResult.retainedSharedCount ?? 0,
@@ -424,6 +489,7 @@ export class ProductionSmaregiSyncService {
         plan.warnings.negativeStock.length +
         prepared.missingPlan.blocked.length +
         (completed?.cleanupResult.failureCount ?? 0),
+      detailLoggingFailed: false,
     };
   }
 }

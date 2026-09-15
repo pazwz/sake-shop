@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { SmaregiSyncLogDetails } from '@/components/admin/smaregi-sync-log-details';
 import type { SmaregiProductionSyncStatus } from '@/types/smaregi-production-sync';
 
 type ApiPayload = {
@@ -86,18 +87,25 @@ export function ProductionSmaregiSyncPanel({
         )}
       </div>
       {status.summary ? (
-        <p className="mt-4 text-xs leading-6 text-stone-600">
-          商品 作成 {status.summary.productsCreated} / 更新{' '}
-          {status.summary.productsUpdated}、在庫 作成{' '}
-          {status.summary.inventoryCreated} / 更新{' '}
-          {status.summary.inventoryUpdated} / ゼロ更新{' '}
-          {status.summary.inventoryZeroed}、警告 {status.summary.warningsCount}
-          （税設定保留 {status.summary.productsDeferred}、隔離{' '}
-          {status.summary.productsQuarantined}、新規孤立在庫{' '}
-          {status.summary.newOrphanCount}、既知孤立在庫{' '}
-          {status.summary.knownOrphanCount}、負在庫{' '}
-          {status.summary.negativeCount}）
-        </p>
+        <div className="mt-4 text-xs leading-6 text-stone-600">
+          <p>
+            ソース {status.summary.sourceProductCount}件（同期候補{' '}
+            {status.summary.syncCandidateProductCount}件、EC販売対象外{' '}
+            {status.summary.suppressedProductCount}件）、商品 作成{' '}
+            {status.summary.productsCreated} / 更新 {status.summary.productsUpdated}、在庫 作成{' '}
+            {status.summary.inventoryCreated} / 更新 {status.summary.inventoryUpdated} / ゼロ更新{' '}
+            {status.summary.inventoryZeroed}、削除 {status.summary.deletedProductCount} / 退役{' '}
+            {status.summary.retiredProductCount}、警告 {status.summary.warningsCount}
+            （税設定保留 {status.summary.productsDeferred}、隔離{' '}
+            {status.summary.productsQuarantined}、新規孤立在庫{' '}
+            {status.summary.newOrphanCount}、既知孤立在庫{' '}
+            {status.summary.knownOrphanCount}、負在庫{' '}
+            {status.summary.negativeCount}）
+          </p>
+          {status.syncLogId ? (
+            <SmaregiSyncLogDetails syncLogId={status.syncLogId} />
+          ) : null}
+        </div>
       ) : null}
       {status.errorMessage ? (
         <p className="mt-3 text-sm text-red-700">{status.errorMessage}</p>

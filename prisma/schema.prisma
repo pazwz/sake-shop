@@ -127,6 +127,25 @@ enum SyncStatus {
   RETRYING
 }
 
+enum SmaregiProductExclusionReason {
+  OFFLINE_ONLY
+}
+
+enum SyncLogItemType {
+  PRODUCT_CREATED
+  PRODUCT_UPDATED
+  INVENTORY_CREATED
+  INVENTORY_UPDATED
+  INVENTORY_ZEROED
+  PRODUCT_DELETED
+  PRODUCT_RETIRED
+  PRODUCT_SUPPRESSED
+  TAX_DEFERRED
+  QUARANTINED
+  ORPHAN_INVENTORY
+  NEGATIVE_STOCK
+}
+
 model Category {
   id                String     @id @default(cuid())
   smaregiCategoryId String?    @unique @map("smaregi_category_id")
@@ -484,18 +503,19 @@ model EditorialSection {
 }
 
 model AdminUser {
-  id                 String               @id @default(cuid())
-  email              String               @unique
-  username           String?              @unique
-  passwordHash       String?              @map("password_hash")
-  name               String
-  role               AdminRole            @default(STAFF)
-  isActive           Boolean              @default(true) @map("is_active")
-  lastLoginAt        DateTime?            @map("last_login_at")
-  createdAt          DateTime             @default(now()) @map("created_at")
-  updatedAt          DateTime             @updatedAt @map("updated_at")
-  auditLogs          AuditLog[]
-  createdCollections FeaturedCollection[] @relation("FeaturedCollectionCreator")
+  id                       String                    @id @default(cuid())
+  email                    String                    @unique
+  username                 String?                   @unique
+  passwordHash             String?                   @map("password_hash")
+  name                     String
+  role                     AdminRole                 @default(STAFF)
+  isActive                 Boolean                   @default(true) @map("is_active")
+  lastLoginAt              DateTime?                 @map("last_login_at")
+  createdAt                DateTime                  @default(now()) @map("created_at")
+  updatedAt                DateTime                  @updatedAt @map("updated_at")
+  auditLogs                AuditLog[]
+  createdCollections       FeaturedCollection[]      @relation("FeaturedCollectionCreator")
+  smaregiProductExclusions SmaregiProductExclusion[] @relation("SmaregiProductExclusionCreator")
 
   @@map("admin_users")
 }
@@ -533,12 +553,49 @@ model SyncLog {
   completedAt     DateTime?     @map("completed_at")
   createdAt       DateTime      @default(now()) @map("created_at")
   updatedAt       DateTime      @updatedAt @map("updated_at")
+  items           SyncLogItem[]
 
   @@index([status])
   @@index([entityType])
   @@index([entityId])
   @@index([createdAt])
   @@map("sync_logs")
+}
+
+model SyncLogItem {
+  id               String          @id @default(cuid())
+  syncLogId        String          @map("sync_log_id")
+  type             SyncLogItemType
+  smaregiProductId String?         @map("smaregi_product_id")
+  productCode      String?         @map("product_code")
+  productName      String?         @map("product_name")
+  storeId          String?         @map("store_id")
+  storeName        String?         @map("store_name")
+  reason           String?
+  changes          Json?
+  createdAt        DateTime        @default(now()) @map("created_at")
+  syncLog          SyncLog         @relation(fields: [syncLogId], references: [id], onDelete: Cascade)
+
+  @@index([syncLogId])
+  @@index([type])
+  @@index([createdAt])
+  @@map("sync_log_items")
+}
+
+model SmaregiProductExclusion {
+  id                  String                        @id @default(cuid())
+  smaregiProductId    String                        @unique @map("smaregi_product_id")
+  productCode         String?                       @map("product_code")
+  productNameSnapshot String?                       @map("product_name_snapshot")
+  reason              SmaregiProductExclusionReason
+  createdById         String?                       @map("created_by_id")
+  revokedAt           DateTime?                     @map("revoked_at")
+  createdAt           DateTime                      @default(now()) @map("created_at")
+  updatedAt           DateTime                      @updatedAt @map("updated_at")
+  createdBy           AdminUser?                    @relation("SmaregiProductExclusionCreator", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([revokedAt])
+  @@map("smaregi_product_exclusions")
 }
 
 model EmailOutbox {

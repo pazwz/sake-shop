@@ -147,6 +147,23 @@ Website DB
 
 Frontend
 
+Smaregi の商品存在は POS 主データとして扱うが、LINXAS EC への取り込み対象とは別である。
+`SmaregiProductExclusion` は LINXAS が所有するチャネル単位の tombstone であり、
+active exclusion の `smaregiProductId` は完全な Smaregi snapshot identity には残す一方、
+Product / InventoryMirror の create、update、復元、zero update から除外する。解除は明示操作
+だけで行い、再取り込みされた Product は常に `isEcAvailable=false` から開始する。
+
+Smaregi sync は raw source snapshot の pagination・identity・completeness 検証後に active
+exclusion を読む。raw identity set を先に filter して missing reconciliation を実行してはならない。
+source に存在し active exclusion がある Product は `SUPPRESSED`、source snapshot に存在しない
+Product は missing reconciliation として区別する。後者は business reference がなければ local
+mirror を削除し、reference があれば `isActive=false` / `isEcAvailable=false` へ退役する。
+
+各 production sync の実変更と warning は `SyncLog` に紐づく `SyncLogItem` に記録する。未変更
+Product / Inventory は記録しない。SyncLogItem の batch insert は main Product/Inventory transaction
+の commit 後に行い、observability の書き込み失敗は主同期を rollback しない。明細は 30 日保持を
+目標とし、既存 maintenance job に retention を接続するまで cleanup repository API を利用する。
+
 ---
 
 库存

@@ -22,6 +22,7 @@ const plan: ValidatedSmaregiSyncPlan = {
       reduceTaxId: null,
     },
   ],
+  suppressedProducts: [],
   approvedDeferredProducts: [],
   quarantinedProducts: [],
   products: [
@@ -109,6 +110,13 @@ test('writes Category, Product, and Inventory in one ordered transaction', async
       deletedProductCount: 0,
       retiredProductCount: 0,
       deletedImages: [],
+      events: [],
+    },
+    suppression: {
+      deletedProductCount: 0,
+      retiredProductCount: 0,
+      deletedImages: [],
+      events: [],
     },
   });
 });

@@ -13,8 +13,9 @@ type AtomicSyncPersistence = {
     plan: ValidatedSmaregiSyncPlan,
     missingPlan?: SmaregiMissingProductPlan,
   ): Promise<
-    Omit<SmaregiAtomicSyncResult, 'reconciliation'> & {
+    Omit<SmaregiAtomicSyncResult, 'reconciliation' | 'suppression'> & {
       reconciliation?: SmaregiAtomicSyncResult['reconciliation'];
+      suppression?: SmaregiAtomicSyncResult['suppression'];
     }
   >;
 };

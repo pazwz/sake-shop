@@ -1,8 +1,5 @@
 import { SmaregiMissingProductRepository } from '@/repositories/smaregi-missing-product.repository';
-import type {
-  SmaregiMissingProductWriteResult,
-  SmaregiS3CleanupResult,
-} from '@/types/smaregi-missing-product';
+import type { SmaregiS3CleanupResult } from '@/types/smaregi-missing-product';
 
 type ImageReferenceRepository = Pick<
   SmaregiMissingProductRepository,
@@ -22,7 +19,15 @@ export class SmaregiProductImageCleanupService {
   ) {}
 
   public async cleanup(
-    writeResult: SmaregiMissingProductWriteResult,
+    writeResult: {
+      deletedProductCount?: number;
+      retiredProductCount?: number;
+      deletedImages: Array<{
+        productId?: string;
+        smaregiProductId?: string;
+        imageUrl: string;
+      }>;
+    },
   ): Promise<SmaregiS3CleanupResult> {
     const failures: SmaregiS3CleanupResult['failures'] = [];
     let successCount = 0;

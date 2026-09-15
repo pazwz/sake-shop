@@ -1,10 +1,14 @@
 import { AdminRole } from '@prisma/client';
 import { redirect } from 'next/navigation';
 import { ProductionSmaregiSyncPanel } from '@/components/admin/production-smaregi-sync-panel';
+import { SmaregiSyncLogDetails } from '@/components/admin/smaregi-sync-log-details';
+import { SmaregiProductExclusionsPanel } from '@/components/admin/smaregi-product-exclusions-panel';
 import { getCurrentAdmin } from '@/services/admin-authorization.service';
 import { SyncService } from '@/services/sync.service';
+import { SmaregiProductExclusionService } from '@/services/smaregi-product-exclusion.service';
 
 const service = new SyncService();
+const exclusions = new SmaregiProductExclusionService();
 
 const formatDate = (value: Date | null | undefined) =>
   value ? value.toLocaleString('ja-JP') : '未実行';
@@ -12,9 +16,10 @@ const formatDate = (value: Date | null | undefined) =>
 export default async function SmaregiIntegrationPage() {
   const admin = await getCurrentAdmin();
   if (!admin || admin.role === AdminRole.STAFF) redirect('/admin');
-  const [status, productionStatus] = await Promise.all([
+  const [status, productionStatus, activeExclusions] = await Promise.all([
     service.getSmaregiStatus(),
     service.getProductionSmaregiSyncStatus(),
+    exclusions.listActive(),
   ]);
 
   return (
@@ -58,15 +63,26 @@ export default async function SmaregiIntegrationPage() {
         </div>
       </dl>
       <ProductionSmaregiSyncPanel status={productionStatus} canSync />
+      <SmaregiProductExclusionsPanel
+        initialItems={activeExclusions.map((item) => ({
+          ...item,
+          createdAt: item.createdAt.toISOString(),
+        }))}
+      />
       <h2 className="serif mt-14 text-3xl">Recent SyncLog</h2>
       <div className="mt-6 divide-y border-y line text-sm">
         {status.recentLogs.map((log) => (
-          <div className="grid gap-2 py-4 md:grid-cols-5" key={log.id}>
-            <span>{log.entityType}</span>
-            <span>{log.action}</span>
-            <span>{log.status}</span>
-            <span>Retry {log.retryCount}</span>
-            <span>{formatDate(log.completedAt ?? log.createdAt)}</span>
+          <div className="py-4" key={log.id}>
+            <div className="grid gap-2 md:grid-cols-5">
+              <span>{log.entityType}</span>
+              <span>{log.action}</span>
+              <span>{log.status}</span>
+              <span>Retry {log.retryCount}</span>
+              <span>{formatDate(log.completedAt ?? log.createdAt)}</span>
+            </div>
+            {log.entityType === 'PRODUCTION_SYNC' ? (
+              <SmaregiSyncLogDetails syncLogId={log.id} />
+            ) : null}
           </div>
         ))}
         {status.recentLogs.length === 0 ? (

@@ -70,6 +70,8 @@ Last Update: 2026-08-14
 | admin_users                  | 后台用户               |
 | audit_logs                   | 操作日志               |
 | sync_logs                    | API同步日志            |
+| sync_log_items               | Smaregi 同步的実変更・warning明細 |
+| smaregi_product_exclusions   | LINXAS EC channel-level Smaregi 商品排除 tombstone |
 | email_verification_tokens    | 邮箱验证 token hash    |
 | password_reset_tokens        | 密码重置 token hash    |
 | email_outbox                 | 异步邮件投递队列       |
@@ -148,6 +150,14 @@ AuditLog
 ---
 
 SyncLog
+
+↓
+
+SyncLogItem
+
+SmaregiProductExclusion は Product から独立して `smaregi_product_id` を unique に保持する。
+local Product を安全に削除した後も exclusion は残るため、Smaregi に同じ商品が存在しても次回同期で
+再作成されない。`revoked_at` が null の record だけが active である。
 
 ---
 

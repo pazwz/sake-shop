@@ -169,3 +169,15 @@ The local environment has no Smaregi environment, contract ID, client ID,
 client secret, or store ID configured. Phase A was verified with
 `MockSmaregiClient` and automated tests. Mock verification is not external API
 verification.
+## EC channel suppression and sync detail
+
+Smaregi production read path always validates the complete raw Product snapshot before it reads
+LINXAS-owned active exclusions. An active `SmaregiProductExclusion` keeps the raw identity in the
+snapshot but excludes that identity from normal Product and InventoryMirror mutations. It is neither
+missing, deferred, quarantined nor orphan stock. Missing reconciliation remains reserved for identities
+that are absent from the complete raw Smaregi snapshot.
+
+`SyncLogItem` records only real Product/Inventory mutations, missing delete/retire actions, suppression
+actions that changed local state, and warning details. Details are fetched by SyncLog id with pagination.
+They are operational records, targeted for 30-day retention; a future maintenance job should call the
+repository cleanup method.
