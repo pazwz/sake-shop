@@ -79,7 +79,7 @@ export class SmaregiProductExclusionRepository {
     });
   }
 
-  public async applyForProduct(productId: string, createdById: string) {
+  public async applyForProduct(productId: string, createdById?: string) {
     return this.database.$transaction(async (transaction) => {
       const product = await transaction.product.findUnique({
         where: { id: productId },

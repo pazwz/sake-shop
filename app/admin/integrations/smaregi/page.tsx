@@ -80,7 +80,9 @@ export default async function SmaregiIntegrationPage() {
               <span>Retry {log.retryCount}</span>
               <span>{formatDate(log.completedAt ?? log.createdAt)}</span>
             </div>
-            {log.entityType === 'PRODUCTION_SYNC' ? (
+            {['PRODUCTION_SYNC', 'EC_PRODUCT_EXCLUSION'].includes(
+              log.entityType,
+            ) ? (
               <SmaregiSyncLogDetails syncLogId={log.id} />
             ) : null}
           </div>

@@ -211,6 +211,8 @@ export class SmaregiAtomicSyncRepository {
         select: {
           id: true,
           smaregiProductId: true,
+          isActive: true,
+          isEcAvailable: true,
           images: { select: { imageUrl: true } },
           boxProductId: true,
           boxedProduct: { select: { id: true } },
@@ -242,6 +244,8 @@ export class SmaregiAtomicSyncRepository {
         Boolean(current.boxProductId) ||
         Boolean(current.boxedProduct);
       if (mustRetire) {
+        if (current.isActive === false && current.isEcAvailable === false)
+          continue;
         await transaction.product.update({
           where: { id: current.id },
           data: { isActive: false, isEcAvailable: false },
@@ -298,6 +302,8 @@ export class SmaregiAtomicSyncRepository {
         select: {
           id: true,
           smaregiProductId: true,
+          isActive: true,
+          isEcAvailable: true,
           images: { select: { imageUrl: true } },
           boxProductId: true,
           boxedProduct: { select: { id: true } },
@@ -320,6 +326,8 @@ export class SmaregiAtomicSyncRepository {
         Boolean(current.boxProductId) ||
         Boolean(current.boxedProduct);
       if (mustRetire) {
+        if (current.isActive === false && current.isEcAvailable === false)
+          continue;
         await transaction.product.update({
           where: { id: current.id },
           data: { isActive: false, isEcAvailable: false },
