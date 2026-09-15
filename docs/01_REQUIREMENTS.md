@@ -89,10 +89,17 @@ Checkout 的 customerId 只能来自该 session。消费者订单列表与详情
 Customer ownership 限定；他人订单与不存在订单均返回 404。订单创建的 ACTIVE reservation
 默认 30 分钟到期，支付成功确认 hold，支付失败/取消释放，履约完成后消费。
 
-新注册 Customer 同时建立 email verification token 与 EmailOutbox。验证 token、password
-reset token 与 Newsletter 退订 token 的 raw value 禁止保存或记录；数据库只保存 hash。
-密码重置成功后必须撤销该 Customer 的全部 session。邮件 Provider 为 Resend，但业务
-transaction 只能写 EmailOutbox，不能在 transaction 内调用外部邮件 API。
+新注册 Customer 同时建立 email verification token 与 EmailOutbox，但在邮箱确认前不得
+建立 CustomerSession 或登录。验证成功时以一次性 token 在同一 transaction 写
+emailVerifiedAt、失效其余验证 token、建立首个 Session。验证 token、password reset token
+与 Newsletter 退订 token 的 raw value 禁止保存或记录；数据库只保存 hash。密码修改撤销
+全部旧 Session 并轮换当前设备 Session；密码重置撤销全部 Session。邮件 Provider 为 Resend，
+但业务 transaction 只能写 EmailOutbox，不能在 transaction 内调用外部邮件 API。
+
+My Page 提供会員情報、注文履歴、お届け先、メール配信設定、セキュリティ与 Logout。
+CustomerAddress 的 CRUD 必须按 Session customerId 限定，并通过 Customer 行锁保证同一会员
+最多一个默认地址；删除默认地址时按最早建立的剩余地址补位。NewsletterSubscription 是
+配信 consent 的 Source of Truth，Resend Contact 仅是异步 mirror，其失败不能回滚 Neon 偏好。
 
 ---
 

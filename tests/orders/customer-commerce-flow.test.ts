@@ -19,15 +19,15 @@ test('customer commerce integration: auth, checkout ownership, history and faile
       email: string;
       phone: null;
       passwordHash: string;
+      emailVerifiedAt: Date;
     }
   >();
   const sessions = new Map<string, string>();
   const authRepository = {
-    registerWithSession: async (input: {
+    registerPendingVerification: async (input: {
       name: string;
       email: string;
       passwordHash: string;
-      tokenHash: string;
     }) => {
       const customer = {
         id: `customer-${customers.size + 1}`,
@@ -35,9 +35,9 @@ test('customer commerce integration: auth, checkout ownership, history and faile
         email: input.email,
         phone: null,
         passwordHash: input.passwordHash,
+        emailVerifiedAt: new Date(),
       };
       customers.set(input.email, customer);
-      sessions.set(input.tokenHash, customer.id);
       const { passwordHash: _passwordHash, ...result } = customer;
       return result;
     },
@@ -58,15 +58,15 @@ test('customer commerce integration: auth, checkout ownership, history and faile
     },
   };
   const auth = new CustomerAuthService(authRepository as never);
-  const registered = await auth.register({
+  await auth.register({
     name: 'Buyer A',
     email: 'buyer-a@example.com',
     password: 'long-password-a',
   });
-  const loggedIn = await auth.login(
-    { email: 'buyer-a@example.com', password: 'long-password-a' },
-    registered.token,
-  );
+  const loggedIn = await auth.login({
+    email: 'buyer-a@example.com',
+    password: 'long-password-a',
+  });
   const current = await auth.getCustomer(loggedIn.token);
   assert.equal(current?.id, 'customer-1');
 
@@ -221,12 +221,16 @@ test('customer commerce integration: auth, checkout ownership, history and faile
   );
   assert.equal(reservationStatus, 'RELEASED');
 
-  const buyerB = await auth.register({
+  await auth.register({
     name: 'Buyer B',
     email: 'buyer-b@example.com',
     password: 'long-password-b',
   });
-  const currentB = await auth.getCustomer(buyerB.token);
+  const buyerBLogin = await auth.login({
+    email: 'buyer-b@example.com',
+    password: 'long-password-b',
+  });
+  const currentB = await auth.getCustomer(buyerBLogin.token);
   const otherCustomer = new CustomerOrderAccessService(
     { findOwnedByOrderNumber: async () => null } as never,
     async () => currentB!,

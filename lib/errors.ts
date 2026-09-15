@@ -43,3 +43,12 @@ export class ForbiddenError extends AppError {
     this.name = 'ForbiddenError';
   }
 }
+
+export class EmailNotVerifiedError extends AppError {
+  public constructor(
+    message = 'メールアドレスの確認が完了していません。確認メールをご確認ください。',
+  ) {
+    super(message, 'EMAIL_NOT_VERIFIED', 403);
+    this.name = 'EmailNotVerifiedError';
+  }
+}

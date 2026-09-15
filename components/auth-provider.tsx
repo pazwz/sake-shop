@@ -15,7 +15,7 @@ export type Member = {
   email: string;
   phone: string | null;
 };
-type AuthResult = { ok: boolean; message?: string };
+type AuthResult = { ok: boolean; message?: string; code?: string };
 type Auth = {
   member: Member | null;
   ready: boolean;
@@ -26,6 +26,7 @@ type Auth = {
     password: string,
     marketingOptIn: boolean,
   ): Promise<AuthResult>;
+  refresh(): Promise<void>;
   logout(): Promise<void>;
 };
 
@@ -45,6 +46,9 @@ const requestAuth = async (path: string, body: object) => {
       message: response.ok
         ? undefined
         : (payload.error?.detail as string | undefined),
+      code: response.ok
+        ? undefined
+        : (payload.error?.code as string | undefined),
     };
   } catch {
     return {
@@ -58,21 +62,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [member, setMember] = useState<Member | null>(null);
   const [ready, setReady] = useState(false);
 
+  const refresh = useCallback(async () => {
+    try {
+      const response = await fetch('/api/v1/customer/me', {
+        cache: 'no-store',
+      });
+      const payload = await response.json();
+      setMember(response.ok ? payload.data : null);
+    } catch {
+      setMember(null);
+    }
+  }, []);
+
   useEffect(() => {
     let active = true;
-    fetch('/api/v1/customer/me', { cache: 'no-store' })
-      .then(async (response) => ({ response, payload: await response.json() }))
-      .then(({ response, payload }) => {
-        if (active && response.ok) setMember(payload.data);
-      })
-      .catch(() => undefined)
-      .finally(() => {
-        if (active) setReady(true);
-      });
+    void refresh().finally(() => {
+      if (active) setReady(true);
+    });
     return () => {
       active = false;
     };
-  }, []);
+  }, [refresh]);
 
   const login = useCallback(async (email: string, password: string) => {
     const result = await requestAuth('/api/v1/customer/login', {
@@ -80,7 +90,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       password,
     });
     if (result.ok && result.member) setMember(result.member);
-    return { ok: result.ok, message: result.message };
+    return { ok: result.ok, message: result.message, code: result.code };
   }, []);
 
   const register = useCallback(
@@ -96,8 +106,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         password,
         marketingOptIn,
       });
-      if (result.ok && result.member) setMember(result.member);
-      return { ok: result.ok, message: result.message };
+      return { ok: result.ok, message: result.message, code: result.code };
     },
     [],
   );
@@ -108,8 +117,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const value = useMemo<Auth>(
-    () => ({ member, ready, login, register, logout }),
-    [member, ready, login, register, logout],
+    () => ({ member, ready, login, register, refresh, logout }),
+    [member, ready, login, register, refresh, logout],
   );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

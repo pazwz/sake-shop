@@ -36,4 +36,22 @@ export class NewsletterService {
     if (!result) throw new UnauthorizedError('退会リンクが無効です。');
     return { unsubscribed: true };
   }
+
+  async getCustomerPreference(email: string) {
+    const preference = await this.newsletters.getStatus(email);
+    return {
+      subscribed: preference?.status === 'SUBSCRIBED',
+      consentAt: preference?.consentAt ?? null,
+      unsubscribedAt: preference?.unsubscribedAt ?? null,
+    };
+  }
+
+  async setCustomerPreference(email: string, subscribed: boolean) {
+    if (subscribed) {
+      await this.subscribe(email, 'CUSTOMER_ACCOUNT');
+      return { subscribed: true };
+    }
+    await this.newsletters.unsubscribeByEmail(email, new Date());
+    return { subscribed: false };
+  }
 }

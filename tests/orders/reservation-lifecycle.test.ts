@@ -134,7 +134,7 @@ test('duplicate success webhook does not transition reservation twice', async ()
 test('customer address lookup always scopes by customer id', async () => {
   let scope: string[] = [];
   const service = new CustomerAddressService({
-    findOwnedAddress: async (customerId: string, addressId: string) => {
+    findOwned: async (customerId: string, addressId: string) => {
       scope = [customerId, addressId];
       return null;
     },

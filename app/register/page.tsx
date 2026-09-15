@@ -1,8 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { Suspense, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { useAuth } from '@/components/auth-provider';
 import { FormFieldError } from '@/components/form-field-error';
 import {
@@ -10,7 +9,6 @@ import {
   invalidFieldClass,
   isValidEmail,
 } from '@/lib/form-validation';
-import { safeCustomerRedirect } from '@/lib/customer-navigation';
 
 type RegisterErrors = {
   name?: string;
@@ -20,17 +18,11 @@ type RegisterErrors = {
 };
 
 export default function Register() {
-  return (
-    <Suspense fallback={null}>
-      <RegisterForm />
-    </Suspense>
-  );
+  return <RegisterForm />;
 }
 
 function RegisterForm() {
   const { register } = useAuth();
-  const router = useRouter();
-  const params = useSearchParams();
   const formRef = useRef<HTMLFormElement>(null);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -38,6 +30,9 @@ function RegisterForm() {
   const [marketingOptIn, setMarketingOptIn] = useState(false);
   const [errors, setErrors] = useState<RegisterErrors>({});
   const [submitting, setSubmitting] = useState(false);
+  const [registeredEmail, setRegisteredEmail] = useState('');
+  const [resendMessage, setResendMessage] = useState('');
+  const [resending, setResending] = useState(false);
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -70,11 +65,58 @@ function RegisterForm() {
       setErrors({ form: result.message || '会員登録に失敗しました。' });
       return;
     }
-    router.push(safeCustomerRedirect(params.get('redirect')));
+    setRegisteredEmail(email.trim());
   };
 
   const fieldClass = (message?: string) =>
     `input mt-2 ${message ? invalidFieldClass : ''}`;
+
+  if (registeredEmail)
+    return (
+      <div className="wrap max-w-xl py-16 md:py-24">
+        <p className="eyebrow">Check your email</p>
+        <h1 className="serif mt-4 text-4xl">確認メールを送信しました</h1>
+        <p className="mt-6 text-sm leading-7 text-stone-600">
+          メール内のリンクから確認を完了すると、マイページへログインできます。
+        </p>
+        <button
+          type="button"
+          className="btn btn-outline mt-8"
+          disabled={resending}
+          onClick={async () => {
+            if (resending) return;
+            setResending(true);
+            setResendMessage('送信中…');
+            try {
+              const response = await fetch(
+                '/api/v1/customer/verification/resend',
+                {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ email: registeredEmail }),
+                },
+              );
+              const payload = await response.json();
+              setResendMessage(
+                payload.data?.message ?? '確認メールの再送を受け付けました。',
+              );
+            } catch {
+              setResendMessage('通信に失敗しました。もう一度お試しください。');
+            } finally {
+              setResending(false);
+            }
+          }}
+        >
+          {resending ? '送信中…' : '確認メールを再送する'}
+        </button>
+        {resendMessage ? (
+          <p className="mt-4 text-sm text-stone-600">{resendMessage}</p>
+        ) : null}
+        <Link href="/login" className="mt-8 block text-sm underline">
+          ログインへ
+        </Link>
+      </div>
+    );
 
   return (
     <div className="wrap max-w-xl py-16 md:py-24">

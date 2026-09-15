@@ -66,7 +66,7 @@ test('newsletter unsubscribe accepts only a signed opaque token and is idempoten
 test('customer registration does not subscribe unless marketing opt-in is explicit', async () => {
   const registrations: Array<Record<string, unknown>> = [];
   const auth = new CustomerAuthService({
-    registerWithSession: async (input: Record<string, unknown>) => {
+    registerPendingVerification: async (input: Record<string, unknown>) => {
       registrations.push(input);
       return {
         id: `customer-${registrations.length}`,

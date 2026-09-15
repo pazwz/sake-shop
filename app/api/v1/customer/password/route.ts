@@ -11,17 +11,20 @@ import {
 import { AppError, ValidationError } from '@/lib/errors';
 import { assertSameOriginMutation } from '@/lib/request-security';
 import { CustomerAuthService } from '@/services/customer-auth.service';
-import { verifyEmailValidator } from '@/validators/customer-auth.validator';
+import { requireCustomer } from '@/services/customer-authorization.service';
+import { verifiedChangePasswordValidator } from '@/validators/customer-auth.validator';
 
-export const POST = async (request: Request) => {
+export const PATCH = async (request: Request) => {
   try {
     assertSameOriginMutation(request);
-    const input = verifyEmailValidator.parse(await request.json());
-    const result = await new CustomerAuthService().verifyEmail(input.token);
-    const response = createSuccessResponse({
-      customer: result.customer,
-      verified: result.verified,
-    });
+    const customer = await requireCustomer();
+    const input = verifiedChangePasswordValidator.parse(await request.json());
+    const result = await new CustomerAuthService().changePassword(
+      customer.id,
+      input.currentPassword,
+      input.newPassword,
+    );
+    const response = createSuccessResponse({ changed: result.changed });
     response.cookies.set(
       CUSTOMER_SESSION_COOKIE,
       result.token,
@@ -30,11 +33,13 @@ export const POST = async (request: Request) => {
     return response;
   } catch (error) {
     if (error instanceof ZodError)
-      return createAppErrorResponse(new ValidationError());
+      return createAppErrorResponse(
+        new ValidationError(error.issues[0]?.message),
+      );
     if (error instanceof AppError) return createAppErrorResponse(error);
     return createErrorResponse(
-      'EMAIL_VERIFICATION_FAILED',
-      'メールアドレスを確認できませんでした。',
+      'PASSWORD_CHANGE_FAILED',
+      'パスワードを変更できませんでした。',
       500,
     );
   }

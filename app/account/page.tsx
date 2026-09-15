@@ -23,9 +23,26 @@ export default async function AccountPage() {
           <dd>{customer.email}</dd>
         </div>
       </dl>
-      <Link href="/account/orders" className="btn mt-8">
-        注文履歴を見る
-      </Link>
+      <nav className="mt-10 grid gap-px bg-stone-200 sm:grid-cols-2 lg:grid-cols-3">
+        {[
+          ['/account/profile', '会員情報', 'お名前と登録メールアドレス'],
+          ['/account/orders', 'ご注文履歴', 'これまでのご注文と配送状況'],
+          ['/account/addresses', 'お届け先', '配送先住所の登録と管理'],
+          [
+            '/account/preferences',
+            'メール配信設定',
+            'メールマガジンの購読設定',
+          ],
+          ['/account/security', 'セキュリティ', 'パスワードの変更'],
+        ].map(([href, title, description]) => (
+          <Link key={href} href={href} className="bg-white p-7 md:p-8">
+            <span className="serif text-2xl">{title}</span>
+            <span className="mt-3 block text-xs leading-6 text-stone-500">
+              {description}
+            </span>
+          </Link>
+        ))}
+      </nav>
     </main>
   );
 }

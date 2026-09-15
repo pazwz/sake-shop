@@ -31,6 +31,9 @@ function LoginForm() {
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<LoginErrors>({});
   const [submitting, setSubmitting] = useState(false);
+  const [unverified, setUnverified] = useState(false);
+  const [resendMessage, setResendMessage] = useState('');
+  const [resending, setResending] = useState(false);
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -47,11 +50,17 @@ function LoginForm() {
     }
 
     setSubmitting(true);
+    setUnverified(false);
+    setResendMessage('');
     const result = await login(email.trim(), password);
     setSubmitting(false);
     if (!result.ok) {
+      setUnverified(result.code === 'EMAIL_NOT_VERIFIED');
       setErrors({
-        form: 'メールアドレスまたはパスワードが正しくありません。',
+        form:
+          result.code === 'EMAIL_NOT_VERIFIED'
+            ? 'メールアドレスの確認が完了していません。'
+            : 'メールアドレスまたはパスワードが正しくありません。',
       });
       return;
     }
@@ -108,6 +117,41 @@ function LoginForm() {
           <FormFieldError id="login-password-error" message={errors.password} />
         </label>
         <FormFieldError id="login-form-error" message={errors.form} />
+        {unverified ? (
+          <div className="border-y line py-5 text-sm">
+            <button
+              type="button"
+              className="underline"
+              disabled={resending}
+              onClick={async () => {
+                if (resending) return;
+                setResending(true);
+                setResendMessage('送信中…');
+                try {
+                  const response = await fetch(
+                    '/api/v1/customer/verification/resend',
+                    {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ email }),
+                    },
+                  );
+                  const payload = await response.json();
+                  setResendMessage(
+                    payload.data?.message ?? '再送を受け付けました。',
+                  );
+                } catch {
+                  setResendMessage('通信に失敗しました。');
+                } finally {
+                  setResending(false);
+                }
+              }}
+            >
+              {resending ? '送信中…' : '確認メールを再送する'}
+            </button>
+            {resendMessage ? <p className="mt-3">{resendMessage}</p> : null}
+          </div>
+        ) : null}
         <button
           disabled={submitting}
           className="btn w-full disabled:opacity-60"
@@ -118,7 +162,7 @@ function LoginForm() {
           href="/forgot-password"
           className="block text-center text-xs underline"
         >
-          パスワードをお忘れの方
+          パスワードをお忘れですか？
         </Link>
       </form>
       <div className="mt-10 border-t line pt-7">

@@ -61,7 +61,7 @@ const transactionDatabase = (failOperation?: string) => {
   };
 };
 
-test('registration without marketing creates Customer, Session, verification token, and Outbox atomically', async () => {
+test('registration without marketing creates Customer, verification token, and Outbox atomically without a session', async () => {
   const database = transactionDatabase();
   const service = new CustomerAuthService(
     new CustomerRepository(database as never),
@@ -70,7 +70,6 @@ test('registration without marketing creates Customer, Session, verification tok
   assert.equal(result.customer.id, 'customer-1');
   assert.deepEqual(database.committed, [
     'customer.create',
-    'customerSession.create',
     'emailVerificationToken.create',
     'emailOutbox.create:EMAIL_VERIFICATION',
   ]);
@@ -84,7 +83,6 @@ test('registration with marketing also creates NewsletterSubscription and its Ou
   await service.register({ ...registrationInput, marketingOptIn: true });
   assert.deepEqual(database.committed, [
     'customer.create',
-    'customerSession.create',
     'emailVerificationToken.create',
     'emailOutbox.create:EMAIL_VERIFICATION',
     'newsletterSubscription.upsert',
@@ -98,7 +96,7 @@ test('duplicate email remains a safe conflict response', async () => {
     clientVersion: '6.16.0',
   });
   const service = new CustomerAuthService({
-    registerWithSession: async () => {
+    registerPendingVerification: async () => {
       throw duplicate;
     },
   } as never);
@@ -128,7 +126,7 @@ test('missing signing secret is identified before persistence', async () => {
   let persisted = false;
   try {
     const service = new CustomerAuthService({
-      registerWithSession: async () => {
+      registerPendingVerification: async () => {
         persisted = true;
         return {};
       },

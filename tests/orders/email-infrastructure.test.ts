@@ -50,7 +50,7 @@ test('email action tokens are signed, purpose-bound, and stored as hashes', () =
 test('registration creates a verification hash and does not persist the raw token', async () => {
   let captured: Record<string, unknown> | undefined;
   const auth = new CustomerAuthService({
-    registerWithSession: async (input: Record<string, unknown>) => {
+    registerPendingVerification: async (input: Record<string, unknown>) => {
       captured = input;
       return {
         id: 'customer-1',
@@ -80,19 +80,17 @@ test('valid verification and reset tokens are passed to repositories only as has
   const resetToken = createEmailActionToken('reset-1', 'reset-password');
   const hashes: string[] = [];
   const auth = new CustomerAuthService({
-    verifyEmail: async (tokenHash: string) => {
+    verifyEmailAndCreateSession: async (input: { tokenHash: string }) => {
+      const tokenHash = input.tokenHash;
       hashes.push(tokenHash);
-      return { alreadyVerified: false };
+      return { customer: { id: 'customer-1' } };
     },
     resetPassword: async (tokenHash: string) => {
       hashes.push(tokenHash);
       return { reset: true };
     },
   } as never);
-  assert.deepEqual(await auth.verifyEmail(verificationToken), {
-    verified: true,
-    alreadyVerified: false,
-  });
+  assert.equal((await auth.verifyEmail(verificationToken)).verified, true);
   assert.deepEqual(await auth.resetPassword(resetToken, 'new-password-123'), {
     reset: true,
   });
@@ -104,7 +102,7 @@ test('valid verification and reset tokens are passed to repositories only as has
 
 test('expired verification and reset tokens are rejected without leaking internals', async () => {
   const auth = new CustomerAuthService({
-    verifyEmail: async () => null,
+    verifyEmailAndCreateSession: async () => null,
     resetPassword: async () => null,
   } as never);
   await assert.rejects(

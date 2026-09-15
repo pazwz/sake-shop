@@ -120,6 +120,11 @@ Payment
 
 Shipment
 
+CustomerSession は email_verified_at が設定済みの Customer にだけ発行・認証する。
+CustomerAddress.is_default は同一 Customer の mutation を Customer row lock で直列化し、
+application invariant として最大一件を維持する。既存 schema で必要字段を満たすため、
+Customer Account 基础功能で追加 migration は不要。
+
 ---
 
 FeaturedCollection

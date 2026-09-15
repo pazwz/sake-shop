@@ -1,6 +1,8 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { useAuth } from '@/components/auth-provider';
 
 export function EmailActionForm({
   action,
@@ -10,9 +12,12 @@ export function EmailActionForm({
   token: string;
 }) {
   const [password, setPassword] = useState('');
+  const [passwordConfirmation, setPasswordConfirmation] = useState('');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const router = useRouter();
+  const { refresh } = useAuth();
   const submit = async () => {
     setError('');
     setSubmitting(true);
@@ -26,7 +31,7 @@ export function EmailActionForm({
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             token,
-            ...(action === 'reset' ? { password } : {}),
+            ...(action === 'reset' ? { password, passwordConfirmation } : {}),
           }),
         },
       );
@@ -40,6 +45,11 @@ export function EmailActionForm({
           ? 'メールアドレスを確認しました。'
           : 'パスワードを変更しました。新しいパスワードでログインしてください。',
       );
+      if (action === 'verify') {
+        await refresh();
+        router.push('/account');
+        router.refresh();
+      }
     } catch {
       setError('通信に失敗しました。もう一度お試しください。');
     } finally {
@@ -49,19 +59,33 @@ export function EmailActionForm({
   return (
     <div className="mt-8 space-y-4">
       {action === 'reset' ? (
-        <input
-          className="input"
-          type="password"
-          minLength={10}
-          placeholder="新しいパスワード（10文字以上）"
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
-        />
+        <>
+          <input
+            className="input"
+            type="password"
+            minLength={10}
+            placeholder="新しいパスワード（10文字以上）"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+          />
+          <input
+            className="input"
+            type="password"
+            minLength={10}
+            placeholder="新しいパスワード（確認）"
+            value={passwordConfirmation}
+            onChange={(event) => setPasswordConfirmation(event.target.value)}
+          />
+        </>
       ) : null}
       <button
         className="btn"
         onClick={submit}
-        disabled={submitting || (action === 'reset' && password.length < 10)}
+        disabled={
+          submitting ||
+          (action === 'reset' &&
+            (password.length < 10 || password !== passwordConfirmation))
+        }
       >
         {submitting
           ? '処理中…'

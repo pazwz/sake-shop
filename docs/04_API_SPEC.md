@@ -254,22 +254,33 @@ DELETE
 
 ### Customer authentication
 
-- `POST /api/v1/customer/register`：name/email/password；成功建立 HttpOnly session。
-- `POST /api/v1/customer/login`：失败统一返回相同凭证错误；成功轮换 session。
+- `POST /api/v1/customer/register`：name/email/password；Customer、verification token、
+  EmailOutbox を作成するが Session は作らず、確認メール送信待ちを返す。
+- `POST /api/v1/customer/login`：凭证错误は統一応答。正しい凭证でも未確認 Customer は
+  `403 EMAIL_NOT_VERIFIED`、確認済みなら Session を輪换する。
 - `POST /api/v1/customer/logout`：服务端撤销 session 并清 Cookie。
 - `GET /api/v1/customer/me`：只返回 id/name/email/phone；匿名为 401。
-- `POST /api/v1/customer/verify-email`：验证 signed token，写 emailVerifiedAt；重复验证幂等。
+- `POST /api/v1/customer/verify-email`：一次性 signed token を验证し、emailVerifiedAt、他 token
+  失效、Session 作成を atomic に行い、HttpOnly Cookie を返す。
+- `POST /api/v1/customer/verification/resend`：存在/状态を外部に区別せず、cooldown と rate limit
+  の範囲で新 token hash と EmailOutbox を作る。
 - `POST /api/v1/customer/forgot-password`：存在与不存在 email 均返回相同成功文案。
 - `POST /api/v1/customer/reset-password`：验证 token、更新 bcrypt hash 并撤销全部 session。
+- `PATCH /api/v1/customer/password`：認証済み Customer の現在 password を確認し、password
+  更新、全旧 Session 撤销、当前端末 Session 再発行を atomic に行う。
+- `PATCH /api/v1/customer/profile`：Session Customer の name のみ更新。email は read-only。
+- `GET|POST /api/v1/customer/addresses`：Session Customer 自身の住所一覧・新增。
+- `GET|PATCH|DELETE /api/v1/customer/addresses/{id}`：customerId ownership scoped CRUD。
+- `GET|PATCH /api/v1/customer/preferences/newsletter`：Neon consent の取得・購読・配信停止。
 
 注册、登录、logout、forgot/reset 与 verification mutation 验证 same-origin；注册、登录、
 forgot-password 带最小进程内 rate limit。该 rate limit 在 Vercel 多实例间不共享，正式
 高流量上线前应换为共享存储。
 
-Customer 注册在创建 session、verification token 与 EmailOutbox 前必须具备 server-side
-`JWT_SECRET`。注册 transaction 的 Customer、CustomerSession、EmailVerificationToken、
-EmailOutbox、可选 NewsletterSubscription 与 Newsletter contact Outbox 任一步失败时整体
-rollback。未知错误的客户端响应仍为通用 500；服务端只记录不含输入值和 secret 的 operation
+Customer 注册在创建 verification token 与 EmailOutbox 前必须具备 server-side
+`JWT_SECRET`。注册 transaction 的 Customer、EmailVerificationToken、EmailOutbox、可选
+NewsletterSubscription 与 Newsletter contact Outbox 任一步失败时整体 rollback，且绝不建立
+Session。未知错误的客户端响应仍为通用 500；服务端只记录不含输入值和 secret 的 operation
 stage、request id、error name 与 Prisma code。
 
 ### Checkout mode

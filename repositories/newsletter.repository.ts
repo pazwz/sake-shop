@@ -10,6 +10,13 @@ export class NewsletterRepository {
     });
   }
 
+  getStatus(email: string) {
+    return this.database.newsletterSubscription.findUnique({
+      where: { email },
+      select: { status: true, consentAt: true, unsubscribedAt: true },
+    });
+  }
+
   subscribe(input: {
     id: string;
     email: string;
@@ -84,6 +91,34 @@ export class NewsletterRepository {
         },
       });
       return updated;
+    });
+  }
+
+  unsubscribeByEmail(email: string, now: Date) {
+    return this.database.$transaction(async (tx) => {
+      const subscription = await tx.newsletterSubscription.findUnique({
+        where: { email },
+      });
+      if (
+        !subscription ||
+        subscription.status === NewsletterStatus.UNSUBSCRIBED
+      )
+        return { unsubscribed: true, changed: false };
+      await tx.newsletterSubscription.update({
+        where: { id: subscription.id },
+        data: { status: NewsletterStatus.UNSUBSCRIBED, unsubscribedAt: now },
+      });
+      await tx.emailOutbox.create({
+        data: {
+          eventKey: `newsletter-contact:${subscription.id}:unsubscribe:${now.toISOString()}`,
+          type: 'NEWSLETTER_UNSUBSCRIBED',
+          recipient: subscription.email,
+          subject: 'Newsletter contact synchronization',
+          template: 'NEWSLETTER_CONTACT_SYNC',
+          payload: { unsubscribed: true },
+        },
+      });
+      return { unsubscribed: true, changed: true };
     });
   }
 }

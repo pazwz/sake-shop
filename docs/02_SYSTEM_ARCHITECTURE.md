@@ -290,6 +290,20 @@ SKU とする。詳細画面で選択された場合、Order Service は酒本�
 Admin の箱候補は main Product の Smaregi ID と箱 Product の Smaregi ID を結ぶ明示的な
 compatibility allowlist だけから取得し、ブランド名や商品名の部分一致では推測しない。
 
+Customer Auth は未確認アカウントを fail closed とする。Register は Customer、hash-only
+EmailVerificationToken、EmailOutbox と任意の NewsletterSubscription だけを一つの
+transaction で作成し、Session を作らない。Verify は Customer 行をロックし、未使用・期限内
+token を条件付きで取得、emailVerifiedAt 更新、同 Customer の他 token 失効、Session 作成を
+一つの transaction で行う。Session 読取自体も Customer.emailVerifiedAt 非 null を条件にし、
+修正前の未確認 Session を認証に利用できない。
+
+Customer Account の mutation は Route で same-origin と Session を確認し、Service に渡す
+identity は Session 由来だけとする。Password change は現 password の bcrypt 照合後、全 Session
+撤销と現在端末用 Session 再発行を atomic に行う。CustomerAddress の default 切替は Customer
+row lock で直列化し、全 read/update/delete を customerId で ownership scope する。
+NewsletterSubscription は Neon が Source of Truth で、Resend Contacts 更新は EmailOutbox 経由の
+非同期 mirror とする。Provider failure は preference mutation を rollback しない。
+
 ---
 
 # 六、同步

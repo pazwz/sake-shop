@@ -41,20 +41,19 @@ export const POST = async (request: Request) => {
         429,
       );
     }
-    const previousToken = request.headers
-      .get('cookie')
-      ?.split(';')
-      .map((value) => value.trim())
-      .find((value) => value.startsWith(`${CUSTOMER_SESSION_COOKIE}=`))
-      ?.slice(CUSTOMER_SESSION_COOKIE.length + 1);
-    const result = await service.register(input, previousToken);
+    const result = await service.register(input);
     clearCustomerAuthFailures('register', attemptKey);
-    const response = createSuccessResponse(result.customer, 201);
-    response.cookies.set(
-      CUSTOMER_SESSION_COOKIE,
-      result.token,
-      customerSessionCookieOptions(),
+    const response = createSuccessResponse(
+      {
+        customer: result.customer,
+        verificationRequired: result.verificationRequired,
+      },
+      201,
     );
+    response.cookies.set(CUSTOMER_SESSION_COOKIE, '', {
+      ...customerSessionCookieOptions(),
+      maxAge: 0,
+    });
     return response;
   } catch (error) {
     if (attemptKey) recordCustomerAuthFailure('register', attemptKey);

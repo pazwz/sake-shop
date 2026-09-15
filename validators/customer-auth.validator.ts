@@ -21,8 +21,34 @@ export const customerLoginValidator = z.object({ email, password }).strict();
 
 export const forgotPasswordValidator = z.object({ email }).strict();
 export const resetPasswordValidator = z
-  .object({ token: z.string().min(32).max(500), password })
+  .object({
+    token: z.string().min(32).max(500),
+    password,
+    passwordConfirmation: password,
+  })
+  .strict()
+  .refine((value) => value.password === value.passwordConfirmation, {
+    message: 'パスワードが一致しません。',
+    path: ['passwordConfirmation'],
+  });
+
+export const changePasswordValidator = z
+  .object({
+    currentPassword: z.string().min(1).max(128),
+    newPassword: password,
+    newPasswordConfirmation: password,
+  })
   .strict();
+
+export const verifiedChangePasswordValidator = changePasswordValidator.refine(
+  (value) => value.newPassword === value.newPasswordConfirmation,
+  {
+    message: 'パスワードが一致しません。',
+    path: ['newPasswordConfirmation'],
+  },
+);
+
+export const verificationResendValidator = z.object({ email }).strict();
 export const verifyEmailValidator = z
   .object({ token: z.string().min(32).max(500) })
   .strict();

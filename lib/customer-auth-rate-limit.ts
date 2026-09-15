@@ -11,6 +11,7 @@ export type CustomerRateLimitAction =
   | 'login'
   | 'register'
   | 'forgot-password'
+  | 'verification-resend'
   | 'newsletter';
 
 const limitFor = (action: CustomerRateLimitAction) =>

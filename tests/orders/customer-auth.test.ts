@@ -41,10 +41,10 @@ test('registration normalizes email and enforces the password rule', () => {
   );
 });
 
-test('registration hashes the password and stores only a session token hash', async () => {
+test('registration hashes the password and does not create a session', async () => {
   const captured: Array<Record<string, unknown>> = [];
   const service = new CustomerAuthService({
-    registerWithSession: async (input: Record<string, unknown>) => {
+    registerPendingVerification: async (input: Record<string, unknown>) => {
       captured.push(input);
       return customer;
     },
@@ -58,8 +58,8 @@ test('registration hashes the password and stores only a session token hash', as
     await compare('long-password', String(captured[0].passwordHash)),
     true,
   );
-  assert.equal(captured[0].tokenHash, hashCustomerSessionToken(result.token));
-  assert.notEqual(captured[0].tokenHash, result.token);
+  assert.equal(captured[0].tokenHash, undefined);
+  assert.equal(result.verificationRequired, true);
 });
 
 test('login succeeds with bcrypt and creates a fresh high-entropy session', async () => {
@@ -68,6 +68,7 @@ test('login succeeds with bcrypt and creates a fresh high-entropy session', asyn
     findAuthenticationByEmail: async () => ({
       ...customer,
       passwordHash: await hash('long-password', CUSTOMER_PASSWORD_HASH_ROUNDS),
+      emailVerifiedAt: new Date(),
     }),
     rotateSession: async (_id: string, tokenHash: string) => {
       storedHash = tokenHash;
@@ -91,6 +92,7 @@ test('unknown email and wrong password return the same safe error', async () => 
     findAuthenticationByEmail: async () => ({
       ...customer,
       passwordHash: await hash('correct-password', 4),
+      emailVerifiedAt: new Date(),
     }),
   } as never);
   const messages = await Promise.all(
