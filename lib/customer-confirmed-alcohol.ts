@@ -43,3 +43,16 @@ export const getDescriptionContentStatus = (description: string | null) => {
     return 'PLACEHOLDER' as const;
   return 'OK' as const;
 };
+
+export const matchesCustomerConfirmedProductIdentity = (input: {
+  expectedSmaregiProductId: string;
+  expectedProductCode: string;
+  expectedName: string;
+  actualSmaregiProductId: string;
+  actualProductCode: string;
+  actualName: string;
+}) =>
+  input.expectedSmaregiProductId === input.actualSmaregiProductId &&
+  input.expectedProductCode === input.actualProductCode &&
+  input.expectedName.normalize('NFKC').trim() ===
+    input.actualName.normalize('NFKC').trim();

@@ -4,6 +4,7 @@ import {
   getDescriptionContentStatus,
   isInvalidAlcoholPercentage,
   isMissingAlcoholPercentage,
+  matchesCustomerConfirmedProductIdentity,
   normalizeCustomerConfirmedAlcoholPercentage,
 } from '@/lib/customer-confirmed-alcohol';
 import { mapSmaregiProductUpdate } from '@/services/smaregi/smaregi-mapper';
@@ -54,4 +55,23 @@ test('Smaregi product updates never include the LINXAS-owned alcohol field', () 
     'category-1',
   );
   assert.equal('alcoholPercentage' in update, false);
+});
+
+test('uses Smaregi ID and product code as strict identity while normalizing name whitespace', () => {
+  const base = {
+    expectedSmaregiProductId: '8001365',
+    expectedProductCode: '49001777016955',
+    expectedName: '響 金華マーク 裏ゴールド',
+    actualSmaregiProductId: '8001365',
+    actualProductCode: '49001777016955',
+    actualName: '響 金華マーク 裏ゴールド ',
+  };
+  assert.equal(matchesCustomerConfirmedProductIdentity(base), true);
+  assert.equal(
+    matchesCustomerConfirmedProductIdentity({
+      ...base,
+      actualProductCode: 'different-code',
+    }),
+    false,
+  );
 });
