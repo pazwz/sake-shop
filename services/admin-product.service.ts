@@ -46,12 +46,17 @@ export class AdminProductService {
     query: AdminProductQuery,
   ): Promise<AdminProductListResult> {
     const excludedSmaregiProductIds = await this.getActiveExclusionIds();
-    const [{ items, total, categories }, ecStatusCounts, metadataStatusCounts] =
-      await Promise.all([
-        this.repository.findMany(query, excludedSmaregiProductIds),
-        this.getEcStatusCounts(query, excludedSmaregiProductIds),
-        this.getMetadataStatusCounts(excludedSmaregiProductIds),
-      ]);
+    const [
+      { items, total, categories },
+      ecStatusCounts,
+      metadataStatusCounts,
+      missingFieldCounts,
+    ] = await Promise.all([
+      this.repository.findMany(query, excludedSmaregiProductIds),
+      this.getEcStatusCounts(query, excludedSmaregiProductIds),
+      this.getMetadataStatusCounts(excludedSmaregiProductIds),
+      this.getMissingFieldCounts(excludedSmaregiProductIds),
+    ]);
     const excluded = new Set(excludedSmaregiProductIds);
     const activeReservations =
       await this.reservations.getActiveReservedQuantities(
@@ -73,6 +78,7 @@ export class AdminProductService {
       categories,
       ecStatusCounts,
       metadataStatusCounts,
+      missingFieldCounts,
       pagination: {
         page: query.page,
         limit: query.limit,
@@ -278,6 +284,21 @@ export class AdminProductService {
           COMPLETE: 0,
           CORE_INCOMPLETE: 0,
           OPTIONAL_INCOMPLETE: 0,
+        });
+  }
+
+  private getMissingFieldCounts(excludedSmaregiProductIds: readonly string[]) {
+    const repository = this.repository as Partial<AdminProductRepository>;
+    return repository.countMissingMetadataFields
+      ? repository.countMissingMetadataFields(excludedSmaregiProductIds)
+      : Promise.resolve({
+          producer: 0,
+          origin: 0,
+          volume: 0,
+          alcoholPercentage: 0,
+          description: 0,
+          image: 0,
+          tastingNotes: 0,
         });
   }
 

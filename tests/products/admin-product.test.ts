@@ -233,6 +233,23 @@ test('admin metadata filters are translated to published database predicates', (
   assert.match(JSON.stringify(complete), /"tastingNotes"/);
 });
 
+test('field-level tasting filter includes core-incomplete products while optional status does not', () => {
+  const missingTasting = buildAdminProductWhere(
+    adminProductQueryValidator.parse({ missingField: 'tastingNotes' }),
+  );
+  const optionalIncomplete = buildAdminProductWhere(
+    adminProductQueryValidator.parse({ metadataStatus: 'optional_incomplete' }),
+  );
+
+  const fieldFilter = JSON.stringify(missingTasting);
+  const statusFilter = JSON.stringify(optionalIncomplete);
+  assert.match(fieldFilter, /"tastingNotes":null/);
+  assert.doesNotMatch(fieldFilter, /"producer":\{"not":null\}/);
+  assert.match(statusFilter, /"tastingNotes":null/);
+  assert.match(statusFilter, /"producer":\{"not":null\}/);
+  assert.match(statusFilter, /"images":\{"some":\{\}\}/);
+});
+
 test('a non-published EC status cannot enter the published metadata workflow', () => {
   const where = buildAdminProductWhere(
     adminProductQueryValidator.parse({

@@ -15,6 +15,10 @@ import {
   PRODUCT_EC_STATUS_LABEL,
   type ProductEcStatus,
 } from '@/types/product-ec-status';
+import {
+  PRODUCT_METADATA_FIELD_LABEL,
+  type ProductMetadataField,
+} from '@/types/product-metadata-completeness';
 
 const service = new AdminProductService();
 const syncService = new SyncService();
@@ -76,6 +80,22 @@ const pageHref = (
     params.set('missingField', query.missingField);
   return `/admin/products?${params.toString()}`;
 };
+
+const filterHref = (
+  query: Awaited<ReturnType<typeof adminProductQueryValidator.parse>>,
+  overrides: Partial<
+    Pick<
+      Awaited<ReturnType<typeof adminProductQueryValidator.parse>>,
+      'ecStatus' | 'metadataStatus' | 'missingField'
+    >
+  >,
+) => pageHref({ ...query, ...overrides, page: 1 }, 1);
+
+const metadataStatusBadgeClass = {
+  core_incomplete: 'border-rose-200 bg-rose-50 text-rose-800',
+  complete: 'border-emerald-200 bg-emerald-50 text-emerald-800',
+  optional_incomplete: 'border-amber-200 bg-amber-50 text-amber-900',
+} as const;
 
 export default async function AdminProductsPage({
   searchParams,
@@ -182,7 +202,9 @@ export default async function AdminProductsPage({
             <option value="all">すべて</option>
             <option value="core_incomplete">基本情報不足</option>
             <option value="complete">基本情報OK</option>
-            <option value="optional_incomplete">テイスティング未設定</option>
+            <option value="optional_incomplete">
+              テイスティングのみ未設定
+            </option>
           </select>
         </label>
         <label className="text-xs">
@@ -211,10 +233,35 @@ export default async function AdminProductsPage({
       </form>
 
       <div className="mt-8 flex items-center justify-between">
-        <p className="text-xs text-stone-500">
-          {result.pagination.total}件・{result.pagination.page}/
-          {Math.max(1, result.pagination.totalPages)}ページ
-        </p>
+        <div className="flex flex-wrap items-center gap-2 text-xs text-stone-500">
+          <p>
+            {result.pagination.total}件・{result.pagination.page}/
+            {Math.max(1, result.pagination.totalPages)}ページ
+          </p>
+          {query.missingField !== 'all' ? (
+            <Link
+              href={filterHref(query, { missingField: 'all' })}
+              className="rounded-full border border-[#6d2227] bg-[#fff8f6] px-3 py-1 text-[#6d2227]"
+            >
+              不足項目：{PRODUCT_METADATA_FIELD_LABEL[query.missingField]}（該当
+              {result.pagination.total}件） ×
+            </Link>
+          ) : null}
+          {query.metadataStatus !== 'all' ? (
+            <Link
+              href={filterHref(query, { metadataStatus: 'all' })}
+              className="rounded-full border border-[#6d2227] bg-[#fff8f6] px-3 py-1 text-[#6d2227]"
+            >
+              商品情報：
+              {query.metadataStatus === 'core_incomplete'
+                ? '基本情報不足'
+                : query.metadataStatus === 'complete'
+                  ? '基本情報OK'
+                  : 'テイスティングのみ未設定'}{' '}
+              ×
+            </Link>
+          ) : null}
+        </div>
         {!canEdit ? (
           <p className="text-xs text-amber-800">閲覧のみ可能です。</p>
         ) : null}
@@ -243,16 +290,61 @@ export default async function AdminProductsPage({
         className="mt-4 flex flex-wrap gap-2 text-xs"
         aria-label="公開中の商品情報統計"
       >
-        <span className="rounded-full border border-rose-200 bg-rose-50 px-3 py-1.5 text-rose-800">
+        <Link
+          href={filterHref(query, {
+            ecStatus: 'published',
+            metadataStatus: 'core_incomplete',
+            missingField: 'all',
+          })}
+          className={`rounded-full border px-3 py-1.5 ${metadataStatusBadgeClass.core_incomplete}`}
+        >
           基本情報不足 {result.metadataStatusCounts.CORE_INCOMPLETE}件
-        </span>
-        <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-emerald-800">
+        </Link>
+        <Link
+          href={filterHref(query, {
+            ecStatus: 'published',
+            metadataStatus: 'complete',
+            missingField: 'all',
+          })}
+          className={`rounded-full border px-3 py-1.5 ${metadataStatusBadgeClass.complete}`}
+        >
           基本情報OK {result.metadataStatusCounts.COMPLETE}件
-        </span>
-        <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-amber-900">
-          テイスティング未設定 {result.metadataStatusCounts.OPTIONAL_INCOMPLETE}
-          件
-        </span>
+        </Link>
+        <Link
+          href={filterHref(query, {
+            ecStatus: 'published',
+            metadataStatus: 'optional_incomplete',
+            missingField: 'all',
+          })}
+          className={`rounded-full border px-3 py-1.5 ${metadataStatusBadgeClass.optional_incomplete}`}
+        >
+          テイスティングのみ未設定{' '}
+          {result.metadataStatusCounts.OPTIONAL_INCOMPLETE}件
+        </Link>
+      </div>
+
+      <div
+        className="mt-3 flex flex-wrap gap-2 text-xs"
+        aria-label="公開中の商品ごとの不足項目集計"
+      >
+        {(
+          Object.entries(result.missingFieldCounts) as [
+            ProductMetadataField,
+            number,
+          ][]
+        ).map(([field, count]) => (
+          <Link
+            key={field}
+            href={filterHref(query, { missingField: field })}
+            className={`rounded-full border px-3 py-1.5 ${
+              query.missingField === field
+                ? 'border-[#6d2227] bg-[#6d2227] text-white'
+                : 'border-stone-200 text-stone-600'
+            }`}
+          >
+            {PRODUCT_METADATA_FIELD_LABEL[field]}未設定 {count}件
+          </Link>
+        ))}
       </div>
 
       <div className="mt-5 overflow-x-auto border-y line">
@@ -268,7 +360,9 @@ export default async function AdminProductsPage({
               <th className="p-3">EC公開状態</th>
               <th className="p-3">商品情報</th>
               <th className="p-3">最終同期</th>
-              <th className="w-28 p-3 text-center">操作</th>
+              <th className="sticky right-0 z-30 w-28 min-w-28 border-l border-stone-200 bg-[#faf8f4] p-3 text-center">
+                操作
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y line">
@@ -347,7 +441,7 @@ export default async function AdminProductsPage({
                       ? new Date(product.lastSyncedAt).toLocaleString('ja-JP')
                       : '—'}
                   </td>
-                  <td className="w-28 p-3 text-right">
+                  <td className="sticky right-0 z-20 w-28 min-w-28 border-l border-stone-200 bg-white p-3 text-right">
                     {canEdit ? (
                       <Link
                         href={createAdminProductEditHref(product.id, returnTo)}

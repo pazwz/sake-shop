@@ -1,5 +1,6 @@
 import type {
   ProductMetadataCompleteness,
+  ProductMetadataField,
   ProductMetadataStatus,
 } from '@/types/product-metadata-completeness';
 
@@ -100,6 +101,7 @@ export type AdminProductListResult = {
     number
   >;
   metadataStatusCounts: Record<ProductMetadataStatus, number>;
+  missingFieldCounts: Record<ProductMetadataField, number>;
   pagination: {
     page: number;
     limit: number;

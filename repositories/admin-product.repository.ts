@@ -10,7 +10,10 @@ import type {
   AdminProductUpdate,
 } from '@/validators/admin-product.validator';
 import type { ProductEcStatus } from '@/types/product-ec-status';
-import type { ProductMetadataStatus } from '@/types/product-metadata-completeness';
+import type {
+  ProductMetadataField,
+  ProductMetadataStatus,
+} from '@/types/product-metadata-completeness';
 
 const include = {
   category: true,
@@ -264,6 +267,37 @@ export class AdminProductRepository {
       ),
     );
     return Object.fromEntries(counts) as Record<ProductMetadataStatus, number>;
+  }
+
+  public async countMissingMetadataFields(
+    excludedSmaregiProductIds: readonly string[],
+  ): Promise<Record<ProductMetadataField, number>> {
+    const fields: Array<Exclude<AdminProductQuery['missingField'], 'all'>> = [
+      'producer',
+      'origin',
+      'volume',
+      'alcoholPercentage',
+      'description',
+      'image',
+      'tastingNotes',
+    ];
+    const counts = await Promise.all(
+      fields.map(
+        async (field) =>
+          [
+            field,
+            await prisma.product.count({
+              where: {
+                AND: [
+                  publishedMetadataWhere(excludedSmaregiProductIds),
+                  missingMetadataFieldWhere(field),
+                ],
+              },
+            }),
+          ] as const,
+      ),
+    );
+    return Object.fromEntries(counts) as Record<ProductMetadataField, number>;
   }
 
   public findById(id: string) {
