@@ -1,6 +1,7 @@
 import type { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { toExternalSlug } from '@/lib/slug';
+import { getOriginalBoxAssociationPairs } from '@/config/box-products';
 import {
   calculateAvailableQuantity,
   mapSmaregiCategory,
@@ -86,6 +87,8 @@ export class SmaregiAtomicSyncRepository {
           });
           productIds.set(item.product.productId, saved.id);
         }
+
+        await this.applyOriginalBoxAssociations(transaction, productIds);
 
         const existingInventory = await transaction.inventoryMirror.findMany({
           where: {
@@ -370,6 +373,29 @@ export class SmaregiAtomicSyncRepository {
 
   private inventoryKey(productId: string, storeId: string) {
     return `${productId}\u0000${storeId}`;
+  }
+
+  /**
+   * Both records must have been validated and written from the same Smaregi
+   * snapshot. A missing, deferred, quarantined, or suppressed box therefore
+   * cannot create a dangling parent → accessory relation.
+   */
+  private async applyOriginalBoxAssociations(
+    transaction: Prisma.TransactionClient,
+    productIds: ReadonlyMap<string, string>,
+  ) {
+    for (const {
+      parentSmaregiProductId,
+      accessorySmaregiProductId,
+    } of getOriginalBoxAssociationPairs()) {
+      const parentProductId = productIds.get(parentSmaregiProductId);
+      const accessoryProductId = productIds.get(accessorySmaregiProductId);
+      if (!parentProductId || !accessoryProductId) continue;
+      await transaction.product.update({
+        where: { id: parentProductId },
+        data: { boxProductId: accessoryProductId },
+      });
+    }
   }
 
   private sortCategories(categories: SmaregiCategory[]) {

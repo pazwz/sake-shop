@@ -14,7 +14,6 @@ import type { ProductCardItem } from './product-card';
 export type CartProduct = ProductCardItem & { image: string };
 export type CartBoxProduct = {
   id: string;
-  productCode: string;
   name: string;
   price: number;
 };

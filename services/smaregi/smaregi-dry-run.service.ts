@@ -4,7 +4,6 @@ import { SmaregiDryRunRepository } from '@/repositories/smaregi-dry-run.reposito
 import { SmaregiClient } from '@/services/smaregi/smaregi-client';
 import {
   isApprovedDeferredSmaregiProduct,
-  isApprovedDeferredSmaregiProductId,
 } from '@/services/smaregi/smaregi-deferred-policy';
 import {
   getMissingApprovedSmaregiStoreIds,
@@ -98,15 +97,6 @@ export class SmaregiDryRunService {
           reduceTaxRates,
           this.targetDate,
         );
-        if (isApprovedDeferredSmaregiProductId(product.productId)) {
-          approvedDeferredProducts.push({
-            smaregiProductId: product.productId,
-            productCode: product.productCode,
-            productName: product.productName,
-            code: 'DEFERRED_NOW_RESOLVABLE',
-          });
-          continue;
-        }
         resolvedTaxes.set(product.productId, resolvedTax);
       } catch (error) {
         if (!(error instanceof SmaregiTaxResolutionError)) throw error;

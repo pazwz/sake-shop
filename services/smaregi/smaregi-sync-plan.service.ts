@@ -1,7 +1,6 @@
 import { AppError } from '@/lib/errors';
 import {
   isApprovedDeferredSmaregiProduct,
-  isApprovedDeferredSmaregiProductId,
 } from '@/services/smaregi/smaregi-deferred-policy';
 import { resolveProductTax } from '@/services/smaregi/smaregi-tax-resolver';
 import { SmaregiTaxResolutionError } from '@/services/smaregi/smaregi-tax-resolver';
@@ -63,15 +62,6 @@ export const buildValidatedSmaregiSyncPlan = (
         input.reduceTaxRates,
         input.targetDate,
       ).resolvedTaxRate;
-      if (isApprovedDeferredSmaregiProductId(product.productId)) {
-        approvedDeferredProducts.push({
-          smaregiProductId: product.productId,
-          productCode: product.productCode,
-          productName: product.productName,
-          code: 'DEFERRED_NOW_RESOLVABLE',
-        });
-        continue;
-      }
       products.push({ product, resolvedTaxRate });
     } catch (error) {
       if (

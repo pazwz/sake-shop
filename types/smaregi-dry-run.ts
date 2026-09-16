@@ -116,7 +116,7 @@ export type SmaregiDryRunResult = {
       smaregiProductId: string;
       productCode: string;
       productName: string;
-      code: 'CATEGORY_TAX_DIVISION_MISSING' | 'DEFERRED_NOW_RESOLVABLE';
+      code: 'CATEGORY_TAX_DIVISION_MISSING';
     }>;
     blocked: Array<{
       smaregiProductId: string;

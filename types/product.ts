@@ -41,8 +41,8 @@ export interface ProductRecord {
   activeReservedQuantity: number;
   availableQuantity: number;
   boxOption: {
+    type: 'ORIGINAL_BOX';
     id: string;
-    productCode: string;
     name: string;
     price: number;
     taxRate: number;

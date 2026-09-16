@@ -298,7 +298,7 @@ test('excludes approved deferred box products and their inventory from the atomi
   assert.equal(result.warnings.negativeStock.length, 1);
 });
 
-test('keeps an approved deferred box out of writes after its tax becomes resolvable', () => {
+test('includes an approved box and its inventory once its tax becomes resolvable', () => {
   const deferredProduct = {
     ...plan.products[0].product,
     productId: '8000575',
@@ -329,16 +329,18 @@ test('keeps an approved deferred box out of writes after its tax becomes resolva
     reduceTaxRates: [],
   });
 
-  assert.equal(result.products.length, 0);
-  assert.equal(result.inventory.length, 0);
-  assert.deepEqual(result.approvedDeferredProducts, [
-    {
-      smaregiProductId: '8000575',
-      productCode: '49001777016324',
-      productName: '響JH 箱代金',
-      code: 'DEFERRED_NOW_RESOLVABLE',
-    },
-  ]);
+  assert.deepEqual(
+    result.products.map(({ product }) => product.productId),
+    ['8000575'],
+  );
+  assert.deepEqual(
+    result.inventory.map(({ smaregiProductId, quantity }) => ({
+      smaregiProductId,
+      quantity,
+    })),
+    [{ smaregiProductId: '8000575', quantity: 2 }],
+  );
+  assert.deepEqual(result.approvedDeferredProducts, []);
 });
 
 test('quarantines an unapproved product tax failure while keeping other products safe', () => {

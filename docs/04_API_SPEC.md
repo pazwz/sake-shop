@@ -1040,10 +1040,12 @@ InventoryMirror write plan，也不计入未知 blocker。其他单商品税异�
 不阻断 safe Product；全局税率结构异常则整批失败。orphan Stock 不进入 inventory plan。
 normal Product 的 negative Stock 会 quarantine 整个 Product，不能写入负 available。
 
-箱代金 Product 不因 `isEcAvailable=false` 从同步输入移除。已批准 deferred 的 6 个
-Product 在税率尚不可解析时记录原始原因；税率变为可解析后记录
-`DEFERRED_NOW_RESOLVABLE`，仍不进入 Product/InventoryMirror write plan，等待人工解除。
-新 Product 默认 `isEcAvailable=false`，不会因同步自动公开。
+箱代金 Product 不因 `isEcAvailable=false` 从同步输入移除。已批准暂缓的 6 个 Product
+只在税率尚不可解析时保留原始原因；税率可唯一解析后正常进入 Product / InventoryMirror
+write plan。同步 transaction 仅对明确配置、且 parent / box 都存在于同一已验证 plan 的
+一对一关系建立 `boxProductId`，不从名称推断。箱 SKU 本身不可作为公开独立商品，但可由
+已关联主商品的 detail DTO 投影为 `ORIGINAL_BOX` 选项。新 Product 默认
+`isEcAvailable=false`，不会因同步自动公开。
 
 获批的同步 plan 只能在 Service 完成所有 GET 和验证后交给单一
 Prisma transaction。

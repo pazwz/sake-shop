@@ -389,8 +389,15 @@ tastingNotes、images、isEcAvailable 及其他 CMS 内容必须保留。
 箱代金 Product 6 件が `CATEGORY_TAX_DIVISION_MISSING` となる場合で、これらは
 `approvedDeferredProducts` に分離し、Product / InventoryMirror plan から除外する。
 対象 ID と理由が完全一致するものだけを approved deferred として扱う。
-这 6 个 Product 即使税率后来已可解析，也以 `DEFERRED_NOW_RESOLVABLE` 继续排除，
-必须经过后续人工批准才能解除 deferred，自动同步不得首次写入。
+税率后来可唯一解析时，这 6 个 Product 会与其他 safe Product 一样进入
+Product / InventoryMirror plan。同步 transaction 仅在明确配置的 parent 与 box
+Product 同时存在于同一已验证 plan 时，建立一对一 `boxProductId` 关系；不会以名称、
+品牌或包装文字推断关联。
+
+箱・包装専用 SKU 仍是 Smaregi 主数据：价格、税率、有效状态与四店库存持续同步，
+但作为 `ACCESSORY_ONLY` merchandising role 不能独立展示、搜索、加入 Collection 或访问
+公开详情。产品详情仅投影已关联、同步且 active 的 `ORIGINAL_BOX` 选项；订单以独立
+OrderItem / InventoryReservation 保存酒和箱的各自商品、价格、税率与库存身份。
 
 标准税率从 `consumption_tax_rates` 按目标日期选择最新生效记录，
 轻减税率从 `reduce_tax_rates` 按 ID 和生效期唯一解析。

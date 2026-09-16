@@ -176,11 +176,14 @@ export class ProductService {
         )
       : null;
     const boxOption =
-      product.boxProduct && isPackageOnlyProduct(product.boxProduct)
+      product.boxProduct &&
+      product.boxProduct.isActive &&
+      product.boxProduct.lastSyncedAt &&
+      isPackageOnlyProduct(product.boxProduct)
         ? {
+            type: 'ORIGINAL_BOX' as const,
             id: product.boxProduct.id,
-            productCode: product.boxProduct.productCode,
-            name: product.boxProduct.name,
+            name: '純正箱',
             price: Number(product.boxProduct.price),
             taxRate: Number(product.boxProduct.taxRate),
             availableQuantity: boxProjection?.availableQuantity ?? 0,

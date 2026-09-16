@@ -150,7 +150,6 @@ export function ProductDetail({
                         selectedBox && product.boxOption
                           ? {
                               id: product.boxOption.id,
-                              productCode: product.boxOption.productCode,
                               name: product.boxOption.name,
                               price: product.boxOption.price,
                             }

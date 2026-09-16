@@ -4,6 +4,7 @@ import { Prisma } from '@prisma/client';
 import { PUBLIC_PRODUCT_VISIBILITY } from '@/repositories/product.repository';
 import { sanitizePublicCollections } from '@/services/collection.service';
 import { ProductService } from '@/services/product.service';
+import { getOriginalBoxAssociationPairs } from '@/config/box-products';
 import {
   isPackageOnlyProduct,
   isStandaloneEcProduct,
@@ -31,6 +32,17 @@ test('package-only products are excluded by Smaregi identity and box category', 
     }),
     false,
   );
+});
+
+test('original-box associations are explicit one-to-one Smaregi identities', () => {
+  assert.deepEqual(getOriginalBoxAssociationPairs(), [
+    { parentSmaregiProductId: '8000001', accessorySmaregiProductId: '8000570' },
+    { parentSmaregiProductId: '8000002', accessorySmaregiProductId: '8000571' },
+    { parentSmaregiProductId: '8000003', accessorySmaregiProductId: '8000573' },
+    { parentSmaregiProductId: '8000008', accessorySmaregiProductId: '8000572' },
+    { parentSmaregiProductId: '8000014', accessorySmaregiProductId: '8000574' },
+    { parentSmaregiProductId: '8000016', accessorySmaregiProductId: '8000575' },
+  ]);
 });
 
 test('an alcohol product whose name includes box wording is not misclassified', () => {
@@ -183,6 +195,7 @@ test('linked box with zero stock is present but unavailable for selection', asyn
     smaregiProductId: '8000570',
     productCode: 'BOX-001',
     name: '純正箱',
+    lastSyncedAt: new Date(),
     price: new Prisma.Decimal(500),
     taxRate: new Prisma.Decimal(10),
     isActive: true,
@@ -196,8 +209,35 @@ test('linked box with zero stock is present but unavailable for selection', asyn
     { getActiveReservedQuantities: async () => new Map() } as never,
   );
   const result = await service.getProductBySlug('published-product');
+  assert.equal(result.boxOption?.type, 'ORIGINAL_BOX');
+  assert.equal(result.boxOption?.name, '純正箱');
+  assert.equal(result.boxOption?.price, 500);
   assert.equal(result.boxOption?.availableQuantity, 0);
   assert.equal(result.boxOption?.isAvailable, false);
+});
+
+test('an inactive original box is hidden from the public product detail', async () => {
+  const inactiveBox = {
+    id: 'box',
+    smaregiProductId: '8000570',
+    productCode: 'BOX-1',
+    name: '山崎12年 箱代金',
+    isActive: false,
+    isEcAvailable: false,
+    isManuallyHidden: false,
+    lastSyncedAt: new Date(),
+    price: new Prisma.Decimal(1100),
+    taxRate: new Prisma.Decimal(10),
+    category: { smaregiCategoryId: '8000014' },
+    inventoryMirrors: [],
+  };
+  const service = new ProductService(
+    { findBySlug: async () => productFixture({ boxProduct: inactiveBox }) } as never,
+    { getActiveReservedQuantities: async () => new Map() } as never,
+  );
+
+  const result = await service.getProductBySlug('yamazaki-12');
+  assert.equal(result.boxOption, null);
 });
 
 test('product detail rejects a missing slug', async () => {

@@ -40,4 +40,18 @@ export const getCompatibleBoxSmaregiProductIds = (
     baseSmaregiProductId as keyof typeof BOX_PRODUCT_COMPATIBILITY
   ] ?? [];
 
+/**
+ * Returns only explicit, one-to-one bottle → original-box relationships.
+ *
+ * This config is shared by Admin validation and the Smaregi sync transaction;
+ * it is never inferred from a product name, brand, or package wording.
+ */
+export const getOriginalBoxAssociationPairs = () =>
+  Object.entries(EXPECTED_BOX_PRODUCT_BY_BASE_PRODUCT_ID).map(
+    ([parentSmaregiProductId, box]) => ({
+      parentSmaregiProductId,
+      accessorySmaregiProductId: box.smaregiProductId,
+    }),
+  );
+
 export const DEFERRED_BOX_REASON = 'CATEGORY_TAX_DIVISION_MISSING';
