@@ -113,7 +113,7 @@ const reservations = {
 
 test('admin product edit link preserves the current list URL', () => {
   const returnTo =
-    '/admin/products?q=moet&category=champagne&ecStatus=preparing&source=smaregi&imageStatus=without&page=3';
+    '/admin/products?q=moet&category=champagne&ecStatus=preparing&source=smaregi&imageStatus=without&metadataStatus=core_incomplete&missingField=alcoholPercentage&page=3';
   const href = createAdminProductEditHref('product-1', returnTo);
   const url = new URL(href, 'https://example.test');
 
@@ -129,6 +129,8 @@ test('admin product return URL rejects open redirects and unrelated paths', () =
     '/admin/products/product-1',
     '/admin/products?next=https://evil.example.com',
     '/admin/products?imageStatus=unexpected',
+    '/admin/products?metadataStatus=unexpected',
+    '/admin/products?missingField=unexpected',
     '/admin/products#unexpected',
   ]) {
     assert.equal(sanitizeAdminProductsReturnTo(unsafe), '/admin/products');
@@ -179,6 +181,8 @@ test('admin list defaults to 25 rows and supports all filters', () => {
     ecStatus: 'preparing',
     source: 'smaregi',
     imageStatus: 'without',
+    metadataStatus: 'core_incomplete',
+    missingField: 'alcoholPercentage',
     page: '2',
   });
   assert.equal(query.limit, 25);
@@ -186,6 +190,8 @@ test('admin list defaults to 25 rows and supports all filters', () => {
   assert.equal(query.ecStatus, 'preparing');
   assert.equal(query.source, 'smaregi');
   assert.equal(query.imageStatus, 'without');
+  assert.equal(query.metadataStatus, 'core_incomplete');
+  assert.equal(query.missingField, 'alcoholPercentage');
 });
 
 test('admin image status filters are translated to server-side relation filters', () => {
@@ -199,6 +205,44 @@ test('admin image status filters are translated to server-side relation filters'
   assert.match(JSON.stringify(withImages), /"images":\{"some":\{\}\}/);
   assert.match(JSON.stringify(withoutImages), /"images":\{"none":\{\}\}/);
   assert.match(JSON.stringify(withoutImages), /"OR"/);
+});
+
+test('admin metadata filters are translated to published database predicates', () => {
+  const missingAbv = buildAdminProductWhere(
+    adminProductQueryValidator.parse({
+      missingField: 'alcoholPercentage',
+    }),
+    ['excluded-product'],
+  );
+  const coreIncomplete = buildAdminProductWhere(
+    adminProductQueryValidator.parse({
+      metadataStatus: 'core_incomplete',
+    }),
+    ['excluded-product'],
+  );
+  const complete = buildAdminProductWhere(
+    adminProductQueryValidator.parse({ metadataStatus: 'complete' }),
+    ['excluded-product'],
+  );
+
+  assert.match(JSON.stringify(missingAbv), /"alcoholPercentage":null/);
+  assert.match(JSON.stringify(missingAbv), /"isEcAvailable":true/);
+  assert.match(JSON.stringify(missingAbv), /"isManuallyHidden":false/);
+  assert.match(JSON.stringify(coreIncomplete), /"images":\{"none":\{\}\}/);
+  assert.match(JSON.stringify(complete), /"images":\{"some":\{\}\}/);
+  assert.match(JSON.stringify(complete), /"tastingNotes"/);
+});
+
+test('a non-published EC status cannot enter the published metadata workflow', () => {
+  const where = buildAdminProductWhere(
+    adminProductQueryValidator.parse({
+      ecStatus: 'preparing',
+      missingField: 'alcoholPercentage',
+    }),
+  );
+  const serialized = JSON.stringify(where);
+  assert.match(serialized, /"isEcAvailable":false/);
+  assert.match(serialized, /"isEcAvailable":true/);
 });
 
 test('admin pagination calculates 18 pages for 441 products at 25 per page', async () => {

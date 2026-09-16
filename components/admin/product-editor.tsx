@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { MAX_ADMIN_MEDIA_FILE_SIZE } from '@/config/media';
+import { ProductMetadataCompletenessNotice } from '@/components/admin/product-metadata-completeness';
 import { uploadAdminImage } from '@/lib/admin-media-upload';
 import { formatPrice } from '@/lib/products';
 import type {
@@ -12,6 +13,7 @@ import type {
   AdminProductRecord,
   ProductPublicationResult,
 } from '@/types/admin-product';
+import type { ProductMetadataCompleteness } from '@/types/product-metadata-completeness';
 import {
   PRODUCT_EC_STATUS_LABEL,
   type ProductEcStatus,
@@ -67,6 +69,8 @@ export function ProductEditor({
   const [publication, setPublication] = useState<ProductPublicationResult>(
     initialProduct.publication,
   );
+  const [metadataCompleteness, setMetadataCompleteness] =
+    useState<ProductMetadataCompleteness>(initialProduct.metadataCompleteness);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [excluding, setExcluding] = useState(false);
@@ -87,6 +91,7 @@ export function ProductEditor({
     setImages(result.data.images);
     setEcStatus(result.data.ecStatus);
     setPublication(result.data.publication);
+    setMetadataCompleteness(result.data.metadataCompleteness);
   };
 
   const submit = async (formData: FormData) => {
@@ -139,6 +144,7 @@ export function ProductEditor({
       if (!result.data) throw new Error('Invalid response');
       setEcStatus(result.data.ecStatus);
       setPublication(result.data.publication);
+      setMetadataCompleteness(result.data.metadataCompleteness);
       setSettingsFeedback({
         kind: 'success',
         text: 'EC掲載設定を保存しました。',
@@ -528,6 +534,9 @@ export function ProductEditor({
         <p className="mt-3 text-sm text-stone-600">
           LINXAS EC上で表示する内容を編集できます。
         </p>
+        <ProductMetadataCompletenessNotice
+          completeness={metadataCompleteness}
+        />
         <div className="mt-7 grid gap-5 md:grid-cols-2">
           {!initialProduct.isPackageOnly ? (
             <div className="border-b line pb-6 md:col-span-2">

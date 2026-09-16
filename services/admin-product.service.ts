@@ -17,6 +17,7 @@ import {
 import { InventoryReservationRepository } from '@/repositories/inventory-reservation.repository';
 import { projectApprovedInventory } from '@/services/inventory-projection.service';
 import { ProductPublicationService } from '@/services/product-publication.service';
+import { ProductMetadataCompletenessService } from '@/services/product-metadata-completeness.service';
 import { resolveProductEcStatus } from '@/services/product-ec-status.service';
 import {
   isPackageOnlyProduct,
@@ -38,16 +39,19 @@ export class AdminProductService {
     private readonly repository = new AdminProductRepository(),
     private readonly reservations = new InventoryReservationRepository(),
     private readonly publication = new ProductPublicationService(repository),
+    private readonly metadataCompleteness = new ProductMetadataCompletenessService(),
   ) {}
 
   public async getProducts(
     query: AdminProductQuery,
   ): Promise<AdminProductListResult> {
     const excludedSmaregiProductIds = await this.getActiveExclusionIds();
-    const [{ items, total, categories }, ecStatusCounts] = await Promise.all([
-      this.repository.findMany(query, excludedSmaregiProductIds),
-      this.getEcStatusCounts(query, excludedSmaregiProductIds),
-    ]);
+    const [{ items, total, categories }, ecStatusCounts, metadataStatusCounts] =
+      await Promise.all([
+        this.repository.findMany(query, excludedSmaregiProductIds),
+        this.getEcStatusCounts(query, excludedSmaregiProductIds),
+        this.getMetadataStatusCounts(excludedSmaregiProductIds),
+      ]);
     const excluded = new Set(excludedSmaregiProductIds);
     const activeReservations =
       await this.reservations.getActiveReservedQuantities(
@@ -68,6 +72,7 @@ export class AdminProductService {
       ),
       categories,
       ecStatusCounts,
+      metadataStatusCounts,
       pagination: {
         page: query.page,
         limit: query.limit,
@@ -263,6 +268,19 @@ export class AdminProductService {
         });
   }
 
+  private getMetadataStatusCounts(
+    excludedSmaregiProductIds: readonly string[],
+  ) {
+    const repository = this.repository as Partial<AdminProductRepository>;
+    return repository.countMetadataStatuses
+      ? repository.countMetadataStatuses(excludedSmaregiProductIds)
+      : Promise.resolve({
+          COMPLETE: 0,
+          CORE_INCOMPLETE: 0,
+          OPTIONAL_INCOMPLETE: 0,
+        });
+  }
+
   private normalizeUpdate(
     input: Omit<AdminProductUpdate, 'ecVisibility' | 'isEcAvailable'>,
   ): AdminProductUpdate & { isManuallyHidden?: boolean } {
@@ -349,9 +367,10 @@ export class AdminProductService {
       producer: product.producer,
       origin: product.origin,
       volume: product.volume,
-      alcoholPercentage: product.alcoholPercentage
-        ? Number(product.alcoholPercentage)
-        : null,
+      alcoholPercentage:
+        product.alcoholPercentage === null
+          ? null
+          : Number(product.alcoholPercentage),
       description: product.description,
       tastingNotes: product.tastingNotes,
       isEcAvailable: product.isEcAvailable,
@@ -361,6 +380,18 @@ export class AdminProductService {
         ecStatus === 'PREPARING'
           ? (publication.errors[0]?.message ?? 'EC公開の設定が未完了です。')
           : null,
+      metadataCompleteness: this.metadataCompleteness.resolve({
+        producer: product.producer,
+        origin: product.origin,
+        volume: product.volume,
+        alcoholPercentage:
+          product.alcoholPercentage === null
+            ? null
+            : Number(product.alcoholPercentage),
+        description: product.description,
+        tastingNotes: product.tastingNotes,
+        images: product.images,
+      }),
       isPackageOnly: isPackageOnlyProduct(product),
       images: product.images.map((image) => ({
         id: image.id,

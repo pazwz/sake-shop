@@ -10,6 +10,7 @@ import type {
   AdminProductUpdate,
 } from '@/validators/admin-product.validator';
 import type { ProductEcStatus } from '@/types/product-ec-status';
+import type { ProductMetadataStatus } from '@/types/product-metadata-completeness';
 
 const include = {
   category: true,
@@ -26,6 +27,71 @@ const include = {
 export type AdminProductWithRelations = Prisma.ProductGetPayload<{
   include: typeof include;
 }>;
+
+const missingStringField = (
+  field: 'producer' | 'origin' | 'volume' | 'description' | 'tastingNotes',
+) =>
+  ({
+    OR: [{ [field]: null }, { [field]: '' }],
+  }) satisfies Prisma.ProductWhereInput;
+
+const presentStringField = (
+  field: 'producer' | 'origin' | 'volume' | 'description' | 'tastingNotes',
+) =>
+  ({
+    AND: [{ [field]: { not: null } }, { [field]: { not: '' } }],
+  }) satisfies Prisma.ProductWhereInput;
+
+const missingMetadataFieldWhere = (
+  field: Exclude<AdminProductQuery['missingField'], 'all'>,
+): Prisma.ProductWhereInput => {
+  if (field === 'image') return { images: { none: {} } };
+  if (field === 'alcoholPercentage') return { alcoholPercentage: null };
+  return missingStringField(field);
+};
+
+const coreCompleteWhere = (): Prisma.ProductWhereInput => ({
+  AND: [
+    presentStringField('producer'),
+    presentStringField('origin'),
+    presentStringField('volume'),
+    { alcoholPercentage: { not: null } },
+    presentStringField('description'),
+    { images: { some: {} } },
+  ],
+});
+
+const metadataStatusWhere = (
+  status: Exclude<AdminProductQuery['metadataStatus'], 'all'>,
+): Prisma.ProductWhereInput => {
+  if (status === 'core_incomplete') {
+    return {
+      OR: [
+        missingStringField('producer'),
+        missingStringField('origin'),
+        missingStringField('volume'),
+        { alcoholPercentage: null },
+        missingStringField('description'),
+        { images: { none: {} } },
+      ],
+    };
+  }
+  if (status === 'optional_incomplete') {
+    return { AND: [coreCompleteWhere(), missingStringField('tastingNotes')] };
+  }
+  return { AND: [coreCompleteWhere(), presentStringField('tastingNotes')] };
+};
+
+const publishedMetadataWhere = (
+  excludedSmaregiProductIds: readonly string[],
+): Prisma.ProductWhereInput => ({
+  isActive: true,
+  isEcAvailable: true,
+  isManuallyHidden: false,
+  ...(excludedSmaregiProductIds.length
+    ? { NOT: { smaregiProductId: { in: [...excludedSmaregiProductIds] } } }
+    : {}),
+});
 
 export const buildAdminProductWhere = (
   query: AdminProductQuery,
@@ -92,6 +158,18 @@ export const buildAdminProductWhere = (
   else if (query.ecStatus !== 'all') {
     filters.push(notExcluded, statusFilters[query.ecStatus]);
   }
+  if (query.missingField !== 'all') {
+    filters.push(
+      publishedMetadataWhere(excludedSmaregiProductIds),
+      missingMetadataFieldWhere(query.missingField),
+    );
+  }
+  if (query.metadataStatus !== 'all') {
+    filters.push(
+      publishedMetadataWhere(excludedSmaregiProductIds),
+      metadataStatusWhere(query.metadataStatus),
+    );
+  }
   return filters.length ? { AND: filters } : {};
 };
 
@@ -154,6 +232,38 @@ export class AdminProductRepository {
       ),
     );
     return Object.fromEntries(counts) as Record<ProductEcStatus, number>;
+  }
+
+  public async countMetadataStatuses(
+    excludedSmaregiProductIds: readonly string[],
+  ): Promise<Record<ProductMetadataStatus, number>> {
+    const statuses: Array<
+      [
+        ProductMetadataStatus,
+        Exclude<AdminProductQuery['metadataStatus'], 'all'>,
+      ]
+    > = [
+      ['COMPLETE', 'complete'],
+      ['CORE_INCOMPLETE', 'core_incomplete'],
+      ['OPTIONAL_INCOMPLETE', 'optional_incomplete'],
+    ];
+    const counts = await Promise.all(
+      statuses.map(
+        async ([status, metadataStatus]) =>
+          [
+            status,
+            await prisma.product.count({
+              where: {
+                AND: [
+                  publishedMetadataWhere(excludedSmaregiProductIds),
+                  metadataStatusWhere(metadataStatus),
+                ],
+              },
+            }),
+          ] as const,
+      ),
+    );
+    return Object.fromEntries(counts) as Record<ProductMetadataStatus, number>;
   }
 
   public findById(id: string) {

@@ -5,6 +5,8 @@ const allowedReturnToParams = new Set([
   'ecStatus',
   'source',
   'imageStatus',
+  'metadataStatus',
+  'missingField',
   'page',
 ]);
 const allowedImageStatuses = new Set(['all', 'with', 'without']);
@@ -15,6 +17,22 @@ const allowedEcStatuses = new Set([
   'hidden',
   'excluded',
   'retired',
+]);
+const allowedMetadataStatuses = new Set([
+  'all',
+  'core_incomplete',
+  'complete',
+  'optional_incomplete',
+]);
+const allowedMissingFields = new Set([
+  'all',
+  'producer',
+  'origin',
+  'volume',
+  'alcoholPercentage',
+  'description',
+  'image',
+  'tastingNotes',
 ]);
 
 export const sanitizeAdminProductsReturnTo = (value: string | undefined) => {
@@ -32,7 +50,13 @@ export const sanitizeAdminProductsReturnTo = (value: string | undefined) => {
       (url.searchParams.has('imageStatus') &&
         !allowedImageStatuses.has(url.searchParams.get('imageStatus') ?? '')) ||
       (url.searchParams.has('ecStatus') &&
-        !allowedEcStatuses.has(url.searchParams.get('ecStatus') ?? ''))
+        !allowedEcStatuses.has(url.searchParams.get('ecStatus') ?? '')) ||
+      (url.searchParams.has('metadataStatus') &&
+        !allowedMetadataStatuses.has(
+          url.searchParams.get('metadataStatus') ?? '',
+        )) ||
+      (url.searchParams.has('missingField') &&
+        !allowedMissingFields.has(url.searchParams.get('missingField') ?? ''))
     ) {
       return ADMIN_PRODUCTS_PATH;
     }

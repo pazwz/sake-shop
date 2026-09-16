@@ -1,3 +1,8 @@
+import type {
+  ProductMetadataCompleteness,
+  ProductMetadataStatus,
+} from '@/types/product-metadata-completeness';
+
 export type PublicationIssue = {
   code:
     | 'PRODUCT_INACTIVE'
@@ -59,6 +64,7 @@ export type AdminProductRecord = {
   isManuallyHidden: boolean;
   ecStatus: import('@/types/product-ec-status').ProductEcStatus;
   ecStatusReason: string | null;
+  metadataCompleteness: ProductMetadataCompleteness;
   isPackageOnly: boolean;
   images: AdminProductImage[];
   inventory: AdminProductInventory[];
@@ -93,6 +99,7 @@ export type AdminProductListResult = {
     import('@/types/product-ec-status').ProductEcStatus,
     number
   >;
+  metadataStatusCounts: Record<ProductMetadataStatus, number>;
   pagination: {
     page: number;
     limit: number;

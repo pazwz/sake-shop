@@ -1,5 +1,23 @@
 import { z } from 'zod';
 
+export const adminProductMetadataStatusValues = [
+  'all',
+  'core_incomplete',
+  'complete',
+  'optional_incomplete',
+] as const;
+
+export const adminProductMissingFieldValues = [
+  'all',
+  'producer',
+  'origin',
+  'volume',
+  'alcoholPercentage',
+  'description',
+  'image',
+  'tastingNotes',
+] as const;
+
 const optionalQueryValue = z.preprocess(
   (value) => (value === '' ? undefined : value),
   z.string().trim().min(1).optional(),
@@ -23,6 +41,8 @@ export const adminProductQueryValidator = z.object({
     .default('all'),
   source: z.enum(['all', 'smaregi', 'local']).default('all'),
   imageStatus: z.enum(['all', 'with', 'without']).default('all'),
+  metadataStatus: z.enum(adminProductMetadataStatusValues).default('all'),
+  missingField: z.enum(adminProductMissingFieldValues).default('all'),
   page: z.coerce.number().int().positive().default(1),
   limit: z.coerce.number().int().min(1).max(50).default(25),
 });

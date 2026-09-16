@@ -3,6 +3,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createAdminProductEditHref } from '@/lib/admin-product-navigation';
+import { ProductMetadataCompletenessCell } from '@/components/admin/product-metadata-completeness';
 import { ProductionSmaregiSyncPanel } from '@/components/admin/production-smaregi-sync-panel';
 import { formatPrice } from '@/lib/products';
 import { getCurrentAdmin } from '@/services/admin-authorization.service';
@@ -69,6 +70,10 @@ const pageHref = (
   if (query.ecStatus !== 'all') params.set('ecStatus', query.ecStatus);
   if (query.source !== 'all') params.set('source', query.source);
   if (query.imageStatus !== 'all') params.set('imageStatus', query.imageStatus);
+  if (query.metadataStatus !== 'all')
+    params.set('metadataStatus', query.metadataStatus);
+  if (query.missingField !== 'all')
+    params.set('missingField', query.missingField);
   return `/admin/products?${params.toString()}`;
 };
 
@@ -104,8 +109,8 @@ export default async function AdminProductsPage({
 
       <ProductionSmaregiSyncPanel status={syncStatus} canSync={canEdit} />
 
-      <form className="mt-10 grid gap-4 border-y line py-6 md:grid-cols-2 lg:grid-cols-6">
-        <label className="text-xs lg:col-span-2">
+      <form className="mt-10 grid gap-4 border-y line py-6 md:grid-cols-2 xl:grid-cols-8">
+        <label className="text-xs xl:col-span-2">
           商品検索
           <input
             name="q"
@@ -167,7 +172,37 @@ export default async function AdminProductsPage({
             <option value="without">画像なし</option>
           </select>
         </label>
-        <div className="flex items-end gap-3 md:col-span-2 lg:col-span-6">
+        <label className="text-xs">
+          商品情報
+          <select
+            name="metadataStatus"
+            defaultValue={query.metadataStatus}
+            className="input mt-2"
+          >
+            <option value="all">すべて</option>
+            <option value="core_incomplete">基本情報不足</option>
+            <option value="complete">基本情報OK</option>
+            <option value="optional_incomplete">テイスティング未設定</option>
+          </select>
+        </label>
+        <label className="text-xs">
+          不足項目
+          <select
+            name="missingField"
+            defaultValue={query.missingField}
+            className="input mt-2"
+          >
+            <option value="all">すべて</option>
+            <option value="producer">生産者</option>
+            <option value="origin">産地</option>
+            <option value="volume">容量</option>
+            <option value="alcoholPercentage">アルコール度数</option>
+            <option value="description">商品説明</option>
+            <option value="image">商品画像</option>
+            <option value="tastingNotes">テイスティング</option>
+          </select>
+        </label>
+        <div className="flex items-end gap-3 md:col-span-2 xl:col-span-8">
           <button className="btn bg-[#171412] text-white">検索</button>
           <Link href="/admin/products" className="text-xs underline">
             条件をリセット
@@ -204,8 +239,24 @@ export default async function AdminProductsPage({
         ))}
       </div>
 
+      <div
+        className="mt-4 flex flex-wrap gap-2 text-xs"
+        aria-label="公開中の商品情報統計"
+      >
+        <span className="rounded-full border border-rose-200 bg-rose-50 px-3 py-1.5 text-rose-800">
+          基本情報不足 {result.metadataStatusCounts.CORE_INCOMPLETE}件
+        </span>
+        <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-emerald-800">
+          基本情報OK {result.metadataStatusCounts.COMPLETE}件
+        </span>
+        <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-amber-900">
+          テイスティング未設定 {result.metadataStatusCounts.OPTIONAL_INCOMPLETE}
+          件
+        </span>
+      </div>
+
       <div className="mt-5 overflow-x-auto border-y line">
-        <table className="w-full min-w-[1160px] text-left text-sm">
+        <table className="w-full min-w-[1300px] text-left text-sm">
           <thead className="bg-[#faf8f4] text-xs text-stone-500">
             <tr>
               <th className="p-3">商品</th>
@@ -215,6 +266,7 @@ export default async function AdminProductsPage({
               <th className="p-3">EC販売可能数</th>
               <th className="p-3">画像</th>
               <th className="p-3">EC公開状態</th>
+              <th className="p-3">商品情報</th>
               <th className="p-3">最終同期</th>
               <th className="w-28 p-3 text-center">操作</th>
             </tr>
@@ -283,6 +335,12 @@ export default async function AdminProductsPage({
                         {product.ecStatusReason}
                       </p>
                     ) : null}
+                  </td>
+                  <td className="p-3">
+                    <ProductMetadataCompletenessCell
+                      completeness={product.metadataCompleteness}
+                      isPublished={product.ecStatus === 'PUBLISHED'}
+                    />
                   </td>
                   <td className="p-3 text-xs text-stone-500">
                     {product.lastSyncedAt
