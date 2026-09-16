@@ -47,28 +47,10 @@ export async function proxy(request: NextRequest) {
       return NextResponse.next();
     }
 
-    const previewToken = request.nextUrl.searchParams.get('previewToken');
-    if (previewToken) {
-      const previewSession = await readSession(request);
-      if (
-        previewSession?.role === 'OWNER' ||
-        previewSession?.role === 'MANAGER'
-      ) {
-        // The page performs the authoritative admin, token, product ID, and
-        // slug checks. This only prevents the public visibility guard from
-        // rejecting a legitimate unpublished preview before it reaches SSR.
-        return NextResponse.next();
-      }
-    }
-
-    const { ProductService } = await import('@/services/product.service');
-    const productService = new ProductService();
-    const isPublic = await productService.isPublicProductSlug(productSlug);
-    if (!isPublic) {
-      return NextResponse.rewrite(new URL('/_not-found', request.url), {
-        status: 404,
-      });
-    }
+    // ProductDetailPage performs the authoritative public-visibility and
+    // preview authorization checks. Keeping that database access out of the
+    // global proxy avoids tracing Prisma into every matched request while
+    // retaining the same customer-facing 404 behavior from the page.
     return NextResponse.next();
   }
   if (pathname === '/admin/login') return NextResponse.next();
