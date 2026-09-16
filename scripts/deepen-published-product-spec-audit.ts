@@ -203,11 +203,21 @@ const highDecision = (field: FieldName, proposal: Proposal): ResearchDecision | 
   };
 };
 
-const getPublicProducts = () => prisma.product.findMany({
-  where: publicProductWhere,
-  include: { category: { select: { name: true } }, images: { select: { id: true } } },
-  orderBy: { smaregiProductId: 'asc' },
-});
+const getPublicProducts = async () => {
+  const exclusions = await prisma.smaregiProductExclusion.findMany({
+    select: { smaregiProductId: true },
+  });
+  return prisma.product.findMany({
+    where: {
+      ...publicProductWhere,
+      smaregiProductId: {
+        notIn: exclusions.map(({ smaregiProductId }) => smaregiProductId),
+      },
+    },
+    include: { category: { select: { name: true } }, images: { select: { id: true } } },
+    orderBy: { smaregiProductId: 'asc' },
+  });
+};
 
 const stats = (products: PublicProduct[]) => ({
   publishedProducts: products.length,
