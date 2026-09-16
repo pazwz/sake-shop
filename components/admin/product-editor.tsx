@@ -12,6 +12,10 @@ import type {
   AdminProductRecord,
   ProductPublicationResult,
 } from '@/types/admin-product';
+import {
+  PRODUCT_EC_STATUS_LABEL,
+  type ProductEcStatus,
+} from '@/types/product-ec-status';
 
 const storeLabels: Record<string, string> = {
   '1': 'リンクサス福岡',
@@ -57,7 +61,9 @@ export function ProductEditor({
 }) {
   const router = useRouter();
   const [images, setImages] = useState(initialProduct.images);
-  const [published, setPublished] = useState(initialProduct.isEcAvailable);
+  const [ecStatus, setEcStatus] = useState<ProductEcStatus>(
+    initialProduct.ecStatus,
+  );
   const [publication, setPublication] = useState<ProductPublicationResult>(
     initialProduct.publication,
   );
@@ -79,7 +85,7 @@ export function ProductEditor({
     const result = (await response.json()) as { data?: AdminProductRecord };
     if (!result.data) return;
     setImages(result.data.images);
-    setPublished(result.data.isEcAvailable);
+    setEcStatus(result.data.ecStatus);
     setPublication(result.data.publication);
   };
 
@@ -100,7 +106,13 @@ export function ProductEditor({
       boxProductId: initialProduct.isPackageOnly
         ? undefined
         : String(formData.get('boxProductId')) || null,
-      isEcAvailable: formData.get('isEcAvailable') === 'on',
+      ...(formData.get('ecVisibility')
+        ? {
+            ecVisibility: formData.get('ecVisibility') as
+              | 'published'
+              | 'hidden',
+          }
+        : {}),
     };
     try {
       const response = await fetch(
@@ -125,7 +137,7 @@ export function ProductEditor({
         data?: AdminProductRecord;
       };
       if (!result.data) throw new Error('Invalid response');
-      setPublished(result.data.isEcAvailable);
+      setEcStatus(result.data.ecStatus);
       setPublication(result.data.publication);
       setSettingsFeedback({
         kind: 'success',
@@ -147,7 +159,7 @@ export function ProductEditor({
     if (busyRef.current || excluding) return;
     if (
       !window.confirm(
-        'この商品をLINXAS ECの同期対象から除外します。スマレジの商品は削除されません。続行しますか？',
+        'スマレジの商品は削除されません。\nLINXAS ECでは「EC販売対象外」となり、以降の同期でもEC販売商品として再作成されません。\n続行しますか？',
       )
     )
       return;
@@ -161,10 +173,7 @@ export function ProductEditor({
       );
       if (!response.ok)
         throw new Error(
-          await errorDetail(
-            response,
-            'EC販売対象から除外できませんでした。',
-          ),
+          await errorDetail(response, 'EC販売対象から除外できませんでした。'),
         );
       router.replace(returnTo);
       router.refresh();
@@ -327,12 +336,16 @@ export function ProductEditor({
           </a>
           <span
             className={`rounded-full px-3 py-1 text-xs font-semibold ${
-              published
+              ecStatus === 'PUBLISHED'
                 ? 'bg-emerald-100 text-emerald-800'
-                : 'bg-stone-100 text-stone-600'
+                : ecStatus === 'PREPARING'
+                  ? 'bg-amber-100 text-amber-900'
+                  : ecStatus === 'EC_EXCLUDED'
+                    ? 'bg-rose-100 text-rose-800'
+                    : 'bg-stone-100 text-stone-600'
             }`}
           >
-            {published ? 'EC公開中' : 'EC非公開'}
+            {PRODUCT_EC_STATUS_LABEL[ecStatus]}
           </span>
         </div>
       </div>
@@ -495,7 +508,8 @@ export function ProductEditor({
           <p className="eyebrow">EC CHANNEL CONTROL</p>
           <h2 className="serif mt-3 text-2xl">EC販売対象から除外</h2>
           <p className="mt-3 text-sm leading-6 text-stone-600">
-            スマレジの商品は削除されません。LINXAS ECの同期対象から除外され、次回同期で再作成されません。
+            スマレジの商品は削除されません。LINXAS
+            ECの同期対象から除外され、次回同期で再作成されません。
           </p>
           <button
             type="button"
@@ -621,19 +635,23 @@ export function ProductEditor({
           </label>
         </div>
 
-        <label className="mt-7 flex items-center justify-between gap-5 border-y line py-5">
-          <span>
-            <span className="block font-semibold">EC公開</span>
-            <span className="mt-1 block text-xs text-stone-500">
-              公開すると一般の商品一覧・検索・商品ページに表示されます。
-            </span>
+        <label className="mt-7 block border-y line py-5">
+          <span className="block font-semibold">EC公開状態</span>
+          <span className="mt-1 block text-xs text-stone-500">
+            公開準備中の商品は、画像などの公開条件が揃うまで一般のお客様には表示されません。
           </span>
-          <input
-            name="isEcAvailable"
-            type="checkbox"
-            defaultChecked={published}
-            className="h-5 w-5"
-          />
+          <select
+            name="ecVisibility"
+            defaultValue=""
+            className="input mt-3 max-w-sm"
+          >
+            <option value="">
+              現在の状態を維持（
+              {PRODUCT_EC_STATUS_LABEL[initialProduct.ecStatus]}）
+            </option>
+            <option value="published">EC販売中にする</option>
+            <option value="hidden">一時的に非公開にする</option>
+          </select>
         </label>
 
         <div className="mt-6 grid gap-4 md:grid-cols-2">

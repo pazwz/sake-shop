@@ -63,6 +63,7 @@ type ProductPage = {
 export const PUBLIC_PRODUCT_VISIBILITY = {
   isActive: true,
   isEcAvailable: true,
+  isManuallyHidden: false,
 } as const;
 
 export const getCollectionProductCandidateWhere = (

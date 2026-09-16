@@ -235,6 +235,12 @@ Settings
 变为 true 时调用统一 publication validation。Admin Route 使用严格白名单，不能接收
 价格、库存、名称、商品代码、Category 或 Smaregi 状态更新。
 
+商品的运营用 EC 状态由单一 resolver 生成，而非由 UI 组合多个 boolean：active exclusion
+优先为 `EC_EXCLUDED`，来源退役的 inactive 商品为 `RETIRED`，`isManuallyHidden` 为
+`HIDDEN`，未满足发布条件的 `isEcAvailable=false` 为 `PREPARING`，其余为 `PUBLISHED`。
+消费者可见性仍只使用 `isActive=true`、`isEcAvailable=true` 与
+`isManuallyHidden=false` 的统一 predicate。
+
 商品图片沿用 Admin media presign 流程，由浏览器直接 PUT 私有 S3；数据库只保存
 CloudFront URL。ProductImage.displayOrder 决定主图和显示顺序。
 

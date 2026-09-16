@@ -6,6 +6,7 @@ export interface CollectionProductCandidate {
   producer: string | null;
   isActive: boolean;
   isEcAvailable: boolean;
+  isManuallyHidden?: boolean;
   isEligible: boolean;
   category: {
     id: string;

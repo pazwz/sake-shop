@@ -9,9 +9,47 @@ import { getCurrentAdmin } from '@/services/admin-authorization.service';
 import { AdminProductService } from '@/services/admin-product.service';
 import { SyncService } from '@/services/sync.service';
 import { adminProductQueryValidator } from '@/validators/admin-product.validator';
+import {
+  PRODUCT_EC_STATUS,
+  PRODUCT_EC_STATUS_LABEL,
+  type ProductEcStatus,
+} from '@/types/product-ec-status';
 
 const service = new AdminProductService();
 const syncService = new SyncService();
+
+const ecStatusOptions: Array<{
+  value: 'all' | 'published' | 'preparing' | 'hidden' | 'excluded' | 'retired';
+  status?: ProductEcStatus;
+  label: string;
+}> = [
+  { value: 'all', label: 'すべて' },
+  {
+    value: 'published',
+    status: PRODUCT_EC_STATUS.PUBLISHED,
+    label: 'EC販売中',
+  },
+  {
+    value: 'preparing',
+    status: PRODUCT_EC_STATUS.PREPARING,
+    label: '公開準備中',
+  },
+  { value: 'hidden', status: PRODUCT_EC_STATUS.HIDDEN, label: '非公開' },
+  {
+    value: 'excluded',
+    status: PRODUCT_EC_STATUS.EC_EXCLUDED,
+    label: 'EC販売対象外',
+  },
+  { value: 'retired', status: PRODUCT_EC_STATUS.RETIRED, label: '販売終了' },
+];
+
+const ecStatusClass: Record<ProductEcStatus, string> = {
+  PUBLISHED: 'bg-emerald-50 text-emerald-800',
+  PREPARING: 'bg-amber-50 text-amber-900',
+  HIDDEN: 'bg-stone-100 text-stone-700',
+  EC_EXCLUDED: 'bg-rose-50 text-rose-800',
+  RETIRED: 'bg-slate-100 text-slate-700',
+};
 
 const scalarParams = (values: Record<string, string | string[] | undefined>) =>
   Object.fromEntries(
@@ -98,9 +136,11 @@ export default async function AdminProductsPage({
             defaultValue={query.ecStatus}
             className="input mt-2"
           >
-            <option value="all">すべて</option>
-            <option value="published">公開中</option>
-            <option value="unpublished">非公開</option>
+            {ecStatusOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
           </select>
         </label>
         <label className="text-xs">
@@ -145,6 +185,25 @@ export default async function AdminProductsPage({
         ) : null}
       </div>
 
+      <div className="mt-4 flex flex-wrap gap-2 text-xs">
+        {ecStatusOptions.map((option) => (
+          <Link
+            key={option.value}
+            href={pageHref({ ...query, ecStatus: option.value }, 1)}
+            className={`rounded-full border px-3 py-1.5 ${
+              query.ecStatus === option.value
+                ? 'border-[#6d2227] bg-[#6d2227] text-white'
+                : 'border-stone-200 text-stone-600'
+            }`}
+          >
+            {option.label}{' '}
+            {option.status
+              ? result.ecStatusCounts[option.status]
+              : result.pagination.total}
+          </Link>
+        ))}
+      </div>
+
       <div className="mt-5 overflow-x-auto border-y line">
         <table className="w-full min-w-[1160px] text-left text-sm">
           <thead className="bg-[#faf8f4] text-xs text-stone-500">
@@ -155,7 +214,7 @@ export default async function AdminProductsPage({
               <th className="p-3">価格</th>
               <th className="p-3">EC販売可能数</th>
               <th className="p-3">画像</th>
-              <th className="p-3">公開</th>
+              <th className="p-3">EC公開状態</th>
               <th className="p-3">最終同期</th>
               <th className="w-28 p-3 text-center">操作</th>
             </tr>
@@ -215,14 +274,15 @@ export default async function AdminProductsPage({
                   </td>
                   <td className="p-3">
                     <span
-                      className={
-                        product.isEcAvailable
-                          ? 'font-semibold text-emerald-700'
-                          : 'text-stone-500'
-                      }
+                      className={`inline-flex rounded-full px-2 py-1 text-[10px] font-semibold ${ecStatusClass[product.ecStatus]}`}
                     >
-                      {product.isEcAvailable ? '公開中' : '非公開'}
+                      {PRODUCT_EC_STATUS_LABEL[product.ecStatus]}
                     </span>
+                    {product.ecStatusReason ? (
+                      <p className="mt-1 max-w-40 text-[10px] leading-4 text-stone-500">
+                        {product.ecStatusReason}
+                      </p>
+                    ) : null}
                   </td>
                   <td className="p-3 text-xs text-stone-500">
                     {product.lastSyncedAt

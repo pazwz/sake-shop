@@ -33,6 +33,7 @@ const fixture = (isEcAvailable = false) => ({
   tastingNotes: null,
   isActive: true,
   isEcAvailable,
+  isManuallyHidden: false,
   lastSyncedAt: now,
   createdAt: now,
   updatedAt: now,
@@ -112,7 +113,7 @@ const reservations = {
 
 test('admin product edit link preserves the current list URL', () => {
   const returnTo =
-    '/admin/products?q=moet&category=champagne&ecStatus=unpublished&source=smaregi&imageStatus=without&page=3';
+    '/admin/products?q=moet&category=champagne&ecStatus=preparing&source=smaregi&imageStatus=without&page=3';
   const href = createAdminProductEditHref('product-1', returnTo);
   const url = new URL(href, 'https://example.test');
 
@@ -175,14 +176,14 @@ test('admin list defaults to 25 rows and supports all filters', () => {
   const query = adminProductQueryValidator.parse({
     q: 'TEST',
     category: 'category-1',
-    ecStatus: 'unpublished',
+    ecStatus: 'preparing',
     source: 'smaregi',
     imageStatus: 'without',
     page: '2',
   });
   assert.equal(query.limit, 25);
   assert.equal(query.page, 2);
-  assert.equal(query.ecStatus, 'unpublished');
+  assert.equal(query.ecStatus, 'preparing');
   assert.equal(query.source, 'smaregi');
   assert.equal(query.imageStatus, 'without');
 });
@@ -195,9 +196,9 @@ test('admin image status filters are translated to server-side relation filters'
     adminProductQueryValidator.parse({ q: '山崎', imageStatus: 'without' }),
   );
 
-  assert.deepEqual(withImages.images, { some: {} });
-  assert.deepEqual(withoutImages.images, { none: {} });
-  assert.ok(withoutImages.OR);
+  assert.match(JSON.stringify(withImages), /"images":\{"some":\{\}\}/);
+  assert.match(JSON.stringify(withoutImages), /"images":\{"none":\{\}\}/);
+  assert.match(JSON.stringify(withoutImages), /"OR"/);
 });
 
 test('admin pagination calculates 18 pages for 441 products at 25 per page', async () => {
@@ -270,6 +271,30 @@ test('true to false publication is allowed without publication validation', asyn
   });
   assert.equal(result.isEcAvailable, false);
   assert.equal(validationCalls, 1);
+});
+
+test('manual hiding is recorded separately from publication readiness', async () => {
+  let updateData: Record<string, unknown> | null = null;
+  const service = new AdminProductService(
+    {
+      findById: async () => fixture(true),
+      update: async (_id: string, data: Record<string, unknown>) => {
+        updateData = data;
+        return { ...fixture(true), isManuallyHidden: true };
+      },
+    } as never,
+    { getActiveReservedQuantities: async () => new Map() } as never,
+    publication as never,
+  );
+
+  const result = await service.updateProduct('product-1', {
+    ecVisibility: 'hidden',
+  });
+  assert.equal(
+    (updateData as Record<string, unknown> | null)?.isManuallyHidden,
+    true,
+  );
+  assert.equal(result.ecStatus, 'HIDDEN');
 });
 
 test('admin detail includes unpublished products and subtracts reservations', async () => {

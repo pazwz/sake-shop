@@ -72,6 +72,7 @@ export class OrderService {
           if (
             !product.isActive ||
             !product.isEcAvailable ||
+            product.isManuallyHidden ||
             !isStandaloneEcProduct(product)
           )
             throw new AppError(

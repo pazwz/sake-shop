@@ -43,6 +43,7 @@ export class ProductService {
       !product ||
       !product.isActive ||
       !product.isEcAvailable ||
+      product.isManuallyHidden ||
       !isStandaloneEcProduct(product)
     ) {
       throw new NotFoundError('Product not found.');
@@ -67,6 +68,7 @@ export class ProductService {
       !product ||
       !product.isActive ||
       !product.isEcAvailable ||
+      product.isManuallyHidden ||
       !isStandaloneEcProduct(product)
     ) {
       throw new NotFoundError('Product not found.');

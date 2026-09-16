@@ -55,9 +55,11 @@ export default async function CollectionDetailPage({
               producer: product.producer,
               isActive: product.isActive,
               isEcAvailable: product.isEcAvailable,
+              isManuallyHidden: product.isManuallyHidden,
               isEligible:
                 product.isActive &&
                 product.isEcAvailable &&
+                !product.isManuallyHidden &&
                 isStandaloneEcProduct(product),
               category: {
                 id: product.category.id,

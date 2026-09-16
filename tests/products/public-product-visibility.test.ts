@@ -13,6 +13,7 @@ import { productQueryValidator } from '@/validators/product.validator';
 test('public list and search predicates require active and EC-published products', () => {
   assert.equal(PUBLIC_PRODUCT_VISIBILITY.isActive, true);
   assert.equal(PUBLIC_PRODUCT_VISIBILITY.isEcAvailable, true);
+  assert.equal(PUBLIC_PRODUCT_VISIBILITY.isManuallyHidden, false);
 });
 
 test('package-only products are excluded by Smaregi identity and box category', () => {
@@ -96,6 +97,7 @@ const productFixture = (overrides: Record<string, unknown> = {}) => ({
   boxProductId: null,
   isActive: true,
   isEcAvailable: true,
+  isManuallyHidden: false,
   createdAt: new Date('2026-01-01T00:00:00.000Z'),
   ...overrides,
 });
@@ -136,6 +138,19 @@ test('product detail rejects an inactive product by slug', async () => {
   );
 
   await assert.rejects(service.getProductBySlug('inactive-product'), {
+    name: 'NotFoundError',
+  });
+});
+
+test('product detail rejects a manually hidden product by slug', async () => {
+  const service = new ProductService(
+    {
+      findBySlug: async () => productFixture({ isManuallyHidden: true }),
+    } as never,
+    { getActiveReservedQuantities: async () => new Map() } as never,
+  );
+
+  await assert.rejects(service.getProductBySlug('hidden-product'), {
     name: 'NotFoundError',
   });
 });

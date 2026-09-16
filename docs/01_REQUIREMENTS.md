@@ -176,7 +176,9 @@ Smaregi 管理的商品名、商品代码、Category、价格、有效状态、�
 且同步来源有效时才可公开。说明和库存为 0 只显示 warning，不阻止公开。
 
 公开商品查询、搜索、直接详情、首页及 Collection 均必须同时满足
-`isActive=true` 与 `isEcAvailable=true`。
+`isActive=true`、`isEcAvailable=true` 与 `isManuallyHidden=false`。后台 EC 公開状态统一显示为
+EC販売中、公開準備中、非公開、EC販売対象外或販売終了；手动非公開与缺少公开条件的
+公開準備中不得混用。
 
 消费者商品列表使用数据库分页，默认每页 24 件，只允许切换 24 / 48 / 96 件。
 `page`、`perPage` 与搜索、顶层商品分组、内部 Category、排序参数共同保存在 URL；

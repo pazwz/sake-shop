@@ -56,6 +56,9 @@ export type AdminProductRecord = {
   description: string | null;
   tastingNotes: string | null;
   isEcAvailable: boolean;
+  isManuallyHidden: boolean;
+  ecStatus: import('@/types/product-ec-status').ProductEcStatus;
+  ecStatusReason: string | null;
   isPackageOnly: boolean;
   images: AdminProductImage[];
   inventory: AdminProductInventory[];
@@ -86,6 +89,10 @@ export type AdminBoxProductOption = {
 export type AdminProductListResult = {
   items: AdminProductRecord[];
   categories: Array<{ id: string; name: string }>;
+  ecStatusCounts: Record<
+    import('@/types/product-ec-status').ProductEcStatus,
+    number
+  >;
   pagination: {
     page: number;
     limit: number;

@@ -18,7 +18,9 @@ export const productSlugValidator = z
 export const adminProductQueryValidator = z.object({
   q: optionalQueryValue,
   category: optionalQueryValue,
-  ecStatus: z.enum(['all', 'published', 'unpublished']).default('all'),
+  ecStatus: z
+    .enum(['all', 'published', 'preparing', 'hidden', 'excluded', 'retired'])
+    .default('all'),
   source: z.enum(['all', 'smaregi', 'local']).default('all'),
   imageStatus: z.enum(['all', 'with', 'without']).default('all'),
   page: z.coerce.number().int().positive().default(1),
@@ -37,6 +39,8 @@ export const adminProductUpdateValidator = z
     description: nullableText,
     tastingNotes: nullableText,
     boxProductId: z.string().cuid().nullable().optional(),
+    ecVisibility: z.enum(['published', 'hidden']).optional(),
+    // Kept for backwards-compatible Admin clients. New UI sends ecVisibility.
     isEcAvailable: z.boolean().optional(),
   })
   .strict()

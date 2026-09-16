@@ -269,6 +269,8 @@ is_active
 
 is_ec_available
 
+is_manually_hidden
+
 last_synced_at
 
 created_at
@@ -280,7 +282,7 @@ updated_at
 - Smaregi-owned：smaregi_product_id、category_id、product_code、jan_code、name、
   price、tax_rate、is_active、last_synced_at、InventoryMirror。
 - LINXAS-owned：slug、producer、origin、volume、alcohol_percentage、description、
-  tasting_notes、is_ec_available、box_product_id、ProductImage 及 CMS 关联。
+  tasting_notes、is_ec_available、is_manually_hidden、box_product_id、ProductImage 及 CMS 关联。
 
 Admin 编辑必须保护 Smaregi-owned 字段。`box_product_id` 只能指向 Smaregi 同期済みの
 package-only Product；`ON DELETE SET NULL` で通常商品のリンクだけを解除する。

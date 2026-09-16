@@ -59,6 +59,7 @@ export class CategoryRepository {
           some: {
             isActive: true,
             isEcAvailable: true,
+            isManuallyHidden: false,
             NOT: {
               OR: [
                 {

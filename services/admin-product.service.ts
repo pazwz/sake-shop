@@ -17,6 +17,7 @@ import {
 import { InventoryReservationRepository } from '@/repositories/inventory-reservation.repository';
 import { projectApprovedInventory } from '@/services/inventory-projection.service';
 import { ProductPublicationService } from '@/services/product-publication.service';
+import { resolveProductEcStatus } from '@/services/product-ec-status.service';
 import {
   isPackageOnlyProduct,
   isStandaloneEcProduct,
@@ -42,7 +43,12 @@ export class AdminProductService {
   public async getProducts(
     query: AdminProductQuery,
   ): Promise<AdminProductListResult> {
-    const { items, total, categories } = await this.repository.findMany(query);
+    const excludedSmaregiProductIds = await this.getActiveExclusionIds();
+    const [{ items, total, categories }, ecStatusCounts] = await Promise.all([
+      this.repository.findMany(query, excludedSmaregiProductIds),
+      this.getEcStatusCounts(query, excludedSmaregiProductIds),
+    ]);
+    const excluded = new Set(excludedSmaregiProductIds);
     const activeReservations =
       await this.reservations.getActiveReservedQuantities(
         items.map(({ id }) => id),
@@ -54,10 +60,14 @@ export class AdminProductService {
             product,
             activeReservations.get(product.id) ?? 0,
             false,
+            [],
+            0,
+            excluded.has(product.smaregiProductId),
           ),
         ),
       ),
       categories,
+      ecStatusCounts,
       pagination: {
         page: query.page,
         limit: query.limit,
@@ -72,13 +82,15 @@ export class AdminProductService {
     const compatibleBoxIds = getCompatibleBoxSmaregiProductIds(
       product.smaregiProductId,
     );
-    const [reservations, candidates] = await Promise.all([
-      this.reservations.getActiveReservedQuantities([
-        id,
-        ...(product.boxProduct ? [product.boxProduct.id] : []),
-      ]),
-      this.repository.findBoxCandidates(compatibleBoxIds),
-    ]);
+    const [reservations, candidates, excludedSmaregiProductIds] =
+      await Promise.all([
+        this.reservations.getActiveReservedQuantities([
+          id,
+          ...(product.boxProduct ? [product.boxProduct.id] : []),
+        ]),
+        this.repository.findBoxCandidates(compatibleBoxIds),
+        this.getActiveExclusionIds(),
+      ]);
     const compatibleCandidates = candidates.filter((candidate) =>
       compatibleBoxIds.includes(candidate.smaregiProductId),
     );
@@ -97,12 +109,27 @@ export class AdminProductService {
         ),
       ),
       product.boxProduct ? (reservations.get(product.boxProduct.id) ?? 0) : 0,
+      new Set(excludedSmaregiProductIds).has(product.smaregiProductId),
     );
   }
 
   public async updateProduct(id: string, input: AdminProductUpdate) {
     const product = await this.requireProduct(id);
-    const data = this.normalizeUpdate(input);
+    const { ecVisibility, isEcAvailable, ...rest } = input;
+    const visibility =
+      ecVisibility ??
+      (isEcAvailable === undefined
+        ? undefined
+        : isEcAvailable
+          ? 'published'
+          : 'hidden');
+    const data = this.normalizeUpdate(rest);
+    if (visibility === 'published') {
+      data.isManuallyHidden = false;
+      data.isEcAvailable = true;
+    } else if (visibility === 'hidden') {
+      data.isManuallyHidden = true;
+    }
     if (data.boxProductId !== undefined && data.boxProductId !== null) {
       if (!isStandaloneEcProduct(product))
         throw new ValidationError(
@@ -113,9 +140,8 @@ export class AdminProductService {
       const compatibleBoxIds = getCompatibleBoxSmaregiProductIds(
         product.smaregiProductId,
       );
-      const candidates = await this.repository.findBoxCandidates(
-        compatibleBoxIds,
-      );
+      const candidates =
+        await this.repository.findBoxCandidates(compatibleBoxIds);
       const candidate = candidates.find(
         ({ id: candidateId }) => candidateId === data.boxProductId,
       );
@@ -136,7 +162,10 @@ export class AdminProductService {
     const candidate = { ...product, ...data };
     const activeReservations =
       await this.reservations.getActiveReservedQuantities([id]);
-    if (!product.isEcAvailable && candidate.isEcAvailable) {
+    if (
+      visibility === 'published' &&
+      (!product.isEcAvailable || product.isManuallyHidden)
+    ) {
       const validation = await this.publication.validateProduct(
         candidate,
         activeReservations.get(id) ?? 0,
@@ -150,7 +179,15 @@ export class AdminProductService {
     }
     try {
       const updated = await this.repository.update(id, data);
-      return this.toRecord(updated, activeReservations.get(id) ?? 0, true);
+      const excludedSmaregiProductIds = await this.getActiveExclusionIds();
+      return this.toRecord(
+        updated,
+        activeReservations.get(id) ?? 0,
+        true,
+        [],
+        0,
+        new Set(excludedSmaregiProductIds).has(updated.smaregiProductId),
+      );
     } catch (error) {
       if (
         error instanceof Prisma.PrismaClientKnownRequestError &&
@@ -203,7 +240,32 @@ export class AdminProductService {
     return product;
   }
 
-  private normalizeUpdate(input: AdminProductUpdate): AdminProductUpdate {
+  private getActiveExclusionIds() {
+    const repository = this.repository as Partial<AdminProductRepository>;
+    return repository.findActiveExclusionSmaregiProductIds
+      ? repository.findActiveExclusionSmaregiProductIds()
+      : Promise.resolve([]);
+  }
+
+  private getEcStatusCounts(
+    query: AdminProductQuery,
+    excludedSmaregiProductIds: readonly string[],
+  ) {
+    const repository = this.repository as Partial<AdminProductRepository>;
+    return repository.countEcStatuses
+      ? repository.countEcStatuses(query, excludedSmaregiProductIds)
+      : Promise.resolve({
+          PUBLISHED: 0,
+          PREPARING: 0,
+          HIDDEN: 0,
+          EC_EXCLUDED: 0,
+          RETIRED: 0,
+        });
+  }
+
+  private normalizeUpdate(
+    input: Omit<AdminProductUpdate, 'ecVisibility' | 'isEcAvailable'>,
+  ): AdminProductUpdate & { isManuallyHidden?: boolean } {
     const nullable = (value: string | null | undefined) =>
       value === undefined ? undefined : value || null;
     return {
@@ -248,6 +310,7 @@ export class AdminProductService {
     checkSlugOwner: boolean,
     boxCandidates: AdminBoxProductOption[] = [],
     boxActiveReservedQuantity = 0,
+    isEcExcluded = false,
   ): Promise<AdminProductRecord> {
     const projection = projectApprovedInventory(
       product.inventoryMirrors,
@@ -260,6 +323,17 @@ export class AdminProductService {
       EXPECTED_BOX_PRODUCT_BY_BASE_PRODUCT_ID[
         product.smaregiProductId as keyof typeof EXPECTED_BOX_PRODUCT_BY_BASE_PRODUCT_ID
       ];
+    const publication = await this.publication.validateProduct(
+      product,
+      activeReservedQuantity,
+      checkSlugOwner,
+    );
+    const ecStatus = resolveProductEcStatus({
+      isActive: product.isActive,
+      isEcAvailable: product.isEcAvailable,
+      isManuallyHidden: product.isManuallyHidden,
+      isEcExcluded,
+    });
     return {
       id: product.id,
       smaregiProductId: product.smaregiProductId,
@@ -281,6 +355,12 @@ export class AdminProductService {
       description: product.description,
       tastingNotes: product.tastingNotes,
       isEcAvailable: product.isEcAvailable,
+      isManuallyHidden: product.isManuallyHidden,
+      ecStatus,
+      ecStatusReason:
+        ecStatus === 'PREPARING'
+          ? (publication.errors[0]?.message ?? 'EC公開の設定が未完了です。')
+          : null,
       isPackageOnly: isPackageOnlyProduct(product),
       images: product.images.map((image) => ({
         id: image.id,
@@ -303,11 +383,7 @@ export class AdminProductService {
         !configuredBox && expected
           ? { ...expected, reason: DEFERRED_BOX_REASON }
           : null,
-      publication: await this.publication.validateProduct(
-        product,
-        activeReservedQuantity,
-        checkSlugOwner,
-      ),
+      publication,
     };
   }
 

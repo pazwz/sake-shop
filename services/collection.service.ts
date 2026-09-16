@@ -35,6 +35,7 @@ export const sanitizePublicCollections = <
         id: string;
         isActive: boolean;
         isEcAvailable: boolean;
+        isManuallyHidden?: boolean;
         smaregiProductId: string;
         category: { smaregiCategoryId: string | null };
       };
@@ -43,6 +44,7 @@ export const sanitizePublicCollections = <
       product: {
         isActive: boolean;
         isEcAvailable: boolean;
+        isManuallyHidden?: boolean;
         id: string;
         smaregiProductId: string;
         category: { smaregiCategoryId: string | null };
@@ -58,6 +60,7 @@ export const sanitizePublicCollections = <
       ({ product }) =>
         product.isActive &&
         product.isEcAvailable &&
+        !product.isManuallyHidden &&
         isStandaloneEcProduct(product),
     ),
     editorialSections: collection.editorialSections.map((section) => ({
@@ -65,6 +68,7 @@ export const sanitizePublicCollections = <
       product:
         section.product?.isActive &&
         section.product.isEcAvailable &&
+        !section.product.isManuallyHidden &&
         isStandaloneEcProduct(section.product)
           ? section.product
           : null,

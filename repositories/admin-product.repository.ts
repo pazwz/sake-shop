@@ -9,6 +9,7 @@ import type {
   AdminProductQuery,
   AdminProductUpdate,
 } from '@/validators/admin-product.validator';
+import type { ProductEcStatus } from '@/types/product-ec-status';
 
 const include = {
   category: true,
@@ -28,42 +29,78 @@ export type AdminProductWithRelations = Prisma.ProductGetPayload<{
 
 export const buildAdminProductWhere = (
   query: AdminProductQuery,
-): Prisma.ProductWhereInput => ({
-  ...(query.q
-    ? {
-        OR: [
-          { name: { contains: query.q, mode: 'insensitive' } },
-          { productCode: { contains: query.q, mode: 'insensitive' } },
+  excludedSmaregiProductIds: readonly string[] = [],
+): Prisma.ProductWhereInput => {
+  const filters: Prisma.ProductWhereInput[] = [
+    ...(query.q
+      ? [
           {
-            smaregiProductId: {
-              contains: query.q,
-              mode: 'insensitive',
-            },
+            OR: [
+              {
+                name: { contains: query.q, mode: Prisma.QueryMode.insensitive },
+              },
+              {
+                productCode: {
+                  contains: query.q,
+                  mode: Prisma.QueryMode.insensitive,
+                },
+              },
+              {
+                smaregiProductId: {
+                  contains: query.q,
+                  mode: Prisma.QueryMode.insensitive,
+                },
+              },
+            ],
           },
-        ],
-      }
-    : {}),
-  ...(query.category ? { categoryId: query.category } : {}),
-  ...(query.ecStatus === 'published'
-    ? { isEcAvailable: true }
-    : query.ecStatus === 'unpublished'
-      ? { isEcAvailable: false }
-      : {}),
-  ...(query.source === 'smaregi'
-    ? { lastSyncedAt: { not: null } }
-    : query.source === 'local'
-      ? { lastSyncedAt: null }
-      : {}),
-  ...(query.imageStatus === 'with'
-    ? { images: { some: {} } }
-    : query.imageStatus === 'without'
-      ? { images: { none: {} } }
-      : {}),
-});
+        ]
+      : []),
+    ...(query.category ? [{ categoryId: query.category }] : []),
+    ...(query.source === 'smaregi'
+      ? [{ lastSyncedAt: { not: null } }]
+      : query.source === 'local'
+        ? [{ lastSyncedAt: null }]
+        : []),
+    ...(query.imageStatus === 'with'
+      ? [{ images: { some: {} } }]
+      : query.imageStatus === 'without'
+        ? [{ images: { none: {} } }]
+        : []),
+  ].filter((filter) => Object.keys(filter).length > 0);
+
+  const activeExclusion = {
+    smaregiProductId: { in: [...excludedSmaregiProductIds] },
+  };
+  const notExcluded = excludedSmaregiProductIds.length
+    ? { NOT: activeExclusion }
+    : {};
+  const statusFilters: Record<
+    Exclude<AdminProductQuery['ecStatus'], 'all'>,
+    Prisma.ProductWhereInput
+  > = {
+    published: { isActive: true, isEcAvailable: true, isManuallyHidden: false },
+    preparing: {
+      isActive: true,
+      isEcAvailable: false,
+      isManuallyHidden: false,
+    },
+    hidden: { isActive: true, isManuallyHidden: true },
+    excluded: activeExclusion,
+    retired: { isActive: false },
+  };
+  if (query.ecStatus === 'excluded') filters.push(activeExclusion);
+  else if (query.ecStatus !== 'all') {
+    filters.push(notExcluded, statusFilters[query.ecStatus]);
+  }
+  return filters.length ? { AND: filters } : {};
+};
 
 export class AdminProductRepository {
-  public async findMany(query: AdminProductQuery) {
-    const where = buildAdminProductWhere(query);
+  public async findMany(
+    query: AdminProductQuery,
+    excludedSmaregiProductIds: readonly string[] = [],
+  ) {
+    const where = buildAdminProductWhere(query, excludedSmaregiProductIds);
     const [items, total, categories] = await prisma.$transaction([
       prisma.product.findMany({
         where,
@@ -80,6 +117,43 @@ export class AdminProductRepository {
       }),
     ]);
     return { items, total, categories };
+  }
+
+  public async findActiveExclusionSmaregiProductIds() {
+    const exclusions = await prisma.smaregiProductExclusion.findMany({
+      where: { revokedAt: null },
+      select: { smaregiProductId: true },
+    });
+    return exclusions.map(({ smaregiProductId }) => smaregiProductId);
+  }
+
+  public async countEcStatuses(
+    query: AdminProductQuery,
+    excludedSmaregiProductIds: readonly string[],
+  ): Promise<Record<ProductEcStatus, number>> {
+    const baseQuery = { ...query, ecStatus: 'all' as const, page: 1 };
+    const statuses: Array<[ProductEcStatus, AdminProductQuery['ecStatus']]> = [
+      ['PUBLISHED', 'published'],
+      ['PREPARING', 'preparing'],
+      ['HIDDEN', 'hidden'],
+      ['EC_EXCLUDED', 'excluded'],
+      ['RETIRED', 'retired'],
+    ];
+    const counts = await Promise.all(
+      statuses.map(
+        async ([status, ecStatus]) =>
+          [
+            status,
+            await prisma.product.count({
+              where: buildAdminProductWhere(
+                { ...baseQuery, ecStatus },
+                excludedSmaregiProductIds,
+              ),
+            }),
+          ] as const,
+      ),
+    );
+    return Object.fromEntries(counts) as Record<ProductEcStatus, number>;
   }
 
   public findById(id: string) {
@@ -119,7 +193,10 @@ export class AdminProductRepository {
     });
   }
 
-  public update(id: string, data: AdminProductUpdate) {
+  public update(
+    id: string,
+    data: AdminProductUpdate & { isManuallyHidden?: boolean },
+  ) {
     return prisma.product.update({ where: { id }, data, include });
   }
 
