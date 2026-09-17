@@ -216,6 +216,26 @@ export class OrderService {
   async updateStatus(id: string, status: OrderStatus) {
     const order = await this.getAdminOrder(id);
     if (order.status === status) return order;
+    if (
+      status === OrderStatus.CANCELLED &&
+      order.paymentStatus === 'SUCCEEDED'
+    ) {
+      throw new AppError(
+        'A paid order must be refunded through the payment lifecycle.',
+        'PAYMENT_REFUND_REQUIRED',
+        409,
+      );
+    }
+    if (
+      status === OrderStatus.CANCELLED &&
+      order.payments?.some((payment) => payment.status === 'PENDING')
+    ) {
+      throw new AppError(
+        'A pending provider payment must be cancelled through the payment lifecycle first.',
+        'PAYMENT_CANCELLATION_REQUIRED',
+        409,
+      );
+    }
     if (!transitions[order.status].includes(status))
       throw new AppError(
         'The requested order status transition is not allowed.',

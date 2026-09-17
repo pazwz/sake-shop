@@ -125,6 +125,8 @@ test('disabled production Mock webhook cannot update Payment or Order', async ()
         providerPaymentId: 'mock-stera-payment',
         eventId: 'mock-event-id',
         status: PaymentStatus.SUCCEEDED,
+        amount: 1000,
+        currency: 'JPY',
       },
       'mock-development-signature',
     ),
@@ -167,6 +169,7 @@ test('direct Mock adapter construction is also blocked in production', async () 
       provider: PaymentProvider.STERA,
       orderNumber: 'LINXAS-20260913-ABC123',
       amount: 1000,
+      currency: 'JPY',
     }),
   );
 });
@@ -200,8 +203,9 @@ test('local development defaults to the existing Mock checkout', async () => {
   assert.ok(adapter instanceof MockPaymentAdapter);
   const payment = await adapter.createPayment({
     provider: PaymentProvider.STERA,
-    orderNumber: 'LINXAS-20260913-ABC123',
-    amount: 1000,
+      orderNumber: 'LINXAS-20260913-ABC123',
+      amount: 1000,
+      currency: 'JPY',
   });
   assert.equal(payment.amount, 1000);
 });

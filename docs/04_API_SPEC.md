@@ -946,6 +946,12 @@ ID. Signature verification is delegated to the provider adapter. The endpoint
 stores a unique provider/event record before applying Payment and Order status
 changes, so duplicate deliveries return success without reprocessing.
 
+Webhook は `amount` と `currency`（現在 `JPY`）が local Payment と完全一致する場合だけ
+Lifecycle に進む。Adapter の signature verification または Provider-status normalization が失敗した
+場合、Payment / Order / InventoryReservation は更新しない。予約が EXPIRED の後に success が届いた
+場合は `REQUIRES_REVIEW` とし、注文を PAID にせず、予約を再作成しない。実在 Provider の request
+schema、signature、3DS callback、cancel/void、refund API は Provider 契約確定後に Adapter で実装する。
+
 ---
 
 取消支付

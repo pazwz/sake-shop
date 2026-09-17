@@ -96,6 +96,12 @@ emailVerifiedAt、失效其余验证 token、建立首个 Session。验证 token
 全部旧 Session 并轮换当前设备 Session；密码重置撤销全部 Session。邮件 Provider 为 Resend，
 但业务 transaction 只能写 EmailOutbox，不能在 transaction 内调用外部邮件 API。
 
+Payment Provider の原始状態は LINXAS PaymentStatus に直接保存してはならない。Adapter は
+webhook を検証して Provider outcome を正規化し、その後に唯一の Payment Lifecycle が
+Payment、Order、InventoryReservation を更新する。Payment は JPY の amount/currency を
+保存し、不一致 webhook は fail closed とする。予約が EXPIRED 後に届く payment success は
+在庫を再確保・注文確定せず、`REQUIRES_REVIEW` で人工照合を待つ。
+
 My Page 提供会員情報、注文履歴、お届け先、メール配信設定、セキュリティ与 Logout。
 CustomerAddress 的 CRUD 必须按 Session customerId 限定，并通过 Customer 行锁保证同一会员
 最多一个默认地址；删除默认地址时按最早建立的剩余地址补位。NewsletterSubscription 是

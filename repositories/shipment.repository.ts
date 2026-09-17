@@ -1,4 +1,10 @@
-import { Prisma, ShipmentCarrier, ShipmentStatus } from '@prisma/client';
+import {
+  InventoryReservationStatus,
+  OrderStatus,
+  Prisma,
+  ShipmentCarrier,
+  ShipmentStatus,
+} from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 
 type AuditInput = {
@@ -84,6 +90,7 @@ export class ShipmentRepository {
       { shippedAt },
       audit,
       true,
+      OrderStatus.SHIPPED,
     );
   }
 
@@ -93,6 +100,8 @@ export class ShipmentRepository {
       ShipmentStatus.DELIVERED,
       { deliveredAt },
       audit,
+      false,
+      OrderStatus.COMPLETED,
     );
   }
 
@@ -102,6 +111,7 @@ export class ShipmentRepository {
     dates: { shippedAt?: Date; deliveredAt?: Date },
     audit: AuditInput,
     notifyShipped = false,
+    orderStatus?: OrderStatus,
   ) {
     return prisma.$transaction(async (tx) => {
       const shipment = await tx.shipment.update({
@@ -111,8 +121,17 @@ export class ShipmentRepository {
       });
       await tx.order.update({
         where: { id: shipment.orderId },
-        data: { shipmentStatus: status },
+        data: { shipmentStatus: status, ...(orderStatus ? { status: orderStatus } : {}) },
       });
+      if (orderStatus === OrderStatus.COMPLETED) {
+        await tx.inventoryReservation.updateMany({
+          where: {
+            orderId: shipment.orderId,
+            status: InventoryReservationStatus.ACTIVE,
+          },
+          data: { status: InventoryReservationStatus.CONSUMED },
+        });
+      }
       await this.createAuditLog(tx, audit);
       if (notifyShipped) {
         const order = await tx.order.findUniqueOrThrow({

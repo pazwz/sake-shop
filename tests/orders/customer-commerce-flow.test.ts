@@ -216,6 +216,8 @@ test('customer commerce integration: auth, checkout ownership, history and faile
       providerPaymentId: 'mock-stera-payment',
       eventId: 'failed-event',
       status: PaymentStatus.FAILED,
+      amount: 1000,
+      currency: 'JPY',
     },
     'mock-development-signature',
   );

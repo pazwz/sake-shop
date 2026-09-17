@@ -124,6 +124,8 @@ test('duplicate success webhook does not transition reservation twice', async ()
       providerPaymentId: 'mock-stera-payment-1',
       eventId: 'event-2',
       status: PaymentStatus.SUCCEEDED,
+      amount: 1000,
+      currency: 'JPY',
     },
     'mock-development-signature',
   );

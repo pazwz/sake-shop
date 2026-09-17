@@ -17,7 +17,9 @@ export const paymentWebhookValidator = z.object({
   providerPaymentId: z.string().trim().min(1).max(255),
   eventId: z.string().trim().min(8).max(255),
   status: z.nativeEnum(PaymentStatus),
-  amount: z.number().nonnegative().optional(),
+  // A provider event without its settled amount cannot be reconciled safely.
+  amount: z.number().nonnegative(),
+  currency: z.literal('JPY').default('JPY'),
 });
 
 export type PaymentCreateInput = z.infer<typeof paymentCreateValidator>;

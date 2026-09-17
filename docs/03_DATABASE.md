@@ -626,6 +626,8 @@ status
 
 amount
 
+currency（ISO 4217；当前只允许 JPY，默认 JPY）
+
 paid_at
 
 failed_at
@@ -643,6 +645,9 @@ STERA
 PAYPAY
 
 STRIPE
+
+PaymentStatus の `REQUIRES_REVIEW` は、予約が EXPIRED の後に Provider success が到着した
+場合の fail-closed 状態である。自動で PAID、ACTIVE または在庫再確保へ戻してはならない。
 
 ---
 

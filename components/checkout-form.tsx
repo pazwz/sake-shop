@@ -157,6 +157,8 @@ export default function CheckoutForm({
           providerPaymentId: paymentPayload.data.providerPaymentId,
           eventId: crypto.randomUUID(),
           status: 'SUCCEEDED',
+          amount: paymentPayload.data.amount,
+          currency: 'JPY',
         }),
       });
       const webhookPayload = await webhookResponse.json();

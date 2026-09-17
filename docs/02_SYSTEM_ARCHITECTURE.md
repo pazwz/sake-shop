@@ -558,6 +558,26 @@ approved deferred / orphan 的负库存只记录 warning；normal Product 出现
 该 Product 整体 quarantine，本轮不更新其 Product 与 InventoryMirror，其他 safe Product
 继续同步。
 
+## Payment / Order / Reservation lifecycle
+
+Payment Adapter は Provider 境界（create、status lookup、cancel/void、full refund、webhook
+signature verification、Provider outcome normalization）のみを担当し、Prisma を直接更新しない。
+Provider の `AUTHORIZED`、`CAPTURED`、`SUCCESS` 等は Adapter 内だけで解釈する。
+PaymentLifecycleService は検証済みの統一 outcome を受け、serializable transaction 内で
+Payment、Order、InventoryReservation、PaymentWebhookEvent、最小の SyncLog/Outbox を更新する。
+
+| Event | Order transition | Payment transition | Reservation action |
+| --- | --- | --- | --- |
+| Provider success with active hold | PENDING → PAID | PENDING → SUCCEEDED | ACTIVE remains ACTIVE; `expiresAt` cleared |
+| Provider failed/cancelled | PENDING remains PENDING | PENDING → FAILED/CANCELLED | ACTIVE → RELEASED |
+| Provider success after expiration | PENDING remains PENDING | PENDING → REQUIRES_REVIEW | no re-hold or stock recreation |
+| Unpaid order cancellation | eligible → CANCELLED | successful payment is rejected | ACTIVE → RELEASED |
+| Approved full refund before fulfillment | eligible → REFUNDED | SUCCEEDED → REFUNDED | ACTIVE → RELEASED; never re-ACTIVE |
+| Shipment delivered | SHIPPED → COMPLETED | unchanged | ACTIVE → CONSUMED |
+
+`REQUIRES_REVIEW` は自動処理の terminal state である。SHIPPED/COMPLETED 注文の自動 refund
+も禁止する。Provider HTTP は transaction 外、検証済み domain transition だけが transaction 内である。
+
 ## Smaregi production incremental sync
 
 外部定时调用与 Admin 手动同步共用唯一 orchestration：

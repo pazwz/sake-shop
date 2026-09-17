@@ -1,5 +1,5 @@
-import { createHash, randomUUID } from 'crypto';
-import { EmailTemplate, PaymentStatus, Prisma } from '@prisma/client';
+import { randomUUID } from 'crypto';
+import { PaymentStatus, Prisma } from '@prisma/client';
 import { getPaymentAdapter } from '@/services/payment-adapters/payment-adapter.factory';
 import type {
   PaymentCreateInput,
@@ -8,37 +8,15 @@ import type {
 import { AppError } from '@/lib/errors';
 import { OrderRepository } from '@/repositories/order.repository';
 import { CheckoutAccessService } from '@/services/checkout-access.service';
-import {
-  PaymentRepository,
-  PaymentStatusChangedError,
-} from '@/repositories/payment.repository';
-
-const transitions: Record<PaymentStatus, PaymentStatus[]> = {
-  PENDING: [
-    PaymentStatus.SUCCEEDED,
-    PaymentStatus.FAILED,
-    PaymentStatus.CANCELLED,
-  ],
-  SUCCEEDED: [PaymentStatus.REFUNDED],
-  FAILED: [],
-  CANCELLED: [],
-  REFUNDED: [],
-};
-
-const reservationTransitionFor = (status: PaymentStatus) =>
-  status === PaymentStatus.SUCCEEDED
-    ? ('HOLD' as const)
-    : status === PaymentStatus.FAILED ||
-        status === PaymentStatus.CANCELLED ||
-        status === PaymentStatus.REFUNDED
-      ? ('RELEASE' as const)
-      : ('NONE' as const);
+import { PaymentRepository } from '@/repositories/payment.repository';
+import { PaymentLifecycleService } from '@/services/payment-lifecycle.service';
 
 export class PaymentService {
   constructor(
     private readonly payments = new PaymentRepository(),
     private readonly orders = new OrderRepository(),
     private readonly checkoutAccess = new CheckoutAccessService(),
+    private readonly lifecycle = new PaymentLifecycleService(payments),
   ) {}
 
   async create(input: PaymentCreateInput, customerId: string) {
@@ -69,11 +47,19 @@ export class PaymentService {
       provider: input.provider,
       orderNumber: order.orderNumber,
       amount,
+      currency: 'JPY',
     });
     if (providerResult.amount !== amount) {
       throw new AppError(
         'The provider payment amount did not match the order.',
         'PAYMENT_AMOUNT_MISMATCH',
+        422,
+      );
+    }
+    if (providerResult.currency !== 'JPY') {
+      throw new AppError(
+        'The provider payment currency did not match the order.',
+        'PAYMENT_CURRENCY_MISMATCH',
         422,
       );
     }
@@ -85,6 +71,7 @@ export class PaymentService {
         providerPaymentId: providerResult.providerPaymentId,
         idempotencyKey,
         amount,
+        currency: providerResult.currency,
       });
     } catch (error) {
       if (
@@ -109,70 +96,6 @@ export class PaymentService {
         401,
       );
     }
-    const payment = await this.payments.findByProviderPaymentId(
-      input.provider,
-      input.providerPaymentId,
-    );
-    if (!payment)
-      throw new AppError('Payment was not found.', 'PAYMENT_NOT_FOUND', 404);
-    if (input.amount !== undefined && input.amount !== Number(payment.amount)) {
-      throw new AppError(
-        'The webhook amount did not match the payment.',
-        'PAYMENT_AMOUNT_MISMATCH',
-        422,
-      );
-    }
-    if (await this.payments.findWebhookEvent(input.provider, input.eventId)) {
-      return { payment, duplicate: true };
-    }
-    if (payment.status === input.status) return { payment, duplicate: true };
-    if (!transitions[payment.status].includes(input.status)) {
-      throw new AppError(
-        payment.status === PaymentStatus.SUCCEEDED
-          ? 'Payment has already been completed.'
-          : 'The requested payment status transition is not allowed.',
-        payment.status === PaymentStatus.SUCCEEDED
-          ? 'PAYMENT_ALREADY_COMPLETED'
-          : 'INVALID_PAYMENT_STATUS_TRANSITION',
-        409,
-      );
-    }
-
-    try {
-      return await this.payments.processWebhook({
-        ...input,
-        paymentId: payment.id,
-        payloadHash: createHash('sha256')
-          .update(
-            JSON.stringify({
-              provider: input.provider,
-              providerPaymentId: input.providerPaymentId,
-              eventId: input.eventId,
-              status: input.status,
-              amount: input.amount,
-            }),
-          )
-          .digest('hex'),
-        expectedStatus: payment.status,
-        nextStatus: input.status,
-        reservationTransition: reservationTransitionFor(input.status),
-        emailTemplate:
-          input.status === PaymentStatus.SUCCEEDED
-            ? EmailTemplate.PAYMENT_SUCCEEDED
-            : input.status === PaymentStatus.FAILED ||
-                input.status === PaymentStatus.CANCELLED
-              ? EmailTemplate.PAYMENT_FAILED
-              : null,
-      });
-    } catch (error) {
-      if (error instanceof PaymentStatusChangedError) {
-        throw new AppError(
-          'The requested payment status transition is not allowed.',
-          'INVALID_PAYMENT_STATUS_TRANSITION',
-          409,
-        );
-      }
-      throw error;
-    }
+    return this.lifecycle.applyVerifiedWebhook(adapter.normalizeWebhook(input));
   }
 }
