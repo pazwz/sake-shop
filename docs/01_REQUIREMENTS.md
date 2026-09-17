@@ -107,6 +107,13 @@ CustomerAddress 的 CRUD 必须按 Session customerId 限定，并通过 Custome
 最多一个默认地址；删除默认地址时按最早建立的剩余地址补位。NewsletterSubscription 是
 配信 consent 的 Source of Truth，Resend Contact 仅是异步 mirror，其失败不能回滚 Neon 偏好。
 
+公开的 `/contact` 表单只用于支持咨询，不会直接变更订单、付款、配送或库存。提交内容经严格
+server-side validation 后仅创建去重的 `EmailOutbox` 记录，由既有异步 worker 投递至固定的
+server-side 支持收件箱；浏览器不得指定收件人，来信邮箱仅作为 Reply-To。若
+`CONTACT_RECIPIENT_EMAIL` 未配置，表单必须 fail closed 并提示电话咨询。表单包含 same-origin、
+honeypot、长度限制和最小 rate limit；进程内 rate limit 在多 Vercel 实例间不共享，正式高流量
+上线前需要迁移至共享 rate-limit 存储。
+
 ---
 
 ## 6. 配送

@@ -298,6 +298,18 @@ NewsletterSubscription 与 Newsletter contact Outbox 任一步失败时整体 ro
 Session。未知错误的客户端响应仍为通用 500；服务端只记录不含输入值和 secret 的 operation
 stage、request id、error name 与 Prisma code。
 
+### Contact support
+
+`POST /api/v1/contact` 为公开支持咨询接口。body 严格限定为 UUID `submissionId`、topic
+(`PRODUCT` / `SHIPPING` / `PRE_ORDER` / `ORDER_CHANGE_CANCEL` / `OTHER`)、email、1–5000 字符
+message、可选安全格式 `orderNumber` 与空 honeypot `website`。Route 强制 same-origin，并使用
+最小进程内 rate limit。`website` 非空时返回与成功提交相同的通用成功响应且不写 Outbox。
+
+收件人只能由 server-side `CONTACT_RECIPIENT_EMAIL` 决定；缺失时返回 `503 CONTACT_UNAVAILABLE`。
+合法请求返回 201 并用 `contact:{submissionId}:support` 幂等创建 `CONTACT_INQUIRY` EmailOutbox。
+用户 email 仅是 support email 的 Reply-To，不能成为 From 或收件人。`orderNumber` 不执行订单
+变更；对已登录用户只做 customer-scoped 内部引用验证，未登录或不匹配时外部响应保持相同。
+
 ### Checkout mode
 
 服务端 `CHECKOUT_MODE` 支持：

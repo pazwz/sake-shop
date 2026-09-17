@@ -524,6 +524,19 @@ NewsletterSubscription 是 Marketing consent 的 Neon source of truth；Resend C
 Resend webhook 必须使用官方签名校验，数据库以 provider event id 去重，且只保存 payload
 hash 与必要 delivery state。
 
+公开 Contact 使用同一 outbox 管道，而不在 Route 内直接调用 Resend：
+
+```text
+Browser → POST /api/v1/contact → ContactService → ContactRepository
+        → EmailOutbox(CONTACT_INQUIRY, eventKey contact:{submissionId}:support)
+        → existing EmailOutboxService → EmailProviderAdapter
+```
+
+`CONTACT_RECIPIENT_EMAIL` 只在 server runtime 读取，缺失时 Route 返回 503；其值不会进入
+浏览器、payload 或日志。`EmailOutbox.recipient` 是固定支持邮箱，用户 email 只在
+`CONTACT_INQUIRY` 投递时作为经过 email validation 的 Reply-To。订单号可由已登录 Customer
+做 scoped lookup，并只把 VERIFIED / UNVERIFIED 内部标记写入邮件；客户端响应不泄露订单存在性。
+
 ## Production checkout safety gate
 
 Checkout 写入边界由 server-side `CHECKOUT_MODE` 集中控制：

@@ -10,16 +10,15 @@ import {
   invalidFieldClass,
   isValidEmail,
 } from '@/lib/form-validation';
+import { CONTACT_TOPICS, type ContactTopic } from '@/types/contact';
 
-const topics = [
-  '商品について',
-  '配送について',
-  'ご注文前のご相談',
-  '注文内容の変更・キャンセル',
-  'その他',
-];
+const topics = Object.entries(CONTACT_TOPICS) as Array<
+  [ContactTopic, string]
+>;
 
-type ContactErrors = { email?: string; message?: string };
+type ContactErrors = { email?: string; message?: string; server?: string };
+
+const createSubmissionId = () => crypto.randomUUID();
 
 export default function Contact() {
   return (
@@ -34,15 +33,18 @@ function ContactForm() {
   const { member } = useAuth();
   const formRef = useRef<HTMLFormElement>(null);
   const [sent, setSent] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submissionId, setSubmissionId] = useState(createSubmissionId);
   const [topic, setTopic] = useState(
-    params.get('order') ? '注文内容の変更・キャンセル' : '商品について',
+    params.get('order') ? 'ORDER_CHANGE_CANCEL' : 'PRODUCT',
   );
   const [email, setEmail] = useState(member?.email ?? '');
   const [message, setMessage] = useState('');
+  const [website, setWebsite] = useState('');
   const [errors, setErrors] = useState<ContactErrors>({});
   const order = params.get('order');
 
-  const submit = (event: React.FormEvent<HTMLFormElement>) => {
+  const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const nextErrors: ContactErrors = {};
     if (!email.trim()) nextErrors.email = 'メールアドレスを入力してください。';
@@ -60,7 +62,43 @@ function ContactForm() {
       if (formRef.current) focusFormField(formRef.current, firstField);
       return;
     }
-    setSent(true);
+    setSubmitting(true);
+    setErrors({});
+    try {
+      const response = await fetch('/api/v1/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          submissionId,
+          topic,
+          email,
+          message,
+          ...(order?.trim() ? { orderNumber: order.trim() } : {}),
+          website,
+        }),
+      });
+      const payload = (await response.json()) as {
+        success?: boolean;
+        error?: { code?: string; detail?: string };
+      };
+      if (!response.ok || !payload.success) {
+        setErrors({
+          server:
+            payload.error?.code === 'CONTACT_UNAVAILABLE'
+              ? '現在お問い合わせフォームをご利用いただけません。お電話でお問い合わせください。'
+              : '送信できませんでした。時間をおいて再度お試しください。',
+        });
+        return;
+      }
+      setSent(true);
+      setSubmissionId(createSubmissionId());
+    } catch {
+      setErrors({
+        server: '送信できませんでした。時間をおいて再度お試しください。',
+      });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (sent)
@@ -73,7 +111,7 @@ function ContactForm() {
           承りました。
         </h1>
         <p className="mt-7 text-sm leading-8 text-stone-600">
-          内容を確認のうえ、通常2営業日以内にメールでご返信します。ご注文の変更・キャンセルは、発送状況によりご希望に添えない場合があります。
+          内容を確認のうえ、ご連絡いたします。お問い合わせの送信だけでは、ご注文の変更・キャンセルは確定しません。
         </p>
       </div>
     );
@@ -116,10 +154,12 @@ function ContactForm() {
             <select
               className="input mt-2"
               value={topic}
-              onChange={(event) => setTopic(event.target.value)}
+              onChange={(event) => setTopic(event.target.value as ContactTopic)}
             >
-              {topics.map((value) => (
-                <option key={value}>{value}</option>
+              {topics.map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
               ))}
             </select>
           </label>
@@ -158,7 +198,7 @@ function ContactForm() {
               }}
               className={`mt-2 min-h-40 w-full border bg-transparent p-3 outline-none focus:border-[#bc9b5d] ${errors.message ? invalidFieldClass : 'border-stone-300'}`}
               placeholder={
-                topic === '注文内容の変更・キャンセル'
+                topic === 'ORDER_CHANGE_CANCEL'
                   ? 'ご希望の内容と理由をご記入ください。'
                   : 'ご質問・ご相談内容をご記入ください。'
               }
@@ -168,10 +208,22 @@ function ContactForm() {
               message={errors.message}
             />
           </label>
+          <input
+            aria-hidden="true"
+            autoComplete="off"
+            className="absolute h-px w-px overflow-hidden opacity-0"
+            name="website"
+            tabIndex={-1}
+            value={website}
+            onChange={(event) => setWebsite(event.target.value)}
+          />
           <p className="text-[11px] leading-5 text-stone-500">
-            これはデモフォームです。送信内容は実際にはメール送信されません。
+            お問い合わせの送信だけでは、ご注文の変更・キャンセルは確定しません。
           </p>
-          <button className="btn">送信する</button>
+          <FormFieldError id="contact-server-error" message={errors.server} />
+          <button className="btn" disabled={submitting}>
+            {submitting ? '送信中...' : '送信する'}
+          </button>
         </form>
       </div>
     </div>

@@ -2,6 +2,7 @@ import type { EmailTemplate } from '@prisma/client';
 
 export type EmailMessage = {
   to: string;
+  replyTo?: string;
   subject: string;
   html: string;
   text: string;

@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { EmailTemplate } from '@prisma/client';
+import { z } from 'zod';
 import {
   EMAIL_MAX_ATTEMPTS,
   EMAIL_LOCK_TIMEOUT_MS,
@@ -12,6 +13,8 @@ import { getEmailAdapter } from '@/services/email-adapters/email-adapter.factory
 import { EmailTemplateService } from '@/services/email-template.service';
 import { ResendMarketingContactService } from '@/services/resend-marketing-contact.service';
 import type { EmailProviderAdapter } from '@/types/email';
+
+const contactReplyToSchema = z.string().trim().email().max(254);
 
 export class EmailOutboxService {
   public constructor(
@@ -60,9 +63,16 @@ export class EmailOutboxService {
           }
         } else {
           const rendered = this.templates.render(row.template, payload);
+          const contactReplyTo =
+            row.template === EmailTemplate.CONTACT_INQUIRY
+              ? contactReplyToSchema.safeParse(payload.email)
+              : null;
           const result = await this.adapter.send({
             to: row.recipient,
             ...rendered,
+            ...(contactReplyTo?.success
+              ? { replyTo: contactReplyTo.data }
+              : {}),
             idempotencyKey: `email-outbox:${row.id}`,
           });
           await this.outbox.markSent(

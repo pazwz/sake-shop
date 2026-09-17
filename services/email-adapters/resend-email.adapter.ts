@@ -15,6 +15,7 @@ export class ResendEmailAdapter implements EmailProviderAdapter {
   }
 
   public async send(message: EmailMessage) {
+    const replyTo = message.replyTo ?? this.replyTo;
     const result = await this.resend.emails.send(
       {
         from: this.from!,
@@ -22,7 +23,7 @@ export class ResendEmailAdapter implements EmailProviderAdapter {
         subject: message.subject,
         html: message.html,
         text: message.text,
-        ...(this.replyTo ? { replyTo: this.replyTo } : {}),
+        ...(replyTo ? { replyTo } : {}),
       },
       { idempotencyKey: message.idempotencyKey },
     );

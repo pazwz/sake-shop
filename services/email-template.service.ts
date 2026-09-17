@@ -83,10 +83,30 @@ export class EmailTemplateService {
         `注文番号: ${payload.orderNumber}\n注文日時: ${payload.orderedAt}\n小計: ¥${payload.subtotal}\n送料: ¥${payload.shipping}\n合計: ¥${payload.totalAmount}\n状態: ${payload.status}`,
       );
     }
+    if (template === EmailTemplate.CONTACT_INQUIRY) {
+      const topic = escapeHtml(payload.topicLabel ?? payload.topic);
+      const orderNumber = payload.orderNumber
+        ? escapeHtml(payload.orderNumber)
+        : 'なし';
+      const orderReference =
+        payload.orderReferenceStatus === 'VERIFIED'
+          ? '確認済み'
+          : payload.orderReferenceStatus === 'UNVERIFIED'
+            ? '未確認'
+            : 'なし';
+      const content = escapeHtml(payload.message).replaceAll('\n', '<br>');
+      const title = `[LINXAS EC] お問い合わせ：${String(payload.topicLabel ?? payload.topic ?? 'その他')}`;
+      return frame(
+        title,
+        `<p>お問い合わせ種別：${topic}</p><p>メールアドレス：${escapeHtml(payload.email)}<br>会員：${payload.loggedIn === true ? 'ログイン済み' : '未ログイン'}<br>注文番号：${orderNumber}<br>注文参照：${orderReference}<br>受付日時：${escapeHtml(payload.submittedAt)}</p><p>お問い合わせ内容：</p><p>${content}</p>`,
+        `お問い合わせ種別: ${payload.topicLabel ?? payload.topic}\nメールアドレス: ${payload.email}\n会員: ${payload.loggedIn === true ? 'ログイン済み' : '未ログイン'}\n注文番号: ${payload.orderNumber ?? 'なし'}\n注文参照: ${orderReference}\n受付日時: ${payload.submittedAt}\n\nお問い合わせ内容:\n${payload.message}`,
+      );
+    }
     const titles: Partial<Record<EmailTemplate, string>> = {
       PAYMENT_SUCCEEDED: 'お支払いを確認しました',
       PAYMENT_FAILED: 'お支払いを確認できませんでした',
       ORDER_CANCELLED: 'ご注文をキャンセルしました',
+      CONTACT_INQUIRY: '[LINXAS EC] お問い合わせ',
     };
     const title = titles[template] ?? 'LINXASからのお知らせ';
     return frame(

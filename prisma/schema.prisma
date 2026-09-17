@@ -79,6 +79,7 @@ enum EmailTemplate {
   ORDER_CANCELLED
   SHIPMENT_SENT
   NEWSLETTER_CONTACT_SYNC
+  CONTACT_INQUIRY
 }
 
 enum NewsletterStatus {

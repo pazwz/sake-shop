@@ -474,6 +474,11 @@ next_attempt_at、provider message id 与 delivery state。不得保存 password
 API key 或 Payment internal metadata。Webhook event 仅保存 provider event id、type 与 raw
 payload hash，provider event id unique。
 
+Contact 不新增 inquiry table。`EmailTemplate.CONTACT_INQUIRY` 使用既有 EmailOutbox，event key
+为 `contact:{submissionId}:support`，使重复提交不会产生重复支持邮件。payload 只包含用户 email、
+topic、message、可选 orderNumber、内部 order reference 状态与提交时间；固定 support recipient
+存于 `EmailOutbox.recipient`，由 server 环境变量决定。
+
 ## newsletter_subscriptions
 
 email unique，保存明确 consent 时间、状态、退订时间、来源、Resend contact mirror id 与

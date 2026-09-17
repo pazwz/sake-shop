@@ -12,6 +12,7 @@ const subjects: Record<EmailTemplate, string> = {
   ORDER_CANCELLED: 'ご注文をキャンセルしました',
   SHIPMENT_SENT: '商品を発送しました',
   NEWSLETTER_CONTACT_SYNC: 'Newsletter contact synchronization',
+  CONTACT_INQUIRY: '[LINXAS EC] お問い合わせ',
 };
 
 export class EmailNotificationService {
