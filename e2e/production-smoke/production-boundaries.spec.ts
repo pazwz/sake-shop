@@ -36,5 +36,7 @@ test.describe('production smoke: read-only and fail-closed boundaries', () => {
     expect((await request.get('/products/e2e-not-a-real-product')).status()).toBe(404);
     await page.goto('/admin');
     await expect(page).toHaveURL(/\/admin\/login/);
+    await page.goto('/admin/operations');
+    await expect(page).toHaveURL(/\/admin\/login/);
   });
 });

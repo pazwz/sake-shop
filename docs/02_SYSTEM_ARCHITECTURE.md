@@ -546,6 +546,15 @@ authorization、hidden/excluded product 与 mock checkout 的 fixture tests 必�
 `E2E_ALLOW_MUTATIONS=true`。Production smoke 使用独立命令、固定 production-safe base URL，
 只允许 GET、匿名 Admin redirect、404 与 `/api/v1/orders` / `/api/v1/payments/create` 的 503 gate。
 
+## Operations health
+
+`OperationsHealthService` は `Repository → Service → Admin Route/Page` の read-only 集約で、
+Smaregi production sync、reservation expiration worker、EmailOutbox worker と Payment review queue を
+`HEALTHY`、`WARNING`、`CRITICAL`、`UNKNOWN` に正規化する。reservation/email worker の実行は既存
+`SyncLog` に安全な count だけを記録し、raw email payload、recipient、provider secret、token は記録も
+Dashboard/API の DTO にも含めない。外部 alert provider は未導入で、Admin `/admin/operations` が一次の
+incident surface となる。worker 成功後は最新成功時刻を基準に自然に HEALTHY へ復帰する。
+
 ## Production checkout safety gate
 
 Checkout 写入边界由 server-side `CHECKOUT_MODE` 集中控制：

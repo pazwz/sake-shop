@@ -39,6 +39,12 @@ export default function AdminPage() {
       >
         Smaregi 連携
       </Link>
+      <Link
+        href="/admin/operations"
+        className="btn ml-3 mt-8 border border-[#171412]"
+      >
+        運用状態
+      </Link>
     </main>
   );
 }

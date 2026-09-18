@@ -121,6 +121,11 @@ Customer、Order、Payment、Reservation 或 Contact；只有明确的 non-produ
 Production smoke 当前固定使用 `sake-shop.vercel.app`；`linxas-fukuoka.com` 的 registrar / DNS
 问题解决前不作为 E2E target。
 
+Production の運用監視は、Smaregi Sync、reservation expiration、EmailOutbox と
+`PaymentStatus.REQUIRES_REVIEW` を Admin 限定で集約する。公開 health endpoint は DB 接続状態のみを
+維持し、queue、provider payload、顧客情報を公開してはならない。運用 alert は未承認の外部通知先を
+使わず、第一段階では Admin dashboard の read-only incident として表示する。
+
 ---
 
 ## 6. 配送

@@ -182,6 +182,9 @@ GET
   明示解除する。次回同期から通常 candidate になるが、自動公開しない。
 - `GET /api/v1/admin/integrations/smaregi/sync/{syncLogId}/items?page=1&limit=50`：
   個別 SyncLog の変更・warning明細。最大 100 件/page、未変更データは返さない。
+- `GET /api/v1/admin/operations/health`：すべての authenticated Admin（STAFF を含む）が read-only
+  operations health DTO を取得する。raw SyncLog、email address、payload、provider secret、stack trace は
+  返さない。
 
 ---
 

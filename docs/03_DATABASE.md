@@ -155,6 +155,11 @@ SyncLog
 
 SyncLogItem
 
+`sync_logs` は Smaregi 同期に加え、内部 worker の実行履歴にも再利用する。`system=OPERATIONS` の
+`entity_type=RESERVATION_EXPIRATION` / `EMAIL_OUTBOX` は scheduler の安全な集約結果のみを保存する。
+これは customer payload や EmailOutbox payload を複製する audit log ではなく、最終成功・失敗・stale を
+算出するための運用 run log である。
+
 SmaregiProductExclusion は Product から独立して `smaregi_product_id` を unique に保持する。
 local Product を安全に削除した後も exclusion は残るため、Smaregi に同じ商品が存在しても次回同期で
 再作成されない。`revoked_at` が null の record だけが active である。
