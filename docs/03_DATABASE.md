@@ -1073,3 +1073,9 @@ CRM
 BI分析
 
 全部兼容当前数据库设计。
+
+## Browser E2E fixtures
+
+E2E 不新增 Production fixture table。Local / Preview 仅复用既有 guarded QA Customer seed；其
+guard 同时要求 `ALLOW_QA_SEED=true`、`QA_SEED_ENV=local|preview`，并拒绝 production runtime。
+E2E fixture cleanup 只能作用于明确 QA/test identity，不能用于 Production Customer、Order 或库存。

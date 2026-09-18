@@ -25,6 +25,7 @@ export function ProductCard({ product }: { product: ProductCardItem }) {
     <Link
       href={`/products/${product.slug}`}
       className="product-card group flex w-full min-w-0 max-w-full flex-col"
+      data-testid="product-card"
       data-reveal
     >
       <div className="product-card-image relative aspect-[4/5] w-full min-w-0 max-w-full overflow-hidden bg-white md:aspect-square">

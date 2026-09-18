@@ -114,6 +114,11 @@ server-side 支持收件箱；浏览器不得指定收件人，来信邮箱仅�
 honeypot、长度限制和最小 rate limit；进程内 rate limit 在多 Vercel 实例间不共享，正式高流量
 上线前需要迁移至共享 rate-limit 存储。
 
+Browser E2E 分为 Local、Preview 与 Production Smoke。默认浏览器测试不得创建 Production
+Customer、Order、Payment、Reservation 或 Contact；只有明确的 non-production base URL 与
+`E2E_ALLOW_MUTATIONS=true` 才允许 QA fixture mutation。Production smoke 仅验证公开页面、认证
+边界、404 与 Checkout 503 fail-closed gate，不执行任何业务写入。
+
 ---
 
 ## 6. 配送

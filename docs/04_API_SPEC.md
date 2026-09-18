@@ -310,6 +310,13 @@ message、可选安全格式 `orderNumber` 与空 honeypot `website`。Route 强
 用户 email 仅是 support email 的 Reply-To，不能成为 From 或收件人。`orderNumber` 不执行订单
 变更；对已登录用户只做 customer-scoped 内部引用验证，未登录或不匹配时外部响应保持相同。
 
+### Browser E2E production smoke
+
+`pnpm test:e2e:production-smoke` 仅面向 `https://sake-shop.vercel.app`，不得携带真实 Customer、
+Admin 或支付凭证。允许的 mutation-shaped requests 仅为无身份的 `POST /api/v1/orders` 与
+`POST /api/v1/payments/create`，预期均为 `503 CHECKOUT_DISABLED` 且在授权、body parsing 与任何
+业务写入之前 fail closed。Contact 在 production smoke 只做 GET，禁止提交。
+
 ### Checkout mode
 
 服务端 `CHECKOUT_MODE` 支持：

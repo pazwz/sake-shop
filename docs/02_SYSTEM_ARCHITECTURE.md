@@ -537,6 +537,15 @@ Browser → POST /api/v1/contact → ContactService → ContactRepository
 `CONTACT_INQUIRY` 投递时作为经过 email validation 的 Reply-To。订单号可由已登录 Customer
 做 scoped lookup，并只把 VERIFIED / UNVERIFIED 内部标记写入邮件；客户端响应不泄露订单存在性。
 
+## Browser E2E boundary
+
+Playwright Chromium 是唯一 Browser E2E framework。默认 `test:e2e` 启动 local Next server，覆盖
+公开页面、浏览器 cart 与只读 UI validation；它不运行 server-side mutation。QA account、Order
+authorization、hidden/excluded product 与 mock checkout 的 fixture tests 必须先通过
+`requireNonProductionMutationEnvironment`：target 不能是 production，且必须显式设置
+`E2E_ALLOW_MUTATIONS=true`。Production smoke 使用独立命令、固定 production-safe base URL，
+只允许 GET、匿名 Admin redirect、404 与 `/api/v1/orders` / `/api/v1/payments/create` 的 503 gate。
+
 ## Production checkout safety gate
 
 Checkout 写入边界由 server-side `CHECKOUT_MODE` 集中控制：

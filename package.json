@@ -10,6 +10,9 @@
     "test:smaregi": "tsx --test tests/smaregi/*.test.ts",
     "test:products": "tsx --test tests/products/*.test.ts",
     "test:orders": "tsx --test tests/orders/*.test.ts",
+    "test:e2e": "playwright test --project=chromium",
+    "test:e2e:ui": "playwright test --project=chromium --ui",
+    "test:e2e:production-smoke": "E2E_BASE_URL=https://sake-shop.vercel.app E2E_PRODUCTION_SMOKE=true playwright test e2e/production-smoke --project=chromium",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "prisma:generate": "prisma generate",
@@ -41,6 +44,7 @@
     "zod": "3.24.1"
   },
   "devDependencies": {
+    "@playwright/test": "1.63.0",
     "eslint": "9.22.0",
     "eslint-config-next": "16.2.10",
     "prettier": "3.5.3",
