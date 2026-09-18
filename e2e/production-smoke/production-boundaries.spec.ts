@@ -15,6 +15,10 @@ test.describe('production smoke: read-only and fail-closed boundaries', () => {
       const response = await request.get(path);
       expect(response.status(), path).toBe(200);
     }
+    await page.goto('/products');
+    const publicProductUrl = await page.getByTestId('product-card').first().getAttribute('href');
+    expect(publicProductUrl).toBeTruthy();
+    expect((await request.get(publicProductUrl!)).status()).toBe(200);
     await page.goto('/checkout');
     await expect(page.getByText('オンライン注文は現在準備中です')).toBeVisible();
 

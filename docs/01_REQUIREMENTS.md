@@ -118,6 +118,8 @@ Browser E2E 分为 Local、Preview 与 Production Smoke。默认浏览器测试�
 Customer、Order、Payment、Reservation 或 Contact；只有明确的 non-production base URL 与
 `E2E_ALLOW_MUTATIONS=true` 才允许 QA fixture mutation。Production smoke 仅验证公开页面、认证
 边界、404 与 Checkout 503 fail-closed gate，不执行任何业务写入。
+Production smoke 当前固定使用 `sake-shop.vercel.app`；`linxas-fukuoka.com` 的 registrar / DNS
+问题解决前不作为 E2E target。
 
 ---
 

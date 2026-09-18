@@ -24,6 +24,8 @@ test.describe('E2E-09: public product visibility boundaries', () => {
     await page.goto('/products');
     for (const slug of slugs) {
       await expect(page.locator(`a[href="/products/${slug}"]`)).toHaveCount(0);
+      await page.goto(`/search?q=${encodeURIComponent(slug)}`);
+      await expect(page.locator(`a[href="/products/${slug}"]`)).toHaveCount(0);
       expect((await request.get(`/products/${encodeURIComponent(slug)}`)).status()).toBe(404);
     }
   });
