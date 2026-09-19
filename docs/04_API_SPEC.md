@@ -907,8 +907,9 @@ Received、Shipment Sent 模板，不提供任意收件人发送功能。
 
 schedule/send-now は campaign status を `SCHEDULED` にするだけで、Admin request 内で provider を
 呼ばない。worker は due campaign を一度だけ dispatch し、開始時点の `SUBSCRIBED` を Outbox にする。
-キャンペーンテストは現在の Admin 自身の登録 email のみに Outbox を作り、campaign status、正式対象数、
-NewsletterSubscription を変更せず、機能する unsubscribe link を含めない。
+キャンペーンテストは `OWNER` / `MANAGER` が request body の strict な `{ email }` に指定した
+テスト送信先だけへ Outbox を作る。Campaign status、正式対象数、NewsletterSubscription を変更せず、
+機能する unsubscribe link を含めない。テスト送信先は AuditLog に記録しない。
 
 ---
 

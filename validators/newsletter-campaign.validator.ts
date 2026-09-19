@@ -55,6 +55,12 @@ const campaignContentValidator = campaignFields.superRefine(
 export const newsletterCampaignCreateValidator = campaignContentValidator;
 export const newsletterCampaignUpdateValidator = campaignFields.partial();
 
+export const newsletterCampaignTestValidator = z
+  .object({
+    email: z.string().trim().email().max(254),
+  })
+  .strict();
+
 export const newsletterCampaignScheduleValidator = z.object({
   scheduledAt: z.string().datetime(),
 });

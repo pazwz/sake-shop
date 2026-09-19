@@ -172,13 +172,13 @@ export class NewsletterCampaignService {
     return toDto(this.campaigns, campaign);
   }
 
-  public async queueTest(id: string, adminEmail: string, adminId: string) {
+  public async queueTest(id: string, recipientEmail: string, adminId: string) {
     const campaign = await this.campaigns.findById(id);
     if (!campaign) throw new NotFoundError('ニュースレターが見つかりません。');
     await this.outbox.enqueue({
       eventKey: `newsletter-campaign-test:${campaign.id}:${randomUUID()}`,
       type: 'NEWSLETTER_CAMPAIGN_TEST',
-      recipient: adminEmail,
+      recipient: recipientEmail,
       subject: `【テスト】${campaign.subject}`,
       template: EmailTemplate.NEWSLETTER_CAMPAIGN,
       payload: {

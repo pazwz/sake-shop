@@ -4,15 +4,20 @@ import test from 'node:test';
 import {
   EmailOutboxStatus,
   EmailTemplate,
+  AdminRole,
   NewsletterCampaignStatus,
 } from '@prisma/client';
+import { cmsAdminRoles } from '@/services/admin-authorization.service';
 import { EmailOutboxService } from '@/services/email-outbox.service';
 import {
   NewsletterCampaignDispatchService,
   NewsletterCampaignService,
 } from '@/services/newsletter-campaign.service';
 import { NewsletterCampaignRepository } from '@/repositories/newsletter-campaign.repository';
-import { newsletterCampaignCreateValidator } from '@/validators/newsletter-campaign.validator';
+import {
+  newsletterCampaignCreateValidator,
+  newsletterCampaignTestValidator,
+} from '@/validators/newsletter-campaign.validator';
 
 const campaign = {
   id: 'campaign-1',
@@ -64,6 +69,31 @@ test('campaign content requires a CTA label and URL together', () => {
     }).success,
     true,
   );
+});
+
+test('test-send recipient accepts only a strict, validated email body', () => {
+  assert.equal(
+    newsletterCampaignTestValidator.safeParse({
+      email: '  test@example.com  ',
+    }).success,
+    true,
+  );
+  assert.equal(
+    newsletterCampaignTestValidator.safeParse({ email: 'not-an-email' }).success,
+    false,
+  );
+  assert.equal(
+    newsletterCampaignTestValidator.safeParse({
+      email: 'test@example.com',
+      adminId: 'forged-admin',
+    }).success,
+    false,
+  );
+});
+
+test('test-send permission is restricted to OWNER and MANAGER', () => {
+  assert.deepEqual(cmsAdminRoles, [AdminRole.OWNER, AdminRole.MANAGER]);
+  assert.equal((cmsAdminRoles as AdminRole[]).includes(AdminRole.STAFF), false);
 });
 
 test('campaign repository never passes internal adminId to Prisma create data', async () => {
@@ -124,23 +154,43 @@ test('send now schedules through the worker and never calls a provider inline', 
   assert.equal(typeof (scheduledAt as Date).getTime, 'function');
 });
 
-test('test send queues exactly one admin-addressed test row without changing campaign state', async () => {
+test('test send queues exactly one validated recipient row without changing campaign state', async () => {
   const drafts: Array<Record<string, unknown>> = [];
+  let auditInput: Record<string, unknown> | null = null;
   const service = new NewsletterCampaignService(
     {
       findById: async () => campaign,
-      recordAudit: async () => undefined,
+      recordAudit: async (input: Record<string, unknown>) => {
+        auditInput = input;
+      },
     } as never,
     {
       enqueue: async (draft: Record<string, unknown>) => drafts.push(draft),
     } as never,
   );
-  await service.queueTest(campaign.id, 'admin@example.com', 'admin-1');
+  await service.queueTest(campaign.id, 'recipient@example.com', 'admin-1');
   assert.equal(drafts.length, 1);
-  assert.equal(drafts[0].recipient, 'admin@example.com');
+  assert.equal(drafts[0].recipient, 'recipient@example.com');
   assert.equal(drafts[0].template, EmailTemplate.NEWSLETTER_CAMPAIGN);
   assert.match(String(drafts[0].subject), /^【テスト】/);
   assert.equal(drafts[0].newsletterCampaignId, undefined);
+  assert.equal(drafts[0].newsletterSubscriptionId, undefined);
+  assert.deepEqual(drafts[0].payload, {
+    subject: campaign.subject,
+    preheader: campaign.preheader,
+    headline: campaign.headline,
+    heroImageUrl: campaign.heroImageUrl,
+    heroImageAlt: campaign.heroImageAlt,
+    body: campaign.body,
+    ctaLabel: campaign.ctaLabel,
+    ctaUrl: campaign.ctaUrl,
+    testMode: true,
+  });
+  assert.ok(auditInput);
+  assert.equal(
+    JSON.stringify(auditInput).includes('recipient@example.com'),
+    false,
+  );
 });
 
 test('dispatch snapshots recipients through the repository atomic dispatch boundary', async () => {

@@ -143,7 +143,7 @@ export function NewsletterCampaignForm({
   ) => {
     if (!campaign || busy) return;
     const labels = {
-      test: 'この内容を自分宛てにテスト送信します。よろしいですか？',
+      test: '指定したメールアドレスへテスト送信します。よろしいですか？',
       'send-now': `件名「${campaign.subject}」を現在の推定${recipientEstimate}件へ配信予約します。通常2分以内に開始します。`,
       schedule: `件名「${campaign.subject}」を予約配信します。実際の対象は配信開始時点で購読中の方です。`,
       cancel: 'この配信予約をキャンセルします。よろしいですか？',
@@ -157,9 +157,22 @@ export function NewsletterCampaignForm({
             );
             return scheduledAt ? { scheduledAt } : null;
           })()
+        : path === 'test'
+          ? {
+              email: String(
+                new FormData(form).get('testRecipientEmail') ?? '',
+              ).trim(),
+            }
         : undefined;
     if (path === 'schedule' && !body) {
       setFeedback({ kind: 'error', text: '配信日時をJSTで入力してください。' });
+      return;
+    }
+    if (
+      path === 'test' &&
+      (!body || !('email' in body) || !body.email)
+    ) {
+      setFeedback({ kind: 'error', text: 'テスト送信先メールアドレスを入力してください。' });
       return;
     }
     setBusy(true);
@@ -344,6 +357,36 @@ export function NewsletterCampaignForm({
             {feedback.text}
           </p>
         ) : null}
+        {editable && campaign ? (
+          <section className="border-t line pt-6">
+            <h2 className="text-sm font-semibold">テスト送信</h2>
+            <p className="mt-2 text-sm leading-6 text-stone-600">
+              テストメールのみ送信されます。ニュースレター購読者への配信は行われません。
+            </p>
+            <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end">
+              <label className="block flex-1 text-sm font-semibold">
+                テスト送信先メールアドレス
+                <input
+                  name="testRecipientEmail"
+                  type="email"
+                  maxLength={254}
+                  disabled={busy}
+                  className="mt-2 w-full border line px-3 py-3 font-normal"
+                />
+              </label>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={(event) =>
+                  void action('test', event.currentTarget.form!)
+                }
+                className="btn btn-outline"
+              >
+                テストメールを送信
+              </button>
+            </div>
+          </section>
+        ) : null}
         <div className="flex flex-wrap gap-3 border-t line pt-6">
           {editable ? (
             <button
@@ -364,16 +407,6 @@ export function NewsletterCampaignForm({
           </button>
           {editable && campaign ? (
             <>
-              <button
-                type="button"
-                disabled={busy}
-                onClick={(event) =>
-                  void action('test', event.currentTarget.form!)
-                }
-                className="btn btn-outline"
-              >
-                テスト送信
-              </button>
               {canSchedule ? (
                 <button
                   type="button"
