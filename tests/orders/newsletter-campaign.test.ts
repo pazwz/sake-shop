@@ -11,6 +11,7 @@ import {
   NewsletterCampaignDispatchService,
   NewsletterCampaignService,
 } from '@/services/newsletter-campaign.service';
+import { NewsletterCampaignRepository } from '@/repositories/newsletter-campaign.repository';
 import { newsletterCampaignCreateValidator } from '@/validators/newsletter-campaign.validator';
 
 const campaign = {
@@ -63,6 +64,39 @@ test('campaign content requires a CTA label and URL together', () => {
     }).success,
     true,
   );
+});
+
+test('campaign repository never passes internal adminId to Prisma create data', async () => {
+  let createData: Record<string, unknown> | null = null;
+  const repository = new NewsletterCampaignRepository({
+    newsletterCampaign: {
+      create: async (args: { data: Record<string, unknown> }) => {
+        createData = args.data;
+        return campaign;
+      },
+    },
+  } as never);
+
+  await repository.create({
+    subject: campaign.subject,
+    preheader: campaign.preheader,
+    headline: campaign.headline,
+    heroImageUrl: campaign.heroImageUrl,
+    heroImageAlt: campaign.heroImageAlt,
+    body: campaign.body,
+    ctaLabel: campaign.ctaLabel,
+    ctaUrl: campaign.ctaUrl,
+    adminId: 'admin-1',
+  });
+
+  assert.ok(createData);
+  const data = createData as Record<string, unknown>;
+  assert.equal(data.subject, campaign.subject);
+  assert.equal(data.headline, campaign.headline);
+  assert.equal(data.body, campaign.body);
+  assert.equal(data.createdByAdminId, 'admin-1');
+  assert.equal(data.updatedByAdminId, 'admin-1');
+  assert.equal('adminId' in data, false);
 });
 
 test('send now schedules through the worker and never calls a provider inline', async () => {

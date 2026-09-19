@@ -75,11 +75,12 @@ export class NewsletterCampaignRepository {
   }
 
   public create(input: NewsletterCampaignContent & { adminId: string }) {
+    const { adminId, ...content } = input;
     return this.database.newsletterCampaign.create({
       data: {
-        ...input,
-        createdByAdminId: input.adminId,
-        updatedByAdminId: input.adminId,
+        ...content,
+        createdByAdminId: adminId,
+        updatedByAdminId: adminId,
       },
       select: campaignSelect,
     });
