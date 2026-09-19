@@ -697,8 +697,27 @@ model NewsletterCampaign {
   createdByAdmin   AdminUser                @relation("NewsletterCampaignCreator", fields: [createdByAdminId], references: [id], onDelete: Restrict)
   updatedByAdmin   AdminUser?               @relation("NewsletterCampaignUpdater", fields: [updatedByAdminId], references: [id], onDelete: SetNull)
   outbox           EmailOutbox[]
+  sections         NewsletterCampaignSection[]
 
   @@index([status, scheduledAt])
   @@index([createdByAdminId])
   @@map("newsletter_campaigns")
+}
+
+model NewsletterCampaignSection {
+  id         String             @id @default(cuid())
+  campaignId String             @map("campaign_id")
+  sortOrder  Int                @map("sort_order")
+  imageUrl   String?            @map("image_url")
+  imageAlt   String?            @map("image_alt")
+  headline   String?
+  body       String?
+  ctaLabel   String?            @map("cta_label")
+  ctaUrl     String?            @map("cta_url")
+  createdAt  DateTime           @default(now()) @map("created_at")
+  updatedAt  DateTime           @updatedAt @map("updated_at")
+  campaign   NewsletterCampaign @relation(fields: [campaignId], references: [id], onDelete: Restrict)
+
+  @@index([campaignId, sortOrder])
+  @@map("newsletter_campaign_sections")
 }

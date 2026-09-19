@@ -499,6 +499,17 @@ Campaign 対象の重複防止、配信停止の pre-send check、集計に使�
 unsubscribe・suppression 等で Provider を呼ばなかった marketing delivery の terminal state である。
 Campaign の作成・変更 lifecycle は既存 `audit_logs` に保持し、メール本文、recipient、provider secret は記録しない。
 
+### newsletter_campaign_sections
+
+Section 采用 additive 的一对多模型，而非在 `newsletter_campaigns` 中增加固定 `image1`、`image2` 等字段。
+未来表字段为 `id`、`campaign_id`、`sort_order`、nullable `image_url` / `image_alt`、nullable
+`headline` / `body`、nullable `cta_label` / `cta_url`、`created_at`、`updated_at`。应建立
+`campaign_id + sort_order` 的稳定排序约束或等价保护。
+
+每个 Section 至少保存 image、headline、body 或完整 CTA 之一；CTA 的 label 与 URL 必须成对保存。
+当前 Campaign 的 `hero_image_url` / `hero_image_alt` 保持原样可读；本次 additive migration 只新增 Section 表和
+关系，不删除或自动迁移既有 Hero。复制 Campaign 时以新行复制 Section，不能复用原 Section ID。
+
 ---
 
 ## customer_addresses

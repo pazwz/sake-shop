@@ -4,15 +4,19 @@ import { ConflictError, NotFoundError, ValidationError } from '@/lib/errors';
 import { EmailOutboxRepository } from '@/repositories/email-outbox.repository';
 import {
   NewsletterCampaignRepository,
+  NewsletterCampaignSectionOwnershipError,
   type StoredNewsletterCampaign,
 } from '@/repositories/newsletter-campaign.repository';
 import type {
   NewsletterCampaignAdminDto,
   NewsletterCampaignContent,
   NewsletterCampaignDetailDto,
+  NewsletterCampaignSectionContent,
+  NewsletterCampaignSectionDto,
 } from '@/types/newsletter-campaign';
 import type {
   NewsletterCampaignCreateInput,
+  NewsletterCampaignSectionsInput,
   NewsletterCampaignUpdateInput,
 } from '@/validators/newsletter-campaign.validator';
 
@@ -47,6 +51,21 @@ const auditSnapshot = (campaign: StoredNewsletterCampaign) => ({
   completedAt: campaign.completedAt?.toISOString() ?? null,
 });
 
+const sectionSnapshot = (sections: NewsletterCampaignSectionDto[]) => ({
+  sectionCount: sections.length,
+});
+
+const sectionContent = (
+  section: NewsletterCampaignSectionDto,
+): NewsletterCampaignSectionContent => ({
+  imageUrl: section.imageUrl,
+  imageAlt: section.imageAlt,
+  headline: section.headline,
+  body: section.body,
+  ctaLabel: section.ctaLabel,
+  ctaUrl: section.ctaUrl,
+});
+
 export class NewsletterCampaignService {
   public constructor(
     private readonly campaigns = new NewsletterCampaignRepository(),
@@ -64,9 +83,11 @@ export class NewsletterCampaignService {
   public async get(id: string) {
     const campaign = await this.campaigns.findById(id);
     if (!campaign) throw new NotFoundError('ニュースレターが見つかりません。');
-    const [dto, audits] = await Promise.all([
+    const [dto, audits, lastTestSend, sections] = await Promise.all([
       toDto(this.campaigns, campaign),
       this.campaigns.findAuditEntries(id),
+      this.campaigns.findLatestTestSend(id),
+      this.campaigns.listSections(id),
     ]);
     return {
       ...dto,
@@ -75,6 +96,15 @@ export class NewsletterCampaignService {
         createdAt: audit.createdAt,
         actorName: audit.adminUser.name,
       })),
+      lastTestSend: lastTestSend
+        ? {
+            recipient: lastTestSend.recipient,
+            status: lastTestSend.status,
+            queuedAt: lastTestSend.createdAt,
+            sentAt: lastTestSend.sentAt,
+          }
+        : null,
+      sections,
     } satisfies NewsletterCampaignDetailDto;
   }
 
@@ -175,6 +205,7 @@ export class NewsletterCampaignService {
   public async queueTest(id: string, recipientEmail: string, adminId: string) {
     const campaign = await this.campaigns.findById(id);
     if (!campaign) throw new NotFoundError('ニュースレターが見つかりません。');
+    const sections = await this.campaigns.listSections(id);
     await this.outbox.enqueue({
       eventKey: `newsletter-campaign-test:${campaign.id}:${randomUUID()}`,
       type: 'NEWSLETTER_CAMPAIGN_TEST',
@@ -190,6 +221,7 @@ export class NewsletterCampaignService {
         body: campaign.body,
         ctaLabel: campaign.ctaLabel,
         ctaUrl: campaign.ctaUrl,
+        sections: sections.map(sectionContent),
         testMode: true,
       },
     });
@@ -200,6 +232,59 @@ export class NewsletterCampaignService {
       afterData: auditSnapshot(campaign),
     });
     return { queued: true };
+  }
+
+  public async copyAsDraft(id: string, adminId: string) {
+    const source = await this.campaigns.findById(id);
+    if (!source) throw new NotFoundError('ニュースレターが見つかりません。');
+    const sourceSections = await this.campaigns.listSections(id);
+    const suffix = '（コピー）';
+    const campaign = await this.campaigns.createWithSections({
+      subject: `${source.subject.slice(0, 120 - suffix.length)}${suffix}`,
+      preheader: source.preheader,
+      headline: source.headline,
+      heroImageUrl: source.heroImageUrl,
+      heroImageAlt: source.heroImageAlt,
+      body: source.body,
+      ctaLabel: source.ctaLabel,
+      ctaUrl: source.ctaUrl,
+      adminId,
+    }, sourceSections.map(sectionContent));
+    await this.campaigns.recordAudit({
+      adminUserId: adminId,
+      action: 'NEWSLETTER_CAMPAIGN_COPIED',
+      campaignId: campaign.id,
+      afterData: auditSnapshot(campaign),
+    });
+    return toDto(this.campaigns, campaign);
+  }
+
+  public async replaceSections(
+    id: string,
+    input: NewsletterCampaignSectionsInput,
+    adminId: string,
+  ) {
+    const existing = await this.campaigns.findById(id);
+    if (!existing) throw new NotFoundError('ニュースレターが見つかりません。');
+    const before = await this.campaigns.listSections(id);
+    let sections: NewsletterCampaignSectionDto[] | null;
+    try {
+      sections = await this.campaigns.replaceSections(id, input.sections, adminId);
+    } catch (error) {
+      if (error instanceof NewsletterCampaignSectionOwnershipError)
+        throw new ConflictError('追加コンテンツの保存競合が発生しました。再読み込みしてください。');
+      throw error;
+    }
+    if (!sections)
+      throw new ConflictError('配信開始後のニュースレターは編集できません。');
+    await this.campaigns.recordAudit({
+      adminUserId: adminId,
+      action: 'NEWSLETTER_CAMPAIGN_SECTIONS_UPDATED',
+      campaignId: id,
+      beforeData: sectionSnapshot(before),
+      afterData: sectionSnapshot(sections),
+    });
+    return sections;
   }
 }
 

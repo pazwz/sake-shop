@@ -7,9 +7,15 @@ import {
   type PrismaClient,
 } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
-import type { NewsletterCampaignContent } from '@/types/newsletter-campaign';
+import type {
+  NewsletterCampaignContent,
+  NewsletterCampaignSectionContent,
+  NewsletterCampaignSectionDto,
+} from '@/types/newsletter-campaign';
 
 type Database = PrismaClient | Prisma.TransactionClient;
+
+export class NewsletterCampaignSectionOwnershipError extends Error {}
 
 const campaignSelect = {
   id: true,
@@ -34,18 +40,23 @@ export type StoredNewsletterCampaign = Prisma.NewsletterCampaignGetPayload<{
   select: typeof campaignSelect;
 }>;
 
+const sectionSelect = {
+  id: true,
+  sortOrder: true,
+  imageUrl: true,
+  imageAlt: true,
+  headline: true,
+  body: true,
+  ctaLabel: true,
+  ctaUrl: true,
+} satisfies Prisma.NewsletterCampaignSectionSelect;
+
 export type CampaignOutboxCounts = Record<EmailOutboxStatus, number> & {
   delivered: number;
   target: number;
 };
 
-type CampaignAuditSnapshot = {
-  subject: string;
-  status: NewsletterCampaignStatus;
-  scheduledAt: string | null;
-  startedAt: string | null;
-  completedAt: string | null;
-};
+type CampaignAuditSnapshot = Record<string, string | number | null>;
 
 const emptyCounts = (): CampaignOutboxCounts => ({
   PENDING: 0,
@@ -74,6 +85,86 @@ export class NewsletterCampaignRepository {
     });
   }
 
+  public listSections(campaignId: string): Promise<NewsletterCampaignSectionDto[]> {
+    return this.database.newsletterCampaignSection.findMany({
+      where: { campaignId },
+      select: sectionSelect,
+      orderBy: { sortOrder: 'asc' },
+    });
+  }
+
+  public async replaceSections(
+    campaignId: string,
+    sections: Array<NewsletterCampaignSectionContent & { id?: string }>,
+    adminId: string,
+  ): Promise<NewsletterCampaignSectionDto[] | null> {
+    return prisma.$transaction(async (tx) => {
+      const campaign = await tx.newsletterCampaign.findFirst({
+        where: {
+          id: campaignId,
+          status: {
+            in: [
+              NewsletterCampaignStatus.DRAFT,
+              NewsletterCampaignStatus.SCHEDULED,
+            ],
+          },
+          startedAt: null,
+        },
+        select: { id: true },
+      });
+      if (!campaign) return null;
+
+      const existing = await tx.newsletterCampaignSection.findMany({
+        where: { campaignId },
+        select: { id: true },
+      });
+      const existingIds = new Set(existing.map((section) => section.id));
+      const suppliedIds = sections
+        .map((section) => section.id)
+        .filter((id): id is string => Boolean(id));
+      if (
+        new Set(suppliedIds).size !== suppliedIds.length ||
+        suppliedIds.some((id) => !existingIds.has(id))
+      ) {
+        throw new NewsletterCampaignSectionOwnershipError(
+          'NEWSLETTER_SECTION_OWNERSHIP_CONFLICT',
+        );
+      }
+
+      const suppliedIdSet = new Set(suppliedIds);
+      const removedIds = existing
+        .map((section) => section.id)
+        .filter((id) => !suppliedIdSet.has(id));
+      if (removedIds.length)
+        await tx.newsletterCampaignSection.deleteMany({
+          where: { campaignId, id: { in: removedIds } },
+        });
+
+      for (const [sortOrder, section] of sections.entries()) {
+        const { id, ...content } = section;
+        if (id) {
+          await tx.newsletterCampaignSection.update({
+            where: { id },
+            data: { ...content, sortOrder },
+          });
+        } else {
+          await tx.newsletterCampaignSection.create({
+            data: { campaignId, sortOrder, ...content },
+          });
+        }
+      }
+      await tx.newsletterCampaign.update({
+        where: { id: campaignId },
+        data: { updatedByAdminId: adminId },
+      });
+      return tx.newsletterCampaignSection.findMany({
+        where: { campaignId },
+        select: sectionSelect,
+        orderBy: { sortOrder: 'asc' },
+      });
+    });
+  }
+
   public create(input: NewsletterCampaignContent & { adminId: string }) {
     const { adminId, ...content } = input;
     return this.database.newsletterCampaign.create({
@@ -83,6 +174,26 @@ export class NewsletterCampaignRepository {
         updatedByAdminId: adminId,
       },
       select: campaignSelect,
+    });
+  }
+
+  public async createWithSections(
+    input: NewsletterCampaignContent & { adminId: string },
+    sections: NewsletterCampaignSectionContent[],
+  ) {
+    return prisma.$transaction(async (tx) => {
+      const repository = new NewsletterCampaignRepository(tx);
+      const campaign = await repository.create(input);
+      if (sections.length) {
+        await tx.newsletterCampaignSection.createMany({
+          data: sections.map((section, sortOrder) => ({
+            campaignId: campaign.id,
+            sortOrder,
+            ...section,
+          })),
+        });
+      }
+      return campaign;
     });
   }
 
@@ -201,7 +312,12 @@ export class NewsletterCampaignRepository {
         return { state: 'NO_RECIPIENTS' as const, recipients: 0 };
       }
 
-      const inserted = await repository.enqueueRecipients(campaign, recipients);
+      const sections = await repository.listSections(campaign.id);
+      const inserted = await repository.enqueueRecipients(
+        campaign,
+        recipients,
+        sections,
+      );
       return {
         state: 'DISPATCHED' as const,
         recipients: inserted.count,
@@ -255,9 +371,26 @@ export class NewsletterCampaignRepository {
     });
   }
 
+  public findLatestTestSend(campaignId: string) {
+    return this.database.emailOutbox.findFirst({
+      where: {
+        type: 'NEWSLETTER_CAMPAIGN_TEST',
+        eventKey: { startsWith: `newsletter-campaign-test:${campaignId}:` },
+      },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        recipient: true,
+        status: true,
+        createdAt: true,
+        sentAt: true,
+      },
+    });
+  }
+
   public enqueueRecipients(
     campaign: StoredNewsletterCampaign,
     recipients: Array<{ id: string; email: string }>,
+    sections: NewsletterCampaignSectionDto[] = [],
   ) {
     if (!recipients.length) return Promise.resolve({ count: 0 });
     const payload = {
@@ -269,6 +402,7 @@ export class NewsletterCampaignRepository {
       body: campaign.body,
       ctaLabel: campaign.ctaLabel,
       ctaUrl: campaign.ctaUrl,
+      sections: sections.map(({ id: _id, sortOrder: _sortOrder, ...section }) => section),
       testMode: false,
     };
     return this.database.emailOutbox.createMany({
@@ -278,7 +412,10 @@ export class NewsletterCampaignRepository {
         recipient: recipient.email,
         subject: campaign.subject,
         template: EmailTemplate.NEWSLETTER_CAMPAIGN,
-        payload,
+        payload: {
+          ...payload,
+          newsletterSubscriptionId: recipient.id,
+        },
         newsletterCampaignId: campaign.id,
         newsletterSubscriptionId: recipient.id,
       })),

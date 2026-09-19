@@ -9,6 +9,7 @@ import {
 } from '@prisma/client';
 import { cmsAdminRoles } from '@/services/admin-authorization.service';
 import { EmailOutboxService } from '@/services/email-outbox.service';
+import { EmailTemplateService } from '@/services/email-template.service';
 import {
   NewsletterCampaignDispatchService,
   NewsletterCampaignService,
@@ -16,6 +17,7 @@ import {
 import { NewsletterCampaignRepository } from '@/repositories/newsletter-campaign.repository';
 import {
   newsletterCampaignCreateValidator,
+  newsletterCampaignSectionsValidator,
   newsletterCampaignTestValidator,
 } from '@/validators/newsletter-campaign.validator';
 
@@ -91,6 +93,47 @@ test('test-send recipient accepts only a strict, validated email body', () => {
   );
 });
 
+test('dynamic sections accept all supported content shapes and reject invalid content', () => {
+  const valid = [
+    { imageUrl: 'https://cdn.example.com/one.jpg' },
+    { headline: '見出し', body: '本文' },
+    { headline: '見出しのみ' },
+    { body: '本文', ctaLabel: '商品を見る', ctaUrl: '/products' },
+  ];
+  assert.equal(
+    newsletterCampaignSectionsValidator.safeParse({ sections: valid }).success,
+    true,
+  );
+  assert.equal(
+    newsletterCampaignSectionsValidator.safeParse({ sections: [{}] }).success,
+    false,
+  );
+  assert.equal(
+    newsletterCampaignSectionsValidator.safeParse({
+      sections: [{ ctaLabel: '商品を見る' }],
+    }).success,
+    false,
+  );
+  assert.equal(
+    newsletterCampaignSectionsValidator.safeParse({
+      sections: [{ ctaUrl: '/products' }],
+    }).success,
+    false,
+  );
+  assert.equal(
+    newsletterCampaignSectionsValidator.safeParse({
+      sections: [{ ctaLabel: '危険', ctaUrl: 'javascript:alert(1)' }],
+    }).success,
+    false,
+  );
+  assert.equal(
+    newsletterCampaignSectionsValidator.safeParse({
+      sections: Array.from({ length: 21 }, () => ({ body: '本文' })),
+    }).success,
+    false,
+  );
+});
+
 test('test-send permission is restricted to OWNER and MANAGER', () => {
   assert.deepEqual(cmsAdminRoles, [AdminRole.OWNER, AdminRole.MANAGER]);
   assert.equal((cmsAdminRoles as AdminRole[]).includes(AdminRole.STAFF), false);
@@ -160,6 +203,7 @@ test('test send queues exactly one validated recipient row without changing camp
   const service = new NewsletterCampaignService(
     {
       findById: async () => campaign,
+      listSections: async () => [],
       recordAudit: async (input: Record<string, unknown>) => {
         auditInput = input;
       },
@@ -184,6 +228,7 @@ test('test send queues exactly one validated recipient row without changing camp
     body: campaign.body,
     ctaLabel: campaign.ctaLabel,
     ctaUrl: campaign.ctaUrl,
+    sections: [],
     testMode: true,
   });
   assert.ok(auditInput);
@@ -191,6 +236,230 @@ test('test send queues exactly one validated recipient row without changing camp
     JSON.stringify(auditInput).includes('recipient@example.com'),
     false,
   );
+});
+
+test('test sends preserve the saved hero image without mutating the campaign', async () => {
+  const drafts: Array<Record<string, unknown>> = [];
+  const campaignWithImage = {
+    ...campaign,
+    heroImageUrl: 'https://cdn.example.com/newsletter-hero.jpg',
+    heroImageAlt: 'ニュースレター画像',
+  };
+  const service = new NewsletterCampaignService(
+    {
+      findById: async () => campaignWithImage,
+      listSections: async () => [],
+      recordAudit: async () => undefined,
+    } as never,
+    {
+      enqueue: async (draft: Record<string, unknown>) => drafts.push(draft),
+    } as never,
+  );
+
+  await service.queueTest(campaign.id, 'recipient@example.com', 'admin-1');
+
+  assert.equal(
+    (drafts[0].payload as Record<string, unknown>).heroImageUrl,
+    campaignWithImage.heroImageUrl,
+  );
+  assert.equal(campaignWithImage.status, NewsletterCampaignStatus.DRAFT);
+});
+
+test('newsletter footer includes compliant formal links but no unsubscribe link in test mail', () => {
+  const templates = new EmailTemplateService();
+  const common = {
+    subject: campaign.subject,
+    headline: campaign.headline,
+    body: campaign.body,
+  };
+  const formal = templates.render(EmailTemplate.NEWSLETTER_CAMPAIGN, {
+    ...common,
+    newsletterSubscriptionId: 'subscription-1',
+  });
+  const testMail = templates.render(EmailTemplate.NEWSLETTER_CAMPAIGN, {
+    ...common,
+    testMode: true,
+  });
+
+  assert.match(formal.html, /LINXAS \/ リンクサス福岡/);
+  assert.match(formal.html, /お問い合わせ/);
+  assert.match(formal.html, /プライバシーポリシー/);
+  assert.match(formal.html, /特定商取引法に基づく表記/);
+  assert.match(formal.html, /newsletter\/unsubscribe\?token=/);
+  assert.match(testMail.html, /これはテストメールです/);
+  assert.doesNotMatch(testMail.html, /newsletter\/unsubscribe\?token=/);
+});
+
+test('copy as draft preserves saved content while creating a distinct DRAFT', async () => {
+  let createInput: Record<string, unknown> | null = null;
+  let auditInput: Record<string, unknown> | null = null;
+  const service = new NewsletterCampaignService({
+    findById: async () => campaign,
+    listSections: async () => [],
+    createWithSections: async (input: Record<string, unknown>) => {
+      createInput = input;
+      return {
+        ...campaign,
+        id: 'campaign-copy',
+        subject: String(input.subject),
+        status: NewsletterCampaignStatus.DRAFT,
+      };
+    },
+    recordAudit: async (input: Record<string, unknown>) => {
+      auditInput = input;
+    },
+    getOutboxCounts: async () => metrics,
+  } as never);
+
+  const copied = await service.copyAsDraft(campaign.id, 'admin-1');
+
+  assert.ok(createInput);
+  const copyData = createInput as Record<string, unknown>;
+  assert.equal(copyData.heroImageUrl, campaign.heroImageUrl);
+  assert.match(String(copyData.subject), /（コピー）$/);
+  assert.equal(copied.status, NewsletterCampaignStatus.DRAFT);
+  assert.ok(auditInput);
+  assert.equal(
+    (auditInput as Record<string, unknown>).action,
+    'NEWSLETTER_CAMPAIGN_COPIED',
+  );
+});
+
+test('copy as draft creates new section rows while preserving section content and order', async () => {
+  let copiedSections: Array<Record<string, unknown>> = [];
+  const sourceSections = [
+    {
+      id: 'section-source-one',
+      sortOrder: 0,
+      imageUrl: 'https://cdn.example.com/one.jpg',
+      imageAlt: '一枚目',
+      headline: '一つ目',
+      body: '本文一',
+      ctaLabel: null,
+      ctaUrl: null,
+    },
+    {
+      id: 'section-source-two',
+      sortOrder: 1,
+      imageUrl: null,
+      imageAlt: null,
+      headline: null,
+      body: '本文二',
+      ctaLabel: '見る',
+      ctaUrl: '/products',
+    },
+  ];
+  const service = new NewsletterCampaignService({
+    findById: async () => campaign,
+    listSections: async () => sourceSections,
+    createWithSections: async (
+      input: Record<string, unknown>,
+      sections: Array<Record<string, unknown>>,
+    ) => {
+      copiedSections = sections;
+      return {
+        ...campaign,
+        id: 'campaign-copy-with-sections',
+        subject: String(input.subject),
+      };
+    },
+    getOutboxCounts: async () => metrics,
+    recordAudit: async () => undefined,
+  } as never);
+
+  await service.copyAsDraft(campaign.id, 'admin-1');
+
+  assert.deepEqual(copiedSections, [
+    {
+      imageUrl: 'https://cdn.example.com/one.jpg',
+      imageAlt: '一枚目',
+      headline: '一つ目',
+      body: '本文一',
+      ctaLabel: null,
+      ctaUrl: null,
+    },
+    {
+      imageUrl: null,
+      imageAlt: null,
+      headline: null,
+      body: '本文二',
+      ctaLabel: '見る',
+      ctaUrl: '/products',
+    },
+  ]);
+  assert.equal('id' in copiedSections[0], false);
+});
+
+test('test send snapshots dynamic sections in their saved order', async () => {
+  const drafts: Array<Record<string, unknown>> = [];
+  const sections = [
+    {
+      id: 'section-1',
+      sortOrder: 0,
+      imageUrl: null,
+      imageAlt: null,
+      headline: '最初',
+      body: '一つ目',
+      ctaLabel: null,
+      ctaUrl: null,
+    },
+    {
+      id: 'section-2',
+      sortOrder: 1,
+      imageUrl: 'https://cdn.example.com/two.jpg',
+      imageAlt: '二つ目',
+      headline: null,
+      body: null,
+      ctaLabel: null,
+      ctaUrl: null,
+    },
+  ];
+  const service = new NewsletterCampaignService(
+    {
+      findById: async () => campaign,
+      listSections: async () => sections,
+      recordAudit: async () => undefined,
+    } as never,
+    { enqueue: async (draft: Record<string, unknown>) => drafts.push(draft) } as never,
+  );
+
+  await service.queueTest(campaign.id, 'recipient@example.com', 'admin-1');
+
+  assert.deepEqual((drafts[0].payload as Record<string, unknown>).sections, [
+    {
+      imageUrl: null,
+      imageAlt: null,
+      headline: '最初',
+      body: '一つ目',
+      ctaLabel: null,
+      ctaUrl: null,
+    },
+    {
+      imageUrl: 'https://cdn.example.com/two.jpg',
+      imageAlt: '二つ目',
+      headline: null,
+      body: null,
+      ctaLabel: null,
+      ctaUrl: null,
+    },
+  ]);
+});
+
+test('section rendering preserves order and omits empty markup', () => {
+  const templates = new EmailTemplateService();
+  const rendered = templates.render(EmailTemplate.NEWSLETTER_CAMPAIGN, {
+    subject: campaign.subject,
+    headline: campaign.headline,
+    body: campaign.body,
+    sections: [
+      { headline: '先頭', body: '本文A' },
+      { imageUrl: 'https://cdn.example.com/second.jpg', imageAlt: '二番目' },
+    ],
+    testMode: true,
+  });
+  assert.ok(rendered.html.indexOf('先頭') < rendered.html.indexOf('second.jpg'));
+  assert.match(rendered.html, /本文A/);
+  assert.doesNotMatch(rendered.html, /undefined/);
 });
 
 test('dispatch snapshots recipients through the repository atomic dispatch boundary', async () => {
@@ -207,6 +476,15 @@ test('dispatch snapshots recipients through the repository atomic dispatch bound
     recipients: 3,
   });
   assert.equal(dispatched, 1);
+});
+
+test('formal dispatch implementation snapshots sorted sections before creating Outbox rows', async () => {
+  const repository = await readFile(
+    `${process.cwd()}/repositories/newsletter-campaign.repository.ts`,
+    'utf8',
+  );
+  assert.match(repository, /const sections = await repository\.listSections\(campaign\.id\)/);
+  assert.match(repository, /sections: sections\.map/);
 });
 
 test('unsubscribed recipients are skipped before any provider send', async () => {

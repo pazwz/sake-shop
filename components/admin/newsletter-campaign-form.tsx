@@ -5,9 +5,32 @@ import Image from 'next/image';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { CollectionImageUpload } from '@/components/admin/collection-image-upload';
-import type { NewsletterCampaignAdminDto } from '@/types/newsletter-campaign';
+import type {
+  NewsletterCampaignDetailDto,
+  NewsletterCampaignSectionDto,
+} from '@/types/newsletter-campaign';
 
 type Feedback = { kind: 'success' | 'error'; text: string } | null;
+
+type EditableSection = Omit<NewsletterCampaignSectionDto, 'id'> & {
+  id?: string;
+  clientId: string;
+};
+
+const newSection = (): EditableSection => ({
+  clientId: crypto.randomUUID(),
+  sortOrder: 0,
+  imageUrl: null,
+  imageAlt: null,
+  headline: null,
+  body: null,
+  ctaLabel: null,
+  ctaUrl: null,
+});
+
+const toEditableSection = (
+  section: NewsletterCampaignSectionDto,
+): EditableSection => ({ ...section, clientId: section.id });
 
 const toJstInputValue = (iso: string | null) => {
   if (!iso) return '';
@@ -54,7 +77,7 @@ export function NewsletterCampaignForm({
   editable,
   recipientEstimate,
 }: {
-  campaign?: NewsletterCampaignAdminDto;
+  campaign?: NewsletterCampaignDetailDto;
   editable: boolean;
   recipientEstimate: number;
 }) {
@@ -66,6 +89,9 @@ export function NewsletterCampaignForm({
   const [feedback, setFeedback] = useState<Feedback>(null);
   const [busy, setBusy] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
+  const [sections, setSections] = useState<EditableSection[]>(
+    campaign?.sections.map(toEditableSection) ?? [],
+  );
 
   const read = (form: HTMLFormElement) => {
     const data = new FormData(form);
@@ -79,6 +105,29 @@ export function NewsletterCampaignForm({
       ctaLabel: String(data.get('ctaLabel') ?? '') || null,
       ctaUrl: String(data.get('ctaUrl') ?? '') || null,
     };
+  };
+
+  const saveSections = async (campaignId: string) => {
+    const response = await fetch(
+      `/api/v1/admin/newsletters/${campaignId}/sections`,
+      {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sections: sections.map(({ id, clientId: _clientId, sortOrder: _sortOrder, ...section }) => ({
+            ...(id ? { id } : {}),
+            ...section,
+          })),
+        }),
+      },
+    );
+    if (!response.ok)
+      throw new Error(await responseError(response, '追加コンテンツを保存できませんでした。'));
+    const result = (await response.json()) as {
+      data?: NewsletterCampaignSectionDto[];
+    };
+    if (Array.isArray(result.data))
+      setSections(result.data.map(toEditableSection));
   };
 
   const save = async (form: HTMLFormElement) => {
@@ -104,11 +153,50 @@ export function NewsletterCampaignForm({
       return;
     }
     const result = (await response.json()) as { data?: { id?: string } };
+    const campaignId = campaign?.id ?? result.data?.id;
+    if (!campaignId) {
+      setFeedback({ kind: 'error', text: '保存結果を読み取れませんでした。' });
+      setBusy(false);
+      return;
+    }
+    try {
+      await saveSections(campaignId);
+    } catch (error) {
+      setFeedback({
+        kind: 'error',
+        text:
+          error instanceof Error
+            ? error.message
+            : '追加コンテンツを保存できませんでした。',
+      });
+      setBusy(false);
+      return;
+    }
     setFeedback({ kind: 'success', text: '保存しました。' });
     setBusy(false);
-    if (!campaign && result.data?.id)
-      router.push(`/admin/newsletters/${result.data.id}`);
+    if (!campaign) router.push(`/admin/newsletters/${campaignId}`);
     else router.refresh();
+  };
+
+  const updateSection = (
+    clientId: string,
+    patch: Partial<EditableSection>,
+  ) => {
+    setSections((current) =>
+      current.map((section) =>
+        section.clientId === clientId ? { ...section, ...patch } : section,
+      ),
+    );
+  };
+
+  const moveSection = (index: number, direction: -1 | 1) => {
+    setSections((current) => {
+      const target = index + direction;
+      if (target < 0 || target >= current.length) return current;
+      const next = [...current];
+      [next[index], next[target]] = [next[target], next[index]];
+      return next;
+    });
   };
 
   const openPreview = async (form: HTMLFormElement) => {
@@ -203,6 +291,31 @@ export function NewsletterCampaignForm({
     setBusy(false);
   };
 
+  const copyAsDraft = async () => {
+    if (!campaign || busy) return;
+    if (!window.confirm('このニュースレターを新しい下書きとして複製します。よろしいですか？'))
+      return;
+    setBusy(true);
+    setFeedback(null);
+    const response = await fetch(`/api/v1/admin/newsletters/${campaign.id}/copy`, {
+      method: 'POST',
+    });
+    if (!response.ok) {
+      setFeedback({
+        kind: 'error',
+        text: await responseError(response, '下書きを複製できませんでした。'),
+      });
+      setBusy(false);
+      return;
+    }
+    const result = (await response.json()) as { data?: { id?: string } };
+    if (result.data?.id) router.push(`/admin/newsletters/${result.data.id}`);
+    else {
+      setFeedback({ kind: 'error', text: '複製結果を読み取れませんでした。' });
+      setBusy(false);
+    }
+  };
+
   const canSchedule =
     campaign?.status === 'DRAFT' || campaign?.status === 'SCHEDULED';
   const canCancel = canSchedule;
@@ -268,24 +381,37 @@ export function NewsletterCampaignForm({
             className="mt-2 w-full border line px-3 py-3 font-normal"
           />
         </label>
-        {editable ? (
-          <CollectionImageUpload
-            name="heroImageUrl"
-            label="メイン画像"
-            description="任意。既存の画像アップロードを使用します。"
-            initialUrl={campaign?.heroImageUrl}
-            onUploadingChange={setUploading}
-            onUrlChange={setHeroImageUrl}
-          />
-        ) : campaign?.heroImageUrl ? (
-          <Image
-            src={campaign.heroImageUrl}
-            alt={campaign.heroImageAlt ?? ''}
-            width={1200}
-            height={600}
-            className="max-h-64 w-full object-contain"
-          />
-        ) : null}
+        <section className="border-t line pt-6">
+          <h2 className="text-sm font-semibold">Hero image</h2>
+          <p className="mt-2 text-sm leading-6 text-stone-600">
+            現在の画像を確認し、アップロード・差し替え・削除できます。画像を変更した場合は、テスト送信前に保存してください。
+          </p>
+          {editable ? (
+            <div className="mt-4">
+              <CollectionImageUpload
+                name="heroImageUrl"
+                label="メイン画像"
+                description="任意。既存の画像アップロードを使用します。"
+                initialUrl={campaign?.heroImageUrl}
+                onUploadingChange={setUploading}
+                onUrlChange={setHeroImageUrl}
+              />
+              {!heroImageUrl ? (
+                <p className="mt-3 text-sm text-stone-500">画像未設定</p>
+              ) : null}
+            </div>
+          ) : campaign?.heroImageUrl ? (
+            <Image
+              src={campaign.heroImageUrl}
+              alt={campaign.heroImageAlt ?? ''}
+              width={1200}
+              height={600}
+              className="mt-4 max-h-64 w-full object-contain"
+            />
+          ) : (
+            <p className="mt-3 text-sm text-stone-500">画像未設定</p>
+          )}
+        </section>
         <label className="block text-sm font-semibold">
           画像代替テキスト
           <input
@@ -331,6 +457,172 @@ export function NewsletterCampaignForm({
             />
           </label>
         </div>
+        <section className="border-t line pt-6">
+          <div>
+            <h2 className="text-sm font-semibold">追加コンテンツ</h2>
+            <p className="mt-2 text-sm leading-6 text-stone-600">
+              画像、見出し、本文、ボタンを必要な分だけ追加できます。各セクションは画像なしでも保存できます。
+            </p>
+          </div>
+          <div className="mt-5 space-y-6">
+            {sections.map((section, index) => (
+              <section
+                key={section.clientId}
+                className="border line bg-[#faf8f4] p-4 md:p-5"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <h3 className="text-sm font-semibold">セクション {index + 1}</h3>
+                  {editable ? (
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        disabled={busy || index === 0}
+                        onClick={() => moveSection(index, -1)}
+                        className="btn btn-outline px-3 py-2 text-xs"
+                      >
+                        ↑ 上へ
+                      </button>
+                      <button
+                        type="button"
+                        disabled={busy || index === sections.length - 1}
+                        onClick={() => moveSection(index, 1)}
+                        className="btn btn-outline px-3 py-2 text-xs"
+                      >
+                        ↓ 下へ
+                      </button>
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() =>
+                          setSections((current) =>
+                            current.filter((item) => item.clientId !== section.clientId),
+                          )
+                        }
+                        className="btn btn-outline px-3 py-2 text-xs"
+                      >
+                        削除
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+                {editable ? (
+                  <div className="mt-4">
+                    <CollectionImageUpload
+                      key={section.clientId}
+                      name={`section-${section.clientId}-image`}
+                      label="画像"
+                      description="任意。画像を変更した場合は保存してください。"
+                      initialUrl={section.imageUrl}
+                      onUploadingChange={setUploading}
+                      onUrlChange={(imageUrl) =>
+                        updateSection(section.clientId, { imageUrl: imageUrl || null })
+                      }
+                    />
+                  </div>
+                ) : section.imageUrl ? (
+                  <Image
+                    src={section.imageUrl}
+                    alt={section.imageAlt ?? ''}
+                    width={1200}
+                    height={600}
+                    className="mt-4 max-h-64 w-full object-contain"
+                  />
+                ) : (
+                  <p className="mt-4 text-sm text-stone-500">画像未設定</p>
+                )}
+                <div className="mt-5 grid gap-5 md:grid-cols-2">
+                  <label className="block text-sm font-semibold">
+                    画像代替テキスト
+                    <input
+                      value={section.imageAlt ?? ''}
+                      maxLength={200}
+                      disabled={!editable || busy}
+                      onChange={(event) =>
+                        updateSection(section.clientId, {
+                          imageAlt: event.currentTarget.value || null,
+                        })
+                      }
+                      className="mt-2 w-full border line bg-white px-3 py-3 font-normal"
+                    />
+                    <span className="mt-1 block text-xs font-normal text-stone-500">
+                      画像がある場合は入力をおすすめします。
+                    </span>
+                  </label>
+                  <label className="block text-sm font-semibold">
+                    見出し
+                    <input
+                      value={section.headline ?? ''}
+                      maxLength={120}
+                      disabled={!editable || busy}
+                      onChange={(event) =>
+                        updateSection(section.clientId, {
+                          headline: event.currentTarget.value || null,
+                        })
+                      }
+                      className="mt-2 w-full border line bg-white px-3 py-3 font-normal"
+                    />
+                  </label>
+                </div>
+                <label className="mt-5 block text-sm font-semibold">
+                  本文
+                  <textarea
+                    value={section.body ?? ''}
+                    maxLength={10000}
+                    rows={6}
+                    disabled={!editable || busy}
+                    onChange={(event) =>
+                      updateSection(section.clientId, {
+                        body: event.currentTarget.value || null,
+                      })
+                    }
+                    className="mt-2 w-full border line bg-white px-3 py-3 font-normal leading-7"
+                  />
+                </label>
+                <div className="mt-5 grid gap-5 md:grid-cols-2">
+                  <label className="block text-sm font-semibold">
+                    ボタン文言
+                    <input
+                      value={section.ctaLabel ?? ''}
+                      maxLength={80}
+                      disabled={!editable || busy}
+                      onChange={(event) =>
+                        updateSection(section.clientId, {
+                          ctaLabel: event.currentTarget.value || null,
+                        })
+                      }
+                      className="mt-2 w-full border line bg-white px-3 py-3 font-normal"
+                    />
+                  </label>
+                  <label className="block text-sm font-semibold">
+                    リンク先
+                    <input
+                      value={section.ctaUrl ?? ''}
+                      maxLength={2048}
+                      disabled={!editable || busy}
+                      placeholder="/products/... または https://..."
+                      onChange={(event) =>
+                        updateSection(section.clientId, {
+                          ctaUrl: event.currentTarget.value || null,
+                        })
+                      }
+                      className="mt-2 w-full border line bg-white px-3 py-3 font-normal"
+                    />
+                  </label>
+                </div>
+              </section>
+            ))}
+          </div>
+          {editable ? (
+            <button
+              type="button"
+              disabled={busy || uploading}
+              onClick={() => setSections((current) => [...current, newSection()])}
+              className="btn btn-outline mt-5"
+            >
+              ＋ セクションを追加
+            </button>
+          ) : null}
+        </section>
         {canSchedule ? (
           <label className="block text-sm font-semibold">
             配信日時（JST）
@@ -447,6 +739,37 @@ export function NewsletterCampaignForm({
       </form>
       {campaign ? (
         <section className="mt-8 border line bg-[#faf8f4] p-6">
+          <h2 className="serif text-2xl">最終テスト送信結果</h2>
+          {campaign.lastTestSend ? (
+            <dl className="mt-5 grid gap-3 text-sm sm:grid-cols-3">
+              <div>
+                <dt>結果</dt>
+                <dd className="mt-1 font-medium">{campaign.lastTestSend.status}</dd>
+              </div>
+              <div>
+                <dt>最終テスト送信日時</dt>
+                <dd className="mt-1 font-medium">
+                  {new Intl.DateTimeFormat('ja-JP', {
+                    dateStyle: 'medium',
+                    timeStyle: 'short',
+                    timeZone: 'Asia/Tokyo',
+                  }).format(campaign.lastTestSend.sentAt ?? campaign.lastTestSend.queuedAt)}
+                </dd>
+              </div>
+              <div>
+                <dt>テスト送信先</dt>
+                <dd className="mt-1 break-all font-medium">
+                  {campaign.lastTestSend.recipient}
+                </dd>
+              </div>
+            </dl>
+          ) : (
+            <p className="mt-4 text-sm text-stone-500">テスト送信はまだありません。</p>
+          )}
+        </section>
+      ) : null}
+      {campaign ? (
+        <section className="mt-8 border line bg-[#faf8f4] p-6">
           <h2 className="serif text-2xl">配信結果</h2>
           <dl className="mt-5 grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
             <div>
@@ -478,6 +801,18 @@ export function NewsletterCampaignForm({
             送信済みはProvider受付済み、配信済みはWebhookで到達を確認した件数です。
           </p>
         </section>
+      ) : null}
+      {campaign ? (
+        <div className="mt-8">
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void copyAsDraft()}
+            className="btn btn-outline"
+          >
+            複製して下書きを作成
+          </button>
+        </div>
       ) : null}
       {preview ? (
         <section className="mt-8">

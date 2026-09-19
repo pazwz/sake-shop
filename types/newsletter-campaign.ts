@@ -1,4 +1,7 @@
-import type { NewsletterCampaignStatus } from '@prisma/client';
+import type {
+  EmailOutboxStatus,
+  NewsletterCampaignStatus,
+} from '@prisma/client';
 
 export type NewsletterCampaignContent = {
   subject: string;
@@ -9,6 +12,20 @@ export type NewsletterCampaignContent = {
   body: string;
   ctaLabel: string | null;
   ctaUrl: string | null;
+};
+
+export type NewsletterCampaignSectionContent = {
+  imageUrl: string | null;
+  imageAlt: string | null;
+  headline: string | null;
+  body: string | null;
+  ctaLabel: string | null;
+  ctaUrl: string | null;
+};
+
+export type NewsletterCampaignSectionDto = NewsletterCampaignSectionContent & {
+  id: string;
+  sortOrder: number;
 };
 
 export type NewsletterCampaignMetrics = {
@@ -39,6 +56,15 @@ export type NewsletterCampaignAuditEntry = {
   actorName: string;
 };
 
+export type NewsletterCampaignTestSendDto = {
+  recipient: string;
+  status: EmailOutboxStatus;
+  queuedAt: Date;
+  sentAt: Date | null;
+};
+
 export type NewsletterCampaignDetailDto = NewsletterCampaignAdminDto & {
   audits: NewsletterCampaignAuditEntry[];
+  lastTestSend: NewsletterCampaignTestSendDto | null;
+  sections: NewsletterCampaignSectionDto[];
 };

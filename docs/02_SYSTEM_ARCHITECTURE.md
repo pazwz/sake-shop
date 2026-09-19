@@ -85,6 +85,37 @@ stera EC
 
 Stripe
 
+---
+
+## Newsletter Campaign（第二阶段设计）
+
+当前 Campaign 维持单一 Hero image 与结构化的 headline / body / CTA，模板只在服务器端渲染，
+不接受任意 HTML。第二阶段如需复数图片或内容区块，新增 `NewsletterCampaignSection`：
+
+- `id`
+- `campaignId`
+- `sortOrder`
+- `imageUrl` / `imageAlt`
+- `headline`
+- `body`
+- `ctaLabel` / `ctaUrl`
+
+`NewsletterCampaign` 与 `NewsletterCampaignSection` 是一对多关系；Section 的数量不固定，也不等于
+图片数量。Admin 可以从零或一个 Section 开始，按实际内容动态新增、上移、下移或删除 Section。图片为
+可选字段，因此纯文字、仅图片、图片加文字、以及文字加 CTA 都是有效结构。
+
+每个 Section 至少须有 image、headline、body 或完整 CTA 中的一种实际内容；`ctaLabel` 与 `ctaUrl` 必须
+同时存在或同时缺失。`imageAlt` 可以为空，但 Admin 应提示运营人员补充。Service 以
+`MAX_NEWSLETTER_SECTIONS = 20` 作为防御性上限，UI 不将 Section 数量设计成固定的 5 个区块。
+
+Repository 按 `sortOrder ASC` 读取，EmailTemplateService 仅渲染实际存在且已验证的字段，不输出空的 HTML
+区块；测试邮件与正式邮件使用同一 Section renderer。复制 Campaign 时必须在新 Campaign 下复制全部
+Section 内容、顺序、图片与 CTA，并生成新的 Section ID。
+
+此模型采用 additive migration：现有 `heroImageUrl` / `heroImageAlt` 继续可读、可编辑，既有 Campaign 和
+已排入 Outbox 的 payload 不被重写。未来是否把 Hero 迁移为第一个 Section 必须以独立、可回滚的数据迁移
+决定；本阶段不得用破坏性 migration 强制统一。
+
 PayPay
 
 ---

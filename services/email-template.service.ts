@@ -24,6 +24,54 @@ const frame = (
 const button = (label: string, url: string) =>
   `<p style="margin:28px 0"><a href="${escapeHtml(url)}" style="display:inline-block;background:#6f1831;color:#fff;text-decoration:none;padding:14px 24px">${escapeHtml(label)}</a></p>`;
 
+const isSafeNewsletterUrl = (value: string) =>
+  /^\/(?:products|collections)(?:\/|$)/.test(value) || /^https:\/\//i.test(value);
+
+const renderNewsletterSections = (value: unknown) => {
+  if (!Array.isArray(value)) return { html: '', text: '' };
+  const sections = value
+    .filter(
+      (section): section is Record<string, unknown> =>
+        Boolean(section) && typeof section === 'object',
+    )
+    .map((section) => {
+      const imageUrl = typeof section.imageUrl === 'string' ? section.imageUrl : null;
+      const imageAlt = typeof section.imageAlt === 'string' ? section.imageAlt : '';
+      const headline = typeof section.headline === 'string' ? section.headline : null;
+      const body = typeof section.body === 'string' ? section.body : null;
+      const ctaLabel = typeof section.ctaLabel === 'string' ? section.ctaLabel : null;
+      const ctaUrl =
+        typeof section.ctaUrl === 'string' && isSafeNewsletterUrl(section.ctaUrl)
+          ? section.ctaUrl
+          : null;
+      if (!imageUrl && !headline && !body && !(ctaLabel && ctaUrl)) return null;
+      const html = `${imageUrl ? `<p><img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(imageAlt)}" style="display:block;width:100%;height:auto"></p>` : ''}${headline ? `<h2 style="font-family:serif;font-weight:400;font-size:24px">${escapeHtml(headline)}</h2>` : ''}${body ? `<p style="line-height:1.9">${escapeHtml(body).replaceAll('\n', '<br>')}</p>` : ''}${ctaLabel && ctaUrl ? button(ctaLabel, ctaUrl) : ''}`;
+      const text = `${headline ?? ''}${headline && body ? '\n\n' : ''}${body ?? ''}${ctaLabel && ctaUrl ? `\n\n${ctaLabel}: ${ctaUrl}` : ''}`;
+      return { html, text };
+    })
+    .filter((section): section is { html: string; text: string } => Boolean(section));
+  return {
+    html: sections.map((section) => section.html).join(''),
+    text: sections.map((section) => section.text).filter(Boolean).join('\n\n'),
+  };
+};
+
+const newsletterFooter = (
+  siteUrl: string,
+  unsubscribeUrl: string | null,
+) => {
+  const contactUrl = `${siteUrl}/contact`;
+  const privacyUrl = `${siteUrl}/privacy`;
+  const tokushoUrl = `${siteUrl}/legal/tokusho`;
+  const unsubscribe = unsubscribeUrl
+    ? `<p style="margin:16px 0 0"><a href="${escapeHtml(unsubscribeUrl)}" style="color:#6f1831">配信停止</a></p>`
+    : '';
+  return {
+    html: `<div style="margin-top:40px;padding-top:24px;border-top:1px solid #e7e1d8;font-size:12px;line-height:1.9;color:#777"><p style="margin:0"><strong style="color:#171412">LINXAS / ${escapeHtml(siteConfig.storeName)}</strong><br><a href="${escapeHtml(siteUrl)}" style="color:#6f1831">${escapeHtml(siteUrl)}</a> ・ <a href="${escapeHtml(contactUrl)}" style="color:#6f1831">お問い合わせ</a></p><p style="margin:16px 0 0">このメールは、LINXAS ニュースレターにご登録いただいた方へお送りしています。</p>${unsubscribe}<p style="margin:16px 0 0"><a href="${escapeHtml(privacyUrl)}" style="color:#6f1831">プライバシーポリシー</a> ・ <a href="${escapeHtml(tokushoUrl)}" style="color:#6f1831">特定商取引法に基づく表記</a></p><p style="margin:16px 0 0">20歳未満の者の飲酒は法律で禁止されています。</p></div>`,
+    text: `LINXAS / ${siteConfig.storeName}\n${siteUrl}\nお問い合わせ: ${contactUrl}\nこのメールは、LINXAS ニュースレターにご登録いただいた方へお送りしています。${unsubscribeUrl ? `\n配信停止: ${unsubscribeUrl}` : ''}\nプライバシーポリシー: ${privacyUrl}\n特定商取引法に基づく表記: ${tokushoUrl}\n20歳未満の者の飲酒は法律で禁止されています。`,
+  };
+};
+
 export class EmailTemplateService {
   public render(template: EmailTemplate, payload: Record<string, unknown>) {
     const siteUrl = getPublicSiteUrl();
@@ -128,16 +176,15 @@ export class EmailTemplateService {
         ? `<p><img src="${escapeHtml(heroImageUrl)}" alt="${escapeHtml(heroImageAlt)}" style="display:block;width:100%;height:auto"></p>`
         : '';
       const cta = ctaLabel && ctaUrl ? button(ctaLabel, ctaUrl) : '';
+      const sections = renderNewsletterSections(payload.sections);
       const testNotice = testMode
         ? '<p style="font-size:12px;color:#6f1831">これはテストメールです。テストメールのため配信停止リンクは使用されません。</p>'
         : '';
-      const unsubscribe = unsubscribeUrl
-        ? `<p style="font-size:12px;line-height:1.8;color:#777">メール配信停止をご希望の場合は<a href="${escapeHtml(unsubscribeUrl)}">こちら</a>をご利用ください。</p>`
-        : '';
+      const footer = newsletterFooter(siteUrl, unsubscribeUrl);
       return frame(
         subject,
-        `${testNotice}${preheader ? `<p style="font-size:12px;color:#777">${escapeHtml(preheader)}</p>` : ''}${hero}<h2 style="font-family:serif;font-weight:400;font-size:24px">${escapeHtml(headline)}</h2><p style="line-height:1.9">${escapedBody}</p>${cta}${unsubscribe}`,
-        `${testMode ? 'これはテストメールです。\n\n' : ''}${preheader ? `${preheader}\n\n` : ''}${headline}\n\n${bodyText}${ctaLabel && ctaUrl ? `\n\n${ctaLabel}: ${ctaUrl}` : ''}${unsubscribeUrl ? `\n\nメール配信停止: ${unsubscribeUrl}` : ''}`,
+        `${testNotice}${preheader ? `<p style="font-size:12px;color:#777">${escapeHtml(preheader)}</p>` : ''}${hero}<h2 style="font-family:serif;font-weight:400;font-size:24px">${escapeHtml(headline)}</h2><p style="line-height:1.9">${escapedBody}</p>${cta}${sections.html}${footer.html}`,
+        `${testMode ? 'これはテストメールです。\n\n' : ''}${preheader ? `${preheader}\n\n` : ''}${headline}\n\n${bodyText}${ctaLabel && ctaUrl ? `\n\n${ctaLabel}: ${ctaUrl}` : ''}${sections.text ? `\n\n${sections.text}` : ''}\n\n${footer.text}`,
       );
     }
     const titles: Partial<Record<EmailTemplate, string>> = {

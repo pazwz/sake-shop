@@ -904,12 +904,23 @@ Received、Shipment Sent 模板，不提供任意收件人发送功能。
 - `POST /api/v1/admin/newsletters/{id}/schedule`
 - `POST /api/v1/admin/newsletters/{id}/send-now`
 - `POST /api/v1/admin/newsletters/{id}/cancel`
+- `POST /api/v1/admin/newsletters/{id}/copy`
 
 schedule/send-now は campaign status を `SCHEDULED` にするだけで、Admin request 内で provider を
 呼ばない。worker は due campaign を一度だけ dispatch し、開始時点の `SUBSCRIBED` を Outbox にする。
 キャンペーンテストは `OWNER` / `MANAGER` が request body の strict な `{ email }` に指定した
 テスト送信先だけへ Outbox を作る。Campaign status、正式対象数、NewsletterSubscription を変更せず、
 機能する unsubscribe link を含めない。テスト送信先は AuditLog に記録しない。
+`DRAFT` / `SCHEDULED` は配信開始前まで編集でき、`SENDING` / `SENT` / `PARTIAL_FAILED` /
+`FAILED` / `CANCELLED` は read-only。任意の Campaign からは内容・Hero image をコピーした
+新しい `DRAFT` を作成できる。Test Outbox は正式 recipient metrics に含めず、最新の Test Send 結果は
+Campaign status と分離して管理画面に表示する。
+
+第二阶段的 Section 编辑 API 将接收动态 `sections` 数组，而不是固定数量的 image 字段。每个元素只可包含
+`imageUrl`、`imageAlt`、`headline`、`body`、`ctaLabel`、`ctaUrl` 与排序所需字段；至少一种内容必填，
+CTA label / URL 成对校验，Service 防御性限制为最多 20 个。现有 Hero 字段继续保持向后兼容。
+`PUT /api/v1/admin/newsletters/{id}/sections` 仅允许 OWNER / MANAGER，数组顺序即目标
+顺序，服务端在单一 transaction 内重新写入连续 `sortOrder`；`DRAFT` 与尚未开始的 `SCHEDULED` 可编辑。
 
 ---
 
