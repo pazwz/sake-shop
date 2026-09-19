@@ -50,6 +50,12 @@ the historical sprint numbering.
 - `docs/01_REQUIREMENTS.md` through `docs/04_API_SPEC.md` remain the design source
   of truth. Historical sprint result files document history, not current status.
 
+## Newsletter Campaign Management
+
+- Admin marketing campaigns are modeled separately from NewsletterSubscription consent.
+- Neon Campaign/Subscription records are authoritative; Resend remains the delivery provider and Contacts mirror.
+- Campaign sends are scheduled through the existing EmailOutbox worker and never dispatch synchronously from Admin.
+
 ---
 
 # Current Architecture

@@ -137,13 +137,13 @@ test('contact repository uses a stable event key and cannot take recipient from 
 
 test('contact email escapes user content and sends it only as Reply-To', async () => {
   const rendered = new EmailTemplateService().render(EmailTemplate.CONTACT_INQUIRY, {
-    topic: 'PRODUCT',
-    topicLabel: '商品について',
-    email: 'buyer@example.com',
-    message: '<img src=x onerror=alert(1)>',
-    orderReferenceStatus: 'UNVERIFIED',
-    loggedIn: false,
-    submittedAt: '2026-09-18T00:00:00.000Z',
+      topic: 'PRODUCT',
+      topicLabel: '商品について',
+      email: 'buyer@example.com',
+      message: '<img src=x onerror=alert(1)>',
+      orderReferenceStatus: 'UNVERIFIED',
+      loggedIn: false,
+      submittedAt: '2026-09-18T00:00:00.000Z',
   });
   assert.equal(rendered.html.includes('<img src=x'), false);
   assert.equal(rendered.html.includes('&lt;img'), true);
@@ -171,6 +171,11 @@ test('contact email escapes user content and sends it only as Reply-To', async (
       },
     },
     {} as never,
+    {
+      dispatchDue: async () => ({ dispatched: 0, recipients: 0 }),
+      shouldSend: async () => true,
+      refresh: async () => undefined,
+    } as never,
   );
   const previous = process.env.EMAIL_MODE;
   process.env.EMAIL_MODE = 'console';

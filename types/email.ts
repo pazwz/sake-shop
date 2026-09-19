@@ -26,4 +26,6 @@ export type EmailOutboxDraft = {
   subject: string;
   template: EmailTemplate;
   payload: Record<string, unknown>;
+  newsletterCampaignId?: string;
+  newsletterSubscriptionId?: string;
 };

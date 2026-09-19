@@ -28,6 +28,12 @@ const withEmailMode = async <T>(mode: string, operation: () => Promise<T>) => {
   }
 };
 
+const noOpCampaignDispatch = {
+  dispatchDue: async () => ({ dispatched: 0, recipients: 0 }),
+  shouldSend: async () => true,
+  refresh: async () => undefined,
+};
+
 test('email action tokens are signed, purpose-bound, and stored as hashes', () => {
   const token = createEmailActionToken(
     'token-record-1',
@@ -160,6 +166,7 @@ test('outbox send success marks SENT with a stable idempotency key', async () =>
       },
     },
     {} as never,
+    noOpCampaignDispatch as never,
   );
   const result = await withEmailMode('console', () => service.processDue());
   assert.deepEqual(result, {
@@ -189,6 +196,7 @@ test('outbox failure schedules a bounded retry and never fails business data', a
       },
     },
     {} as never,
+    noOpCampaignDispatch as never,
   );
   const result = await withEmailMode('console', () => service.processDue());
   assert.equal(result.outcome, 'SUCCESS_WITH_WARNINGS');
@@ -217,6 +225,7 @@ test('outbox claim idempotency prevents a duplicate provider send', async () => 
       },
     },
     {} as never,
+    noOpCampaignDispatch as never,
   );
   await withEmailMode('console', () => service.processDue());
   await withEmailMode('console', () => service.processDue());
@@ -239,6 +248,7 @@ test('production without email configuration fails closed', async () => {
       {} as never,
       null,
       {} as never,
+      noOpCampaignDispatch as never,
     ).processDue();
     assert.equal(result.outcome, 'DISABLED');
     assert.equal(claimed, false);

@@ -12,6 +12,7 @@ import { EmailOutboxRepository } from '@/repositories/email-outbox.repository';
 import { getEmailAdapter } from '@/services/email-adapters/email-adapter.factory';
 import { EmailTemplateService } from '@/services/email-template.service';
 import { ResendMarketingContactService } from '@/services/resend-marketing-contact.service';
+import { NewsletterCampaignDispatchService } from '@/services/newsletter-campaign.service';
 import type { EmailProviderAdapter } from '@/types/email';
 
 const contactReplyToSchema = z.string().trim().email().max(254);
@@ -22,12 +23,14 @@ export class EmailOutboxService {
     private readonly templates = new EmailTemplateService(),
     private readonly adapter: EmailProviderAdapter | null = getEmailAdapter(),
     private readonly marketing = new ResendMarketingContactService(),
+    private readonly campaignDispatch = new NewsletterCampaignDispatchService(),
   ) {}
 
   public async processDue(limit = EMAIL_PROCESS_BATCH_SIZE) {
     const config = getEmailRuntimeConfig();
     if (!config.available || !this.adapter)
       return { outcome: 'DISABLED', processed: 0, sent: 0, failed: 0 };
+    await this.campaignDispatch.dispatchDue(new Date());
     const now = new Date();
     const rows = await this.outbox.claimDue(
       Math.min(limit, EMAIL_PROCESS_BATCH_SIZE),
@@ -36,9 +39,27 @@ export class EmailOutboxService {
     );
     let sent = 0;
     let failed = 0;
+    const completedCampaigns = new Set<string>();
     for (const row of rows) {
       try {
         const payload = row.payload as Record<string, unknown>;
+        if (row.template === EmailTemplate.NEWSLETTER_CAMPAIGN) {
+          if (
+            !(await this.campaignDispatch.shouldSend(
+              row.newsletterSubscriptionId,
+            ))
+          ) {
+            await this.outbox.markSkipped(
+              row.id,
+              'NEWSLETTER_SUBSCRIPTION_NOT_ELIGIBLE',
+            );
+            if (row.newsletterCampaignId)
+              completedCampaigns.add(row.newsletterCampaignId);
+            continue;
+          }
+          if (row.newsletterSubscriptionId)
+            payload.newsletterSubscriptionId = row.newsletterSubscriptionId;
+        }
         if (row.template === EmailTemplate.NEWSLETTER_CONTACT_SYNC) {
           if (config.mode === 'resend') {
             const result = await this.marketing.sync({
@@ -70,6 +91,9 @@ export class EmailOutboxService {
           const result = await this.adapter.send({
             to: row.recipient,
             ...rendered,
+            ...(row.template === EmailTemplate.NEWSLETTER_CAMPAIGN
+              ? { subject: row.subject }
+              : {}),
             ...(contactReplyTo?.success
               ? { replyTo: contactReplyTo.data }
               : {}),
@@ -82,6 +106,8 @@ export class EmailOutboxService {
           );
         }
         sent += 1;
+        if (row.newsletterCampaignId)
+          completedCampaigns.add(row.newsletterCampaignId);
       } catch (error) {
         failed += 1;
         const nextAttempt = row.attemptCount + 1;
@@ -93,8 +119,11 @@ export class EmailOutboxService {
             ? null
             : new Date(Date.now() + delay),
         );
+        if (row.newsletterCampaignId)
+          completedCampaigns.add(row.newsletterCampaignId);
       }
     }
+    await this.campaignDispatch.refresh(completedCampaigns);
     return {
       outcome: failed ? 'SUCCESS_WITH_WARNINGS' : 'SUCCESS',
       processed: rows.length,

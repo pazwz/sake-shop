@@ -327,6 +327,12 @@ Customer Account 与 NewsletterSubscription 必须独立；既存 Customer 不�
 Neon 的 NewsletterSubscription 是 consent source of truth，Resend Contact 只作为投递镜像。
 退订必须使用 signed opaque token，不能只依赖 query email。
 
+Admin の Newsletter Campaign は Neon の `NewsletterCampaign` を source of truth とし、
+`SCHEDULED` の campaign を既存 EmailOutbox worker が dispatch・配信する。配信対象は開始時点の
+`SUBSCRIBED` のみで、Provider 呼び出し直前にも subscription を再確認する。配信停止・suppression は
+`SKIPPED` として記録し failure と扱わない。Campaign は任意 HTML を保存せず、server-side template
+で escape した plain-text content を配信する。
+
 ---
 
 # 四、后台

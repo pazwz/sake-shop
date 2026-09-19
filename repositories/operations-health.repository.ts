@@ -94,6 +94,13 @@ export class OperationsHealthRepository {
             template: EmailTemplate.NEWSLETTER_CONTACT_SYNC,
           },
         }),
+        prisma.emailOutbox.count({
+          where: {
+            status: EmailOutboxStatus.FAILED,
+            nextAttemptAt: null,
+            template: EmailTemplate.NEWSLETTER_CAMPAIGN,
+          },
+        }),
       ]),
     ]);
 
@@ -109,6 +116,7 @@ export class OperationsHealthRepository {
         stuckSending: email[1],
         terminalTransactionalFailed: email[2],
         terminalNewsletterFailed: email[3],
+        terminalNewsletterCampaignFailed: email[4],
       },
     };
   }

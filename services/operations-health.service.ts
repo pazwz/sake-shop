@@ -166,7 +166,8 @@ export class OperationsHealthService {
     if (
       snapshot.email.pending >=
         OPERATIONS_HEALTH_THRESHOLDS.emailPendingBacklog.warning ||
-      snapshot.email.terminalNewsletterFailed > 0
+      snapshot.email.terminalNewsletterFailed > 0 ||
+      snapshot.email.terminalNewsletterCampaignFailed > 0
     )
       return {
         ...item,

@@ -524,6 +524,15 @@ NewsletterSubscription 是 Marketing consent 的 Neon source of truth；Resend C
 Resend webhook 必须使用官方签名校验，数据库以 provider event id 去重，且只保存 payload
 hash 与必要 delivery state。
 
+Newsletter Campaign は `Admin → NewsletterCampaign → EmailOutbox → existing Email worker → Resend`
+で処理する。Resend Broadcast は source of truth にしない。予約 dispatch は既存 Email worker の先頭で
+transactional conditional claim を使って一度だけ行い、recipient Outbox は
+`newsletter-campaign:{campaignId}:{subscriptionId}` の unique event key で冪等にする。Campaign delivery
+は `NewsletterSubscription` を明示的に参照し、send 前の subscription 再確認に失敗した行は
+`SKIPPED` として Provider を呼ばない。
+作成、編集、テスト enqueue、予約、取消は既存 `AuditLog` に最小の status/日時 snapshot と Admin identity を記録し、
+本文や収件者は audit payload に保存しない。
+
 公开 Contact 使用同一 outbox 管道，而不在 Route 内直接调用 Resend：
 
 ```text

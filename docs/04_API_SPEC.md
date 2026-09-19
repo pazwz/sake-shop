@@ -892,6 +892,24 @@ Payment 或 Shipment。
 `/admin/email-preview` 仅 OWNER 可访问，只渲染 Verification、Password Reset、Order
 Received、Shipment Sent 模板，不提供任意收件人发送功能。
 
+### Admin newsletter campaigns
+
+全て Admin session 必須。`OWNER` / `MANAGER` は create、edit、test、schedule、send-now、cancel を
+実行でき、`STAFF` は list/detail/preview/result の read-only だけを利用できる。
+
+- `GET|POST /api/v1/admin/newsletters`
+- `GET|PATCH /api/v1/admin/newsletters/{id}`
+- `POST /api/v1/admin/newsletters/{id}/preview`
+- `POST /api/v1/admin/newsletters/{id}/test`
+- `POST /api/v1/admin/newsletters/{id}/schedule`
+- `POST /api/v1/admin/newsletters/{id}/send-now`
+- `POST /api/v1/admin/newsletters/{id}/cancel`
+
+schedule/send-now は campaign status を `SCHEDULED` にするだけで、Admin request 内で provider を
+呼ばない。worker は due campaign を一度だけ dispatch し、開始時点の `SUBSCRIBED` を Outbox にする。
+キャンペーンテストは現在の Admin 自身の登録 email のみに Outbox を作り、campaign status、正式対象数、
+NewsletterSubscription を変更せず、機能する unsubscribe link を含めない。
+
 ---
 
 ## 后台账号

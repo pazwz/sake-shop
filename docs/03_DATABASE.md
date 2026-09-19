@@ -77,6 +77,7 @@ Last Update: 2026-08-14
 | email_outbox                 | 异步邮件投递队列       |
 | email_webhook_events         | Resend webhook 去重    |
 | newsletter_subscriptions     | Newsletter consent     |
+| newsletter_campaigns         | Admin marketing campaign source of truth |
 
 ---
 
@@ -488,6 +489,15 @@ topic、message、可选 orderNumber、内部 order reference 状态与提交时
 
 email unique，保存明确 consent 时间、状态、退订时间、来源、Resend contact mirror id 与
 signed unsubscribe token hash。Customer 与 NewsletterSubscription 不建立隐式订阅关系。
+
+## newsletter_campaigns
+
+Campaign 内容、予約/配信 lifecycle、作成・更新 Admin と aggregate delivery result を保持する。
+内容は plain text と validated URL のみで、任意 HTML は保存しない。`EmailOutbox` の nullable
+`newsletter_campaign_id` / `newsletter_subscription_id` は既存 transactional mail と完全に分離し、
+Campaign 対象の重複防止、配信停止の pre-send check、集計に使う。`EmailOutboxStatus.SKIPPED` は
+unsubscribe・suppression 等で Provider を呼ばなかった marketing delivery の terminal state である。
+Campaign の作成・変更 lifecycle は既存 `audit_logs` に保持し、メール本文、recipient、provider secret は記録しない。
 
 ---
 

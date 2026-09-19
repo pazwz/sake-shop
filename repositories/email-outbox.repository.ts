@@ -92,6 +92,18 @@ export class EmailOutboxRepository {
     });
   }
 
+  public markSkipped(id: string, reason: string) {
+    return this.database.emailOutbox.update({
+      where: { id },
+      data: {
+        status: EmailOutboxStatus.SKIPPED,
+        nextAttemptAt: null,
+        lockedAt: null,
+        lastError: reason.slice(0, 250),
+      },
+    });
+  }
+
   public markContactSynced(email: string, resendContactId: string) {
     return this.database.newsletterSubscription.updateMany({
       where: { email: email.toLowerCase() },

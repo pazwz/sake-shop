@@ -67,6 +67,7 @@ enum EmailOutboxStatus {
   SENDING
   SENT
   FAILED
+  SKIPPED
 }
 
 enum EmailTemplate {
@@ -79,6 +80,7 @@ enum EmailTemplate {
   ORDER_CANCELLED
   SHIPMENT_SENT
   NEWSLETTER_CONTACT_SYNC
+  NEWSLETTER_CAMPAIGN
   CONTACT_INQUIRY
 }
 
@@ -86,6 +88,16 @@ enum NewsletterStatus {
   SUBSCRIBED
   UNSUBSCRIBED
   SUPPRESSED
+}
+
+enum NewsletterCampaignStatus {
+  DRAFT
+  SCHEDULED
+  SENDING
+  SENT
+  PARTIAL_FAILED
+  FAILED
+  CANCELLED
 }
 
 enum CollectionType {
@@ -507,19 +519,21 @@ model EditorialSection {
 }
 
 model AdminUser {
-  id                       String                    @id @default(cuid())
-  email                    String                    @unique
-  username                 String?                   @unique
-  passwordHash             String?                   @map("password_hash")
-  name                     String
-  role                     AdminRole                 @default(STAFF)
-  isActive                 Boolean                   @default(true) @map("is_active")
-  lastLoginAt              DateTime?                 @map("last_login_at")
-  createdAt                DateTime                  @default(now()) @map("created_at")
-  updatedAt                DateTime                  @updatedAt @map("updated_at")
-  auditLogs                AuditLog[]
-  createdCollections       FeaturedCollection[]      @relation("FeaturedCollectionCreator")
-  smaregiProductExclusions SmaregiProductExclusion[] @relation("SmaregiProductExclusionCreator")
+  id                         String                    @id @default(cuid())
+  email                      String                    @unique
+  username                   String?                   @unique
+  passwordHash               String?                   @map("password_hash")
+  name                       String
+  role                       AdminRole                 @default(STAFF)
+  isActive                   Boolean                   @default(true) @map("is_active")
+  lastLoginAt                DateTime?                 @map("last_login_at")
+  createdAt                  DateTime                  @default(now()) @map("created_at")
+  updatedAt                  DateTime                  @updatedAt @map("updated_at")
+  auditLogs                  AuditLog[]
+  createdCollections         FeaturedCollection[]      @relation("FeaturedCollectionCreator")
+  smaregiProductExclusions   SmaregiProductExclusion[] @relation("SmaregiProductExclusionCreator")
+  createdNewsletterCampaigns NewsletterCampaign[]      @relation("NewsletterCampaignCreator")
+  updatedNewsletterCampaigns NewsletterCampaign[]      @relation("NewsletterCampaignUpdater")
 
   @@map("admin_users")
 }
@@ -603,27 +617,33 @@ model SmaregiProductExclusion {
 }
 
 model EmailOutbox {
-  id                String            @id @default(cuid())
-  eventKey          String            @unique @map("event_key")
-  type              String
-  recipient         String
-  subject           String
-  template          EmailTemplate
-  payload           Json
-  status            EmailOutboxStatus @default(PENDING)
-  attemptCount      Int               @default(0) @map("attempt_count")
-  nextAttemptAt     DateTime?         @default(now()) @map("next_attempt_at")
-  lockedAt          DateTime?         @map("locked_at")
-  provider          String?
-  providerMessageId String?           @unique @map("provider_message_id")
-  deliveryStatus    String?           @map("delivery_status")
-  lastError         String?           @map("last_error")
-  createdAt         DateTime          @default(now()) @map("created_at")
-  sentAt            DateTime?         @map("sent_at")
-  deliveredAt       DateTime?         @map("delivered_at")
-  updatedAt         DateTime          @updatedAt @map("updated_at")
+  id                       String                  @id @default(cuid())
+  eventKey                 String                  @unique @map("event_key")
+  type                     String
+  recipient                String
+  subject                  String
+  template                 EmailTemplate
+  payload                  Json
+  status                   EmailOutboxStatus       @default(PENDING)
+  attemptCount             Int                     @default(0) @map("attempt_count")
+  nextAttemptAt            DateTime?               @default(now()) @map("next_attempt_at")
+  lockedAt                 DateTime?               @map("locked_at")
+  provider                 String?
+  providerMessageId        String?                 @unique @map("provider_message_id")
+  deliveryStatus           String?                 @map("delivery_status")
+  lastError                String?                 @map("last_error")
+  createdAt                DateTime                @default(now()) @map("created_at")
+  sentAt                   DateTime?               @map("sent_at")
+  deliveredAt              DateTime?               @map("delivered_at")
+  newsletterCampaignId     String?                 @map("newsletter_campaign_id")
+  newsletterSubscriptionId String?                 @map("newsletter_subscription_id")
+  updatedAt                DateTime                @updatedAt @map("updated_at")
+  newsletterCampaign       NewsletterCampaign?     @relation(fields: [newsletterCampaignId], references: [id], onDelete: Restrict)
+  newsletterSubscription   NewsletterSubscription? @relation(fields: [newsletterSubscriptionId], references: [id], onDelete: Restrict)
 
   @@index([status, nextAttemptAt])
+  @@index([newsletterCampaignId])
+  @@index([newsletterSubscriptionId])
   @@map("email_outbox")
 }
 
@@ -649,7 +669,36 @@ model NewsletterSubscription {
   unsubscribeTokenHash String           @unique @map("unsubscribe_token_hash")
   createdAt            DateTime         @default(now()) @map("created_at")
   updatedAt            DateTime         @updatedAt @map("updated_at")
+  campaignOutbox       EmailOutbox[]
 
   @@index([status])
   @@map("newsletter_subscriptions")
+}
+
+model NewsletterCampaign {
+  id               String                   @id @default(cuid())
+  subject          String
+  preheader        String?
+  headline         String
+  heroImageUrl     String?                  @map("hero_image_url")
+  heroImageAlt     String?                  @map("hero_image_alt")
+  body             String
+  ctaLabel         String?                  @map("cta_label")
+  ctaUrl           String?                  @map("cta_url")
+  status           NewsletterCampaignStatus @default(DRAFT)
+  scheduledAt      DateTime?                @map("scheduled_at")
+  startedAt        DateTime?                @map("started_at")
+  completedAt      DateTime?                @map("completed_at")
+  resultSummary    String?                  @map("result_summary")
+  createdByAdminId String                   @map("created_by_admin_id")
+  updatedByAdminId String?                  @map("updated_by_admin_id")
+  createdAt        DateTime                 @default(now()) @map("created_at")
+  updatedAt        DateTime                 @updatedAt @map("updated_at")
+  createdByAdmin   AdminUser                @relation("NewsletterCampaignCreator", fields: [createdByAdminId], references: [id], onDelete: Restrict)
+  updatedByAdmin   AdminUser?               @relation("NewsletterCampaignUpdater", fields: [updatedByAdminId], references: [id], onDelete: SetNull)
+  outbox           EmailOutbox[]
+
+  @@index([status, scheduledAt])
+  @@index([createdByAdminId])
+  @@map("newsletter_campaigns")
 }

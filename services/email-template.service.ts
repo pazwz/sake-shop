@@ -102,6 +102,44 @@ export class EmailTemplateService {
         `お問い合わせ種別: ${payload.topicLabel ?? payload.topic}\nメールアドレス: ${payload.email}\n会員: ${payload.loggedIn === true ? 'ログイン済み' : '未ログイン'}\n注文番号: ${payload.orderNumber ?? 'なし'}\n注文参照: ${orderReference}\n受付日時: ${payload.submittedAt}\n\nお問い合わせ内容:\n${payload.message}`,
       );
     }
+    if (template === EmailTemplate.NEWSLETTER_CAMPAIGN) {
+      const subject = String(payload.subject ?? 'LINXASからのお知らせ');
+      const preheader = String(payload.preheader ?? '');
+      const headline = String(payload.headline ?? subject);
+      const bodyText = String(payload.body ?? '');
+      const heroImageUrl = payload.heroImageUrl
+        ? String(payload.heroImageUrl)
+        : null;
+      const heroImageAlt = String(payload.heroImageAlt ?? '');
+      const ctaLabel = payload.ctaLabel ? String(payload.ctaLabel) : null;
+      const ctaUrl = payload.ctaUrl ? String(payload.ctaUrl) : null;
+      const testMode = payload.testMode === true;
+      const subscriptionId = payload.newsletterSubscriptionId
+        ? String(payload.newsletterSubscriptionId)
+        : null;
+      const unsubscribeUrl =
+        !testMode && subscriptionId
+          ? `${siteUrl}/newsletter/unsubscribe?token=${encodeURIComponent(
+              createEmailActionToken(subscriptionId, 'newsletter-unsubscribe'),
+            )}`
+          : null;
+      const escapedBody = escapeHtml(bodyText).replaceAll('\n', '<br>');
+      const hero = heroImageUrl
+        ? `<p><img src="${escapeHtml(heroImageUrl)}" alt="${escapeHtml(heroImageAlt)}" style="display:block;width:100%;height:auto"></p>`
+        : '';
+      const cta = ctaLabel && ctaUrl ? button(ctaLabel, ctaUrl) : '';
+      const testNotice = testMode
+        ? '<p style="font-size:12px;color:#6f1831">これはテストメールです。テストメールのため配信停止リンクは使用されません。</p>'
+        : '';
+      const unsubscribe = unsubscribeUrl
+        ? `<p style="font-size:12px;line-height:1.8;color:#777">メール配信停止をご希望の場合は<a href="${escapeHtml(unsubscribeUrl)}">こちら</a>をご利用ください。</p>`
+        : '';
+      return frame(
+        subject,
+        `${testNotice}${preheader ? `<p style="font-size:12px;color:#777">${escapeHtml(preheader)}</p>` : ''}${hero}<h2 style="font-family:serif;font-weight:400;font-size:24px">${escapeHtml(headline)}</h2><p style="line-height:1.9">${escapedBody}</p>${cta}${unsubscribe}`,
+        `${testMode ? 'これはテストメールです。\n\n' : ''}${preheader ? `${preheader}\n\n` : ''}${headline}\n\n${bodyText}${ctaLabel && ctaUrl ? `\n\n${ctaLabel}: ${ctaUrl}` : ''}${unsubscribeUrl ? `\n\nメール配信停止: ${unsubscribeUrl}` : ''}`,
+      );
+    }
     const titles: Partial<Record<EmailTemplate, string>> = {
       PAYMENT_SUCCEEDED: 'お支払いを確認しました',
       PAYMENT_FAILED: 'お支払いを確認できませんでした',

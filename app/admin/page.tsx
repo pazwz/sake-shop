@@ -45,6 +45,12 @@ export default function AdminPage() {
       >
         運用状態
       </Link>
+      <Link
+        href="/admin/newsletters"
+        className="btn ml-3 mt-8 border border-[#171412]"
+      >
+        ニュースレター
+      </Link>
     </main>
   );
 }
