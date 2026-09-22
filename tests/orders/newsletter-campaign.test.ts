@@ -286,8 +286,26 @@ test('newsletter footer includes compliant formal links but no unsubscribe link 
   assert.match(formal.html, /プライバシーポリシー/);
   assert.match(formal.html, /特定商取引法に基づく表記/);
   assert.match(formal.html, /newsletter\/unsubscribe\?token=/);
+  assert.match(formal.html, /配信停止はこちら/);
+  assert.match(
+    formal.html,
+    /このメールは、LINXASのニュースレター配信にご登録いただいたお客さまへお送りしています。/,
+  );
+  assert.equal(
+    formal.html.match(/20歳未満の者の飲酒は法律で禁止されています。/g)?.length,
+    1,
+  );
   assert.match(testMail.html, /これはテストメールです/);
+  assert.match(
+    testMail.html,
+    /このテストメールには有効な配信停止リンクは含まれていません。/,
+  );
+  assert.equal(
+    testMail.html.match(/20歳未満の者の飲酒は法律で禁止されています。/g)?.length,
+    1,
+  );
   assert.doesNotMatch(testMail.html, /newsletter\/unsubscribe\?token=/);
+  assert.doesNotMatch(testMail.html, /配信停止はこちら<\/a>/);
 });
 
 test('copy as draft preserves saved content while creating a distinct DRAFT', async () => {

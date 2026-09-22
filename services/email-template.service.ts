@@ -15,10 +15,11 @@ const frame = (
   title: string,
   body: string,
   text: string,
+  options: { includeDefaultFooter?: boolean } = {},
 ): EmailTemplateResult => ({
   subject: title,
-  html: `<!doctype html><html lang="ja"><body style="margin:0;background:#f6f3ee;color:#171412;font-family:-apple-system,BlinkMacSystemFont,'Hiragino Kaku Gothic ProN',sans-serif"><div style="max-width:620px;margin:0 auto;padding:48px 24px"><div style="background:#fff;padding:40px 32px"><p style="letter-spacing:.28em;color:#6f1831;font-size:12px">LINXAS</p><h1 style="font-family:serif;font-weight:400;font-size:28px">${escapeHtml(title)}</h1>${body}<hr style="border:0;border-top:1px solid #e7e1d8;margin:32px 0"><p style="font-size:12px;line-height:1.8;color:#777">${escapeHtml(siteConfig.storeName)}<br>20歳未満の者の飲酒は法律で禁止されています。</p></div></div></body></html>`,
-  text: `${title}\n\n${text}\n\n${siteConfig.storeName}\n20歳未満の者の飲酒は法律で禁止されています。`,
+  html: `<!doctype html><html lang="ja"><body style="margin:0;background:#f6f3ee;color:#171412;font-family:-apple-system,BlinkMacSystemFont,'Hiragino Kaku Gothic ProN',sans-serif"><div style="max-width:620px;margin:0 auto;padding:48px 24px"><div style="background:#fff;padding:40px 32px"><p style="letter-spacing:.28em;color:#6f1831;font-size:12px">LINXAS</p><h1 style="font-family:serif;font-weight:400;font-size:28px">${escapeHtml(title)}</h1>${body}${options.includeDefaultFooter === false ? '' : `<hr style="border:0;border-top:1px solid #e7e1d8;margin:32px 0"><p style="font-size:12px;line-height:1.8;color:#777">${escapeHtml(siteConfig.storeName)}<br>20歳未満の者の飲酒は法律で禁止されています。</p>`}</div></div></body></html>`,
+  text: `${title}\n\n${text}${options.includeDefaultFooter === false ? '' : `\n\n${siteConfig.storeName}\n20歳未満の者の飲酒は法律で禁止されています。`}`,
 });
 
 const button = (label: string, url: string) =>
@@ -59,16 +60,23 @@ const renderNewsletterSections = (value: unknown) => {
 const newsletterFooter = (
   siteUrl: string,
   unsubscribeUrl: string | null,
+  testMode: boolean,
 ) => {
   const contactUrl = `${siteUrl}/contact`;
   const privacyUrl = `${siteUrl}/privacy`;
   const tokushoUrl = `${siteUrl}/legal/tokusho`;
+  const subscriptionNote = testMode
+    ? 'これはテストメールです。<br>ニュースレター配信内容の確認のために送信されています。<br>このテストメールには有効な配信停止リンクは含まれていません。'
+    : 'このメールは、LINXASのニュースレター配信にご登録いただいたお客さまへお送りしています。';
+  const subscriptionText = testMode
+    ? 'これはテストメールです。\nニュースレター配信内容の確認のために送信されています。\nこのテストメールには有効な配信停止リンクは含まれていません。'
+    : 'このメールは、LINXASのニュースレター配信にご登録いただいたお客さまへお送りしています。';
   const unsubscribe = unsubscribeUrl
-    ? `<p style="margin:16px 0 0"><a href="${escapeHtml(unsubscribeUrl)}" style="color:#6f1831">配信停止</a></p>`
+    ? `<p style="margin:16px 0 0"><a href="${escapeHtml(unsubscribeUrl)}" style="color:#6f1831;text-decoration:underline">配信停止はこちら</a></p>`
     : '';
   return {
-    html: `<div style="margin-top:40px;padding-top:24px;border-top:1px solid #e7e1d8;font-size:12px;line-height:1.9;color:#777"><p style="margin:0"><strong style="color:#171412">LINXAS / ${escapeHtml(siteConfig.storeName)}</strong><br><a href="${escapeHtml(siteUrl)}" style="color:#6f1831">${escapeHtml(siteUrl)}</a> ・ <a href="${escapeHtml(contactUrl)}" style="color:#6f1831">お問い合わせ</a></p><p style="margin:16px 0 0">このメールは、LINXAS ニュースレターにご登録いただいた方へお送りしています。</p>${unsubscribe}<p style="margin:16px 0 0"><a href="${escapeHtml(privacyUrl)}" style="color:#6f1831">プライバシーポリシー</a> ・ <a href="${escapeHtml(tokushoUrl)}" style="color:#6f1831">特定商取引法に基づく表記</a></p><p style="margin:16px 0 0">20歳未満の者の飲酒は法律で禁止されています。</p></div>`,
-    text: `LINXAS / ${siteConfig.storeName}\n${siteUrl}\nお問い合わせ: ${contactUrl}\nこのメールは、LINXAS ニュースレターにご登録いただいた方へお送りしています。${unsubscribeUrl ? `\n配信停止: ${unsubscribeUrl}` : ''}\nプライバシーポリシー: ${privacyUrl}\n特定商取引法に基づく表記: ${tokushoUrl}\n20歳未満の者の飲酒は法律で禁止されています。`,
+    html: `<footer style="margin-top:48px;padding-top:24px;border-top:1px solid #d9d1c6;font-size:12px;line-height:1.85;color:#6d665f"><p style="margin:0;color:#171412;font-weight:600;letter-spacing:.08em">LINXAS / ${escapeHtml(siteConfig.storeName)}</p><p style="margin:8px 0 0"><a href="${escapeHtml(siteUrl)}" style="color:#6f1831;text-decoration:none">${escapeHtml(siteUrl)}</a><span style="color:#b8aea2"> ｜ </span><a href="${escapeHtml(contactUrl)}" style="color:#6f1831;text-decoration:none">お問い合わせ</a></p><p style="margin:20px 0 0">${subscriptionNote}</p>${unsubscribe}<p style="margin:20px 0 0"><a href="${escapeHtml(privacyUrl)}" style="color:#6f1831;text-decoration:none">プライバシーポリシー</a><span style="color:#b8aea2"> ｜ </span><a href="${escapeHtml(tokushoUrl)}" style="color:#6f1831;text-decoration:none">特定商取引法に基づく表記</a></p><p style="margin:20px 0 0;color:#4d4741">20歳未満の者の飲酒は法律で禁止されています。</p></footer>`,
+    text: `LINXAS / ${siteConfig.storeName}\n${siteUrl} ｜ お問い合わせ: ${contactUrl}\n\n${subscriptionText}${unsubscribeUrl ? `\n\n配信停止はこちら: ${unsubscribeUrl}` : ''}\n\nプライバシーポリシー: ${privacyUrl} ｜ 特定商取引法に基づく表記: ${tokushoUrl}\n\n20歳未満の者の飲酒は法律で禁止されています。`,
   };
 };
 
@@ -177,14 +185,12 @@ export class EmailTemplateService {
         : '';
       const cta = ctaLabel && ctaUrl ? button(ctaLabel, ctaUrl) : '';
       const sections = renderNewsletterSections(payload.sections);
-      const testNotice = testMode
-        ? '<p style="font-size:12px;color:#6f1831">これはテストメールです。テストメールのため配信停止リンクは使用されません。</p>'
-        : '';
-      const footer = newsletterFooter(siteUrl, unsubscribeUrl);
+      const footer = newsletterFooter(siteUrl, unsubscribeUrl, testMode);
       return frame(
         subject,
-        `${testNotice}${preheader ? `<p style="font-size:12px;color:#777">${escapeHtml(preheader)}</p>` : ''}${hero}<h2 style="font-family:serif;font-weight:400;font-size:24px">${escapeHtml(headline)}</h2><p style="line-height:1.9">${escapedBody}</p>${cta}${sections.html}${footer.html}`,
-        `${testMode ? 'これはテストメールです。\n\n' : ''}${preheader ? `${preheader}\n\n` : ''}${headline}\n\n${bodyText}${ctaLabel && ctaUrl ? `\n\n${ctaLabel}: ${ctaUrl}` : ''}${sections.text ? `\n\n${sections.text}` : ''}\n\n${footer.text}`,
+        `${preheader ? `<p style="font-size:12px;color:#777">${escapeHtml(preheader)}</p>` : ''}${hero}<h2 style="font-family:serif;font-weight:400;font-size:24px">${escapeHtml(headline)}</h2><p style="line-height:1.9">${escapedBody}</p>${cta}${sections.html}${footer.html}`,
+        `${preheader ? `${preheader}\n\n` : ''}${headline}\n\n${bodyText}${ctaLabel && ctaUrl ? `\n\n${ctaLabel}: ${ctaUrl}` : ''}${sections.text ? `\n\n${sections.text}` : ''}\n\n${footer.text}`,
+        { includeDefaultFooter: false },
       );
     }
     const titles: Partial<Record<EmailTemplate, string>> = {
