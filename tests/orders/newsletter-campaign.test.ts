@@ -200,6 +200,7 @@ test('send now schedules through the worker and never calls a provider inline', 
 test('test send queues exactly one validated recipient row without changing campaign state', async () => {
   const drafts: Array<Record<string, unknown>> = [];
   let auditInput: Record<string, unknown> | null = null;
+  const triggered: string[] = [];
   const service = new NewsletterCampaignService(
     {
       findById: async () => campaign,
@@ -209,7 +210,16 @@ test('test send queues exactly one validated recipient row without changing camp
       },
     } as never,
     {
-      enqueue: async (draft: Record<string, unknown>) => drafts.push(draft),
+      enqueue: async (draft: Record<string, unknown>) => {
+        drafts.push(draft);
+        return { id: 'outbox-test-1' };
+      },
+    } as never,
+    {
+      trigger: async (outboxId?: string) => {
+        triggered.push(outboxId ?? '');
+        return { triggered: true, reason: null };
+      },
     } as never,
   );
   await service.queueTest(campaign.id, 'recipient@example.com', 'admin-1');
@@ -217,6 +227,7 @@ test('test send queues exactly one validated recipient row without changing camp
   assert.equal(drafts[0].recipient, 'recipient@example.com');
   assert.equal(drafts[0].template, EmailTemplate.NEWSLETTER_CAMPAIGN);
   assert.match(String(drafts[0].subject), /^【テスト】/);
+  assert.deepEqual(triggered, ['outbox-test-1']);
   assert.equal(drafts[0].newsletterCampaignId, undefined);
   assert.equal(drafts[0].newsletterSubscriptionId, undefined);
   assert.deepEqual(drafts[0].payload, {

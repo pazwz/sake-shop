@@ -6,10 +6,12 @@ import {
   isValidEmailActionToken,
 } from '@/lib/email-action-token';
 import { NewsletterRepository } from '@/repositories/newsletter.repository';
+import { EmailDispatchTriggerService } from '@/services/email-dispatch-trigger.service';
 
 export class NewsletterService {
   public constructor(
     private readonly newsletters = new NewsletterRepository(),
+    private readonly trigger = new EmailDispatchTriggerService(),
   ) {}
 
   async subscribe(email: string, source = 'FOOTER') {
@@ -23,6 +25,7 @@ export class NewsletterService {
       source,
       now: new Date(),
     });
+    await this.trigger.trigger();
     return { subscribed: true };
   }
 
@@ -34,6 +37,7 @@ export class NewsletterService {
       new Date(),
     );
     if (!result) throw new UnauthorizedError('退会リンクが無効です。');
+    await this.trigger.trigger();
     return { unsubscribed: true };
   }
 
@@ -52,6 +56,7 @@ export class NewsletterService {
       return { subscribed: true };
     }
     await this.newsletters.unsubscribeByEmail(email, new Date());
+    await this.trigger.trigger();
     return { subscribed: false };
   }
 }

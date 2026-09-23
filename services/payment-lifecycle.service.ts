@@ -5,6 +5,7 @@ import {
   PaymentRefundNotAllowedError,
   PaymentStatusChangedError,
 } from '@/repositories/payment.repository';
+import { EmailDispatchTriggerService } from '@/services/email-dispatch-trigger.service';
 import type {
   ProviderPaymentOutcome,
   VerifiedPaymentWebhook,
@@ -48,7 +49,10 @@ const reservationTransitionFor = (status: PaymentStatus) =>
  * adapters never write those domain statuses directly.
  */
 export class PaymentLifecycleService {
-  public constructor(private readonly payments = new PaymentRepository()) {}
+  public constructor(
+    private readonly payments = new PaymentRepository(),
+    private readonly trigger = new EmailDispatchTriggerService(),
+  ) {}
 
   public async applyVerifiedWebhook(input: VerifiedPaymentWebhook) {
     const existingEvent = await this.payments.findWebhookEvent(
@@ -95,13 +99,15 @@ export class PaymentLifecycleService {
     }
 
     try {
-      return await this.payments.processWebhook({
+      const result = await this.payments.processWebhook({
         ...input,
         paymentId: payment.id,
         expectedStatus: payment.status,
         nextStatus,
         reservationTransition: reservationTransitionFor(nextStatus),
       });
+      await this.trigger.trigger();
+      return result;
     } catch (error) {
       if (error instanceof PaymentStatusChangedError) {
         throw new AppError(

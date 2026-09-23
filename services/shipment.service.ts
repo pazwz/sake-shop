@@ -6,6 +6,7 @@ import {
 import { AppError } from '@/lib/errors';
 import { OrderRepository } from '@/repositories/order.repository';
 import { ShipmentRepository } from '@/repositories/shipment.repository';
+import { EmailDispatchTriggerService } from '@/services/email-dispatch-trigger.service';
 import type { ShipmentUpdateInput } from '@/validators/shipment.validator';
 
 const transitions: Record<ShipmentStatus, ShipmentStatus[]> = {
@@ -23,6 +24,7 @@ export class ShipmentService {
   constructor(
     private readonly shipments = new ShipmentRepository(),
     private readonly orders = new OrderRepository(),
+    private readonly trigger = new EmailDispatchTriggerService(),
   ) {}
 
   async getByOrderId(orderId: string) {
@@ -119,7 +121,7 @@ export class ShipmentService {
       afterData: { status: input.status },
     };
     if (input.status === ShipmentStatus.SHIPPED) {
-      return this.shipments.markShipped(
+      const updated = await this.shipments.markShipped(
         shipment.id,
         input.shippedAt ?? new Date(),
         {
@@ -127,6 +129,8 @@ export class ShipmentService {
           action: 'SHIPMENT_MARKED_SHIPPED',
         },
       );
+      await this.trigger.trigger();
+      return updated;
     }
     if (input.status === ShipmentStatus.DELIVERED) {
       return this.shipments.markDelivered(shipment.id, new Date(), {

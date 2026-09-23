@@ -47,6 +47,25 @@ test('anonymous contact creates only one durable support outbox draft', async ()
   assert.equal(drafts[0].customerId, undefined);
 });
 
+test('contact triggers delivery only after the durable outbox write succeeds', async () => {
+  const sequence: string[] = [];
+  const service = new ContactService(
+    {
+      enqueueSupportInquiry: async () => {
+        sequence.push('outbox-committed');
+      },
+    } as never,
+    {
+      trigger: async () => {
+        sequence.push('triggered');
+        return { triggered: false, reason: 'TRIGGER_FAILED' };
+      },
+    } as never,
+  );
+  await withRecipient(() => service.submit(input()));
+  assert.deepEqual(sequence, ['outbox-committed', 'triggered']);
+});
+
 test('owned order references are internal-only while foreign references remain unverified', async () => {
   const drafts: Array<Record<string, unknown>> = [];
   const service = new ContactService({

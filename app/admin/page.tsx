@@ -1,6 +1,10 @@
 import Link from 'next/link';
+import { ContactInquiryService } from '@/services/contact-inquiry.service';
 
-export default function AdminPage() {
+export const dynamic = 'force-dynamic';
+
+export default async function AdminPage() {
+  const newInquiryCount = await new ContactInquiryService().countNew();
   return (
     <main className="wrap py-20">
       <p className="eyebrow">ADMIN CMS · DEMO</p>
@@ -50,6 +54,12 @@ export default function AdminPage() {
         className="btn ml-3 mt-8 border border-[#171412]"
       >
         ニュースレター
+      </Link>
+      <Link
+        href="/admin/inquiries"
+        className="btn ml-3 mt-8 border border-[#171412]"
+      >
+        お問い合わせ{newInquiryCount ? ` ${newInquiryCount}` : ''}
       </Link>
     </main>
   );

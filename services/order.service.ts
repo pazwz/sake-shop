@@ -6,6 +6,7 @@ import { AppError, NotFoundError } from '@/lib/errors';
 import { InventoryReservationRepository } from '@/repositories/inventory-reservation.repository';
 import { OrderRepository } from '@/repositories/order.repository';
 import { CheckoutAccessService } from '@/services/checkout-access.service';
+import { EmailDispatchTriggerService } from '@/services/email-dispatch-trigger.service';
 import { ShippingQuoteService } from '@/services/shipping-quote.service';
 import {
   projectApprovedInventory,
@@ -34,6 +35,7 @@ export class OrderService {
     private readonly reservations = new InventoryReservationRepository(),
     private readonly checkoutAccess = new CheckoutAccessService(),
     private readonly shippingQuotes = new ShippingQuoteService(),
+    private readonly trigger = new EmailDispatchTriggerService(),
   ) {}
   async create(input: OrderInput, customerId: string) {
     this.checkoutAccess.assertOrderCreationAllowed();
@@ -52,7 +54,7 @@ export class OrderService {
         ]),
       ),
     ].sort();
-    return this.reservations.withLockedProducts(
+    const order = await this.reservations.withLockedProducts(
       sortedProductIds,
       async (transaction) => {
         const products = await transaction.findProducts(sortedProductIds);
@@ -197,6 +199,8 @@ export class OrderService {
         });
       },
     );
+    await this.trigger.trigger();
+    return order;
   }
   async createForCustomer(
     input: OrderInput,
@@ -242,7 +246,7 @@ export class OrderService {
         'INVALID_ORDER_STATUS_TRANSITION',
         422,
       );
-    return this.orders.updateStatusWithReservationTransition(
+    const updated = await this.orders.updateStatusWithReservationTransition(
       id,
       status,
       status === OrderStatus.CANCELLED
@@ -252,5 +256,7 @@ export class OrderService {
           : 'NONE',
       status === OrderStatus.CANCELLED ? EmailTemplate.ORDER_CANCELLED : null,
     );
+    if (status === OrderStatus.CANCELLED) await this.trigger.trigger();
+    return updated;
   }
 }

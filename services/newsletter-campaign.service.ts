@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { EmailTemplate, NewsletterCampaignStatus } from '@prisma/client';
 import { ConflictError, NotFoundError, ValidationError } from '@/lib/errors';
 import { EmailOutboxRepository } from '@/repositories/email-outbox.repository';
+import { EmailDispatchTriggerService } from '@/services/email-dispatch-trigger.service';
 import {
   NewsletterCampaignRepository,
   NewsletterCampaignSectionOwnershipError,
@@ -70,6 +71,7 @@ export class NewsletterCampaignService {
   public constructor(
     private readonly campaigns = new NewsletterCampaignRepository(),
     private readonly outbox = new EmailOutboxRepository(),
+    private readonly trigger = new EmailDispatchTriggerService(),
   ) {}
 
   public async list() {
@@ -182,6 +184,7 @@ export class NewsletterCampaignService {
       ...(existing ? { beforeData: auditSnapshot(existing) } : {}),
       afterData: auditSnapshot(campaign),
     });
+    await this.trigger.trigger();
     return toDto(this.campaigns, campaign);
   }
 
@@ -206,7 +209,7 @@ export class NewsletterCampaignService {
     const campaign = await this.campaigns.findById(id);
     if (!campaign) throw new NotFoundError('ニュースレターが見つかりません。');
     const sections = await this.campaigns.listSections(id);
-    await this.outbox.enqueue({
+    const outbox = await this.outbox.enqueue({
       eventKey: `newsletter-campaign-test:${campaign.id}:${randomUUID()}`,
       type: 'NEWSLETTER_CAMPAIGN_TEST',
       recipient: recipientEmail,
@@ -231,6 +234,7 @@ export class NewsletterCampaignService {
       campaignId: campaign.id,
       afterData: auditSnapshot(campaign),
     });
+    await this.trigger.trigger(outbox.id);
     return { queued: true };
   }
 

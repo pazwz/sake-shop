@@ -1,9 +1,15 @@
 # Email outbox trigger
 
-`sake-shop-email-outbox-trigger` is invoked by the
+`sake-shop-email-outbox-trigger` is currently invoked by the
 `sake-shop-email-outbox-2m` EventBridge Scheduler. It reads the existing
 `CRON_SECRET` SSM SecureString and calls
 `POST /api/v1/internal/email/process` every two minutes.
+
+The application now performs normal delivery through a post-commit immediate
+trigger. The Scheduler is retained only as retry/recovery protection: after
+production approval, change its rate to `rate(10 minutes)` while keeping its
+existing authenticated Lambda path, one retry, and 300-second maximum event
+age. This repository change does not modify AWS resources.
 
 The Lambda logs only HTTP status and aggregate processing counts. It never logs
 the Authorization header, recipient, token, API key, or message body. The

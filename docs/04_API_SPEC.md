@@ -97,6 +97,10 @@ RPC 风格接口。
 
 # 二、Frontend API
 
+### お問い合わせ管理（Admin）
+
+Authenticated Admin は `GET /api/v1/admin/inquiries` で一覧・検索・フィルタを取得し、`GET /api/v1/admin/inquiries/{id}` で詳細を取得する。担当者、状態、内部メモ、返信は `/assign`、`/status`、`/notes`、`/reply` に分離する。返信 request は body、optional subject、idempotencyKey のみを受け、宛先・customer・order identity を client から受け取らない。返信は `CONTACT_REPLY` Outbox にのみ enqueue され、Route から provider を直接呼ばない。
+
 ---
 
 ## 首页
@@ -882,10 +886,12 @@ PATCH
 
 ### Email worker
 
-`POST /api/v1/internal/email/process` 仅接受 `Authorization: Bearer <CRON_SECRET>`，每次
-最多 claim 20 条到期 Outbox。Production Email disabled 时返回成功的 `DISABLED` 结果且
-不 claim、不发送。Provider 错误按 bounded backoff 标记 FAILED，不回滚 Customer、Order、
-Payment 或 Shipment。
+`POST /api/v1/internal/email/process` 仅接受 `Authorization: Bearer <CRON_SECRET>`。body 为严格
+对象，可选且仅可包含 `{ outboxId }`：传入时以 atomic claim 处理该单条 PENDING / due-RETRY
+Outbox；省略时最多 claim 20 条到期 Outbox，供 retry/recovery 使用。它不接受 recipient、template
+或 payload。Production Email disabled 时返回成功的 `DISABLED` 结果且不 claim、不发送。Provider
+错误按 bounded backoff 标记 FAILED，不回滚 Customer、Order、Payment 或 Shipment；已经过期或已使用的
+verification / password-reset action 标记 `SKIPPED`，不会调用 provider。
 
 ### Admin email preview
 

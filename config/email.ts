@@ -9,6 +9,14 @@ export const EMAIL_LOCK_TIMEOUT_MS = 10 * 60 * 1000;
 export const EMAIL_RETRY_DELAYS_MS = [
   60_000, 300_000, 1_800_000, 7_200_000,
 ] as const;
+export const EMAIL_RECOVERY_SCHEDULER_RATE_MINUTES = 10;
+export const EMAIL_DISPATCH_TRIGGER_TIMEOUT_MS = 10_000;
+/**
+ * Post-commit internal worker wake-up attempts. These are deliberately
+ * separate from EmailOutbox provider retry delays: they retry only the
+ * application-to-application trigger request.
+ */
+export const EMAIL_DISPATCH_TRIGGER_DELAYS_MS = [0, 1_000, 3_000] as const;
 export const EMAIL_VERIFICATION_TTL_MS = 24 * 60 * 60 * 1000;
 export const PASSWORD_RESET_TTL_MS = 60 * 60 * 1000;
 
@@ -21,6 +29,8 @@ export type EmailEnvironment = {
   RESEND_REPLY_TO_EMAIL?: string;
   RESEND_WEBHOOK_SECRET?: string;
   NEXT_PUBLIC_SITE_URL?: string;
+  CRON_SECRET?: string;
+  EMAIL_PROCESS_ENDPOINT_URL?: string;
 };
 
 export const getEmailRuntimeConfig = (
@@ -58,3 +68,17 @@ export const getEmailRuntimeConfig = (
 
 export const getPublicSiteUrl = (environment: EmailEnvironment = process.env) =>
   environment.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000';
+
+export const getEmailDispatchTriggerConfig = (
+  environment: EmailEnvironment = process.env,
+) => {
+  const endpoint =
+    environment.EMAIL_PROCESS_ENDPOINT_URL ??
+    `${getPublicSiteUrl(environment).replace(/\/$/, '')}/api/v1/internal/email/process`;
+  const secret = environment.CRON_SECRET;
+  return {
+    available: Boolean(secret && endpoint.startsWith('https://')),
+    endpoint,
+    secret: secret ?? null,
+  } as const;
+};

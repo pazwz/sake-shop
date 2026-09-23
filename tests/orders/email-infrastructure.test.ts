@@ -14,6 +14,7 @@ import {
   isValidEmailActionToken,
 } from '@/lib/email-action-token';
 import { CustomerAuthService } from '@/services/customer-auth.service';
+import { EmailDispatchTriggerService } from '@/services/email-dispatch-trigger.service';
 import { EmailOutboxService } from '@/services/email-outbox.service';
 
 const withEmailMode = async <T>(mode: string, operation: () => Promise<T>) => {
@@ -230,6 +231,189 @@ test('outbox claim idempotency prevents a duplicate provider send', async () => 
   await withEmailMode('console', () => service.processDue());
   await withEmailMode('console', () => service.processDue());
   assert.equal(sends, 1);
+});
+
+test('immediate dispatch uses only the authenticated outbox identifier', async () => {
+  const requests: RequestInit[] = [];
+  const trigger = new EmailDispatchTriggerService(
+    async (_input, init) => {
+      requests.push(init ?? {});
+      return new Response(JSON.stringify({ success: true }), { status: 200 });
+    },
+    {
+      CRON_SECRET: 'test-secret',
+      NEXT_PUBLIC_SITE_URL: 'https://test.example.com',
+    },
+  );
+  const result = await trigger.trigger('outbox-1');
+  assert.equal(result.triggered, true);
+  assert.equal(result.attempts, 1);
+  assert.equal(requests.length, 1);
+  assert.deepEqual(JSON.parse(String(requests[0].body)), { outboxId: 'outbox-1' });
+  assert.equal(
+    (requests[0].headers as Record<string, string>).Authorization,
+    'Bearer test-secret',
+  );
+});
+
+test('an immediate trigger retries a transient internal worker failure', async () => {
+  let calls = 0;
+  const delays: number[] = [];
+  const trigger = new EmailDispatchTriggerService(
+    async () => {
+      calls += 1;
+      if (calls === 1) throw new Error('temporary network failure');
+      return new Response(JSON.stringify({ success: true }), { status: 200 });
+    },
+    {
+      CRON_SECRET: 'test-secret',
+      NEXT_PUBLIC_SITE_URL: 'https://test.example.com',
+    },
+    () => undefined,
+    async (delay) => {
+      delays.push(delay);
+    },
+  );
+  const result = await trigger.trigger('outbox-1');
+  assert.deepEqual(result, { triggered: true, reason: null, attempts: 2 });
+  assert.equal(calls, 2);
+  assert.deepEqual(delays, [1_000]);
+});
+
+test('a failed immediate trigger preserves PENDING for recovery', async () => {
+  const logged: Array<{ code: string; attempts: number }> = [];
+  const delays: number[] = [];
+  const outbox = { status: EmailOutboxStatus.PENDING };
+  const trigger = new EmailDispatchTriggerService(
+    async () => {
+      throw new Error('network unavailable');
+    },
+    {
+      CRON_SECRET: 'test-secret',
+      NEXT_PUBLIC_SITE_URL: 'https://test.example.com',
+    },
+    (event) => logged.push(event),
+    async (delay) => {
+      delays.push(delay);
+    },
+  );
+  const result = await trigger.trigger('outbox-1');
+  assert.deepEqual(result, {
+    triggered: false,
+    reason: 'TRIGGER_FAILED',
+    attempts: 3,
+  });
+  assert.equal(outbox.status, EmailOutboxStatus.PENDING);
+  assert.deepEqual(delays, [1_000, 3_000]);
+  assert.deepEqual(logged, [
+    {
+      event: 'email_dispatch_trigger',
+      outcome: 'FAILED',
+      code: 'EMAIL_WORKER_TRIGGER_REQUEST_FAILED',
+      attempts: 3,
+    },
+  ]);
+});
+
+test('registration commits before its non-fatal immediate trigger', async () => {
+  const sequence: string[] = [];
+  const service = new CustomerAuthService(
+    {
+      registerPendingVerification: async () => {
+        sequence.push('committed');
+        return {
+          id: 'customer-1',
+          name: 'Buyer',
+          email: 'buyer@example.com',
+          phone: null,
+          emailVerifiedAt: null,
+        };
+      },
+    } as never,
+    {
+      trigger: async () => {
+        sequence.push('triggered');
+        return { triggered: false, reason: 'TRIGGER_FAILED' };
+      },
+    } as never,
+  );
+  const result = await service.register({
+    name: 'Buyer',
+    email: 'buyer@example.com',
+    password: 'long-password',
+  });
+  assert.equal(result.verificationRequired, true);
+  assert.deepEqual(sequence, ['committed', 'triggered']);
+});
+
+test('an immediate and recovery worker cannot send one outbox twice', async () => {
+  let claimed = false;
+  let sends = 0;
+  const service = new EmailOutboxService(
+    {
+      claimById: async () => {
+        if (claimed) return null;
+        claimed = true;
+        return outboxRow;
+      },
+      markSent: async () => undefined,
+    } as never,
+    {
+      render: () => ({ subject: 'subject', html: '<p>mail</p>', text: 'mail' }),
+    } as never,
+    {
+      provider: 'test',
+      send: async () => {
+        sends += 1;
+        return { messageId: 'message-1' };
+      },
+    },
+    {} as never,
+    noOpCampaignDispatch as never,
+  );
+  await withEmailMode('console', async () => {
+    await Promise.all([
+      service.processOutbox('outbox-1'),
+      service.processOutbox('outbox-1'),
+    ]);
+  });
+  assert.equal(sends, 1);
+});
+
+test('expired verification and reset emails are skipped without calling the provider', async () => {
+  let sends = 0;
+  const skipped: Array<unknown[]> = [];
+  const service = new EmailOutboxService(
+    {
+      claimDue: async () => [
+        { ...outboxRow, template: EmailTemplate.EMAIL_VERIFICATION },
+        {
+          ...outboxRow,
+          id: 'outbox-2',
+          template: EmailTemplate.PASSWORD_RESET,
+        },
+      ],
+      isActionCurrent: async () => false,
+      markSkipped: async (...input: unknown[]) => skipped.push(input),
+    } as never,
+    {} as never,
+    {
+      provider: 'test',
+      send: async () => {
+        sends += 1;
+        return { messageId: 'message-1' };
+      },
+    },
+    {} as never,
+    noOpCampaignDispatch as never,
+  );
+  const result = await withEmailMode('console', () => service.processDue());
+  assert.equal(result.sent, 0);
+  assert.equal(sends, 0);
+  assert.deepEqual(skipped, [
+    ['outbox-1', 'EXPIRED_ACTION'],
+    ['outbox-2', 'EXPIRED_ACTION'],
+  ]);
 });
 
 test('production without email configuration fails closed', async () => {

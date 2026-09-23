@@ -11,6 +11,7 @@
     "test:products": "tsx --test tests/products/*.test.ts",
     "test:orders": "tsx --test tests/orders/*.test.ts",
     "test:e2e": "playwright test --project=chromium",
+    "e2e:prepare-db": "tsx scripts/prepare-e2e-database.ts",
     "test:e2e:ui": "playwright test --project=chromium --ui",
     "test:e2e:production-smoke": "E2E_BASE_URL=https://sake-shop.vercel.app E2E_PRODUCTION_SMOKE=true playwright test e2e/production-smoke --project=chromium",
     "format": "prettier --write .",

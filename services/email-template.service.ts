@@ -26,7 +26,8 @@ const button = (label: string, url: string) =>
   `<p style="margin:28px 0"><a href="${escapeHtml(url)}" style="display:inline-block;background:#6f1831;color:#fff;text-decoration:none;padding:14px 24px">${escapeHtml(label)}</a></p>`;
 
 const isSafeNewsletterUrl = (value: string) =>
-  /^\/(?:products|collections)(?:\/|$)/.test(value) || /^https:\/\//i.test(value);
+  /^\/(?:products|collections)(?:\/|$)/.test(value) ||
+  /^https:\/\//i.test(value);
 
 const renderNewsletterSections = (value: unknown) => {
   if (!Array.isArray(value)) return { html: '', text: '' };
@@ -36,13 +37,18 @@ const renderNewsletterSections = (value: unknown) => {
         Boolean(section) && typeof section === 'object',
     )
     .map((section) => {
-      const imageUrl = typeof section.imageUrl === 'string' ? section.imageUrl : null;
-      const imageAlt = typeof section.imageAlt === 'string' ? section.imageAlt : '';
-      const headline = typeof section.headline === 'string' ? section.headline : null;
+      const imageUrl =
+        typeof section.imageUrl === 'string' ? section.imageUrl : null;
+      const imageAlt =
+        typeof section.imageAlt === 'string' ? section.imageAlt : '';
+      const headline =
+        typeof section.headline === 'string' ? section.headline : null;
       const body = typeof section.body === 'string' ? section.body : null;
-      const ctaLabel = typeof section.ctaLabel === 'string' ? section.ctaLabel : null;
+      const ctaLabel =
+        typeof section.ctaLabel === 'string' ? section.ctaLabel : null;
       const ctaUrl =
-        typeof section.ctaUrl === 'string' && isSafeNewsletterUrl(section.ctaUrl)
+        typeof section.ctaUrl === 'string' &&
+        isSafeNewsletterUrl(section.ctaUrl)
           ? section.ctaUrl
           : null;
       if (!imageUrl && !headline && !body && !(ctaLabel && ctaUrl)) return null;
@@ -50,10 +56,15 @@ const renderNewsletterSections = (value: unknown) => {
       const text = `${headline ?? ''}${headline && body ? '\n\n' : ''}${body ?? ''}${ctaLabel && ctaUrl ? `\n\n${ctaLabel}: ${ctaUrl}` : ''}`;
       return { html, text };
     })
-    .filter((section): section is { html: string; text: string } => Boolean(section));
+    .filter((section): section is { html: string; text: string } =>
+      Boolean(section),
+    );
   return {
     html: sections.map((section) => section.html).join(''),
-    text: sections.map((section) => section.text).filter(Boolean).join('\n\n'),
+    text: sections
+      .map((section) => section.text)
+      .filter(Boolean)
+      .join('\n\n'),
   };
 };
 
@@ -151,11 +162,23 @@ export class EmailTemplateService {
             ? '未確認'
             : 'なし';
       const content = escapeHtml(payload.message).replaceAll('\n', '<br>');
+      const publicId = payload.publicId ? escapeHtml(payload.publicId) : null;
       const title = `[LINXAS EC] お問い合わせ：${String(payload.topicLabel ?? payload.topic ?? 'その他')}`;
       return frame(
         title,
-        `<p>お問い合わせ種別：${topic}</p><p>メールアドレス：${escapeHtml(payload.email)}<br>会員：${payload.loggedIn === true ? 'ログイン済み' : '未ログイン'}<br>注文番号：${orderNumber}<br>注文参照：${orderReference}<br>受付日時：${escapeHtml(payload.submittedAt)}</p><p>お問い合わせ内容：</p><p>${content}</p>`,
-        `お問い合わせ種別: ${payload.topicLabel ?? payload.topic}\nメールアドレス: ${payload.email}\n会員: ${payload.loggedIn === true ? 'ログイン済み' : '未ログイン'}\n注文番号: ${payload.orderNumber ?? 'なし'}\n注文参照: ${orderReference}\n受付日時: ${payload.submittedAt}\n\nお問い合わせ内容:\n${payload.message}`,
+        `<p>お問い合わせ種別：${topic}${publicId ? `<br>お問い合わせ番号：${publicId}` : ''}</p><p>メールアドレス：${escapeHtml(payload.email)}<br>会員：${payload.loggedIn === true ? 'ログイン済み' : '未ログイン'}<br>注文番号：${orderNumber}<br>注文参照：${orderReference}<br>受付日時：${escapeHtml(payload.submittedAt)}</p><p>お問い合わせ内容：</p><p>${content}</p>`,
+        `お問い合わせ種別: ${payload.topicLabel ?? payload.topic}${payload.publicId ? `\nお問い合わせ番号: ${payload.publicId}` : ''}\nメールアドレス: ${payload.email}\n会員: ${payload.loggedIn === true ? 'ログイン済み' : '未ログイン'}\n注文番号: ${payload.orderNumber ?? 'なし'}\n注文参照: ${orderReference}\n受付日時: ${payload.submittedAt}\n\nお問い合わせ内容:\n${payload.message}`,
+      );
+    }
+    if (template === EmailTemplate.CONTACT_REPLY) {
+      const publicId = escapeHtml(payload.publicId);
+      const replyBody = escapeHtml(payload.body).replaceAll('\n', '<br>');
+      return frame(
+        String(
+          payload.subject ?? `[LINXAS] お問い合わせについて（${publicId}）`,
+        ),
+        `<p>${name} 様</p><p>お問い合わせいただきありがとうございます。</p><p>${replyBody}</p><p>お問い合わせ番号：${publicId}</p><p>----------------<br>LINXAS / ${escapeHtml(siteConfig.storeName)}<br>お問い合わせ窓口<br>${escapeHtml(siteUrl)}</p>`,
+        `${payload.customerName ?? 'お客様'} 様\n\nお問い合わせいただきありがとうございます。\n\n${payload.body ?? ''}\n\nお問い合わせ番号：${payload.publicId ?? ''}\n\n----------------\nLINXAS / ${siteConfig.storeName}\nお問い合わせ窓口\n${siteUrl}`,
       );
     }
     if (template === EmailTemplate.NEWSLETTER_CAMPAIGN) {

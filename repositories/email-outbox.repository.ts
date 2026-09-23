@@ -1,5 +1,6 @@
 import {
   EmailOutboxStatus,
+  EmailTemplate,
   NewsletterStatus,
   Prisma,
   type PrismaClient,
@@ -61,6 +62,56 @@ export class EmailOutboxRepository {
       if (result.count === 1) claimed.push(candidate);
     }
     return claimed;
+  }
+
+  public async claimById(id: string, now = new Date()) {
+    const candidate = await this.database.emailOutbox.findFirst({
+      where: {
+        id,
+        OR: [
+          { status: EmailOutboxStatus.PENDING },
+          {
+            status: EmailOutboxStatus.FAILED,
+            nextAttemptAt: { lte: now },
+          },
+        ],
+      },
+    });
+    if (!candidate) return null;
+    const claimed = await this.database.emailOutbox.updateMany({
+      where: {
+        id: candidate.id,
+        status: candidate.status,
+        ...(candidate.status === EmailOutboxStatus.PENDING
+          ? {}
+          : { nextAttemptAt: candidate.nextAttemptAt }),
+      },
+      data: { status: EmailOutboxStatus.SENDING, lockedAt: now },
+    });
+    return claimed.count === 1 ? candidate : null;
+  }
+
+  public async isActionCurrent(
+    template: EmailTemplate,
+    tokenId: unknown,
+    now = new Date(),
+  ) {
+    if (typeof tokenId !== 'string' || !tokenId) return false;
+    if (template === EmailTemplate.EMAIL_VERIFICATION) {
+      const token = await this.database.emailVerificationToken.findUnique({
+        where: { id: tokenId },
+        select: { usedAt: true, expiresAt: true },
+      });
+      return Boolean(token && !token.usedAt && token.expiresAt > now);
+    }
+    if (template === EmailTemplate.PASSWORD_RESET) {
+      const token = await this.database.passwordResetToken.findUnique({
+        where: { id: tokenId },
+        select: { usedAt: true, expiresAt: true },
+      });
+      return Boolean(token && !token.usedAt && token.expiresAt > now);
+    }
+    return true;
   }
 
   public markSent(id: string, provider: string, providerMessageId: string) {

@@ -1,5 +1,6 @@
 import { EmailTemplate } from '@prisma/client';
 import { EmailOutboxRepository } from '@/repositories/email-outbox.repository';
+import { EmailDispatchTriggerService } from '@/services/email-dispatch-trigger.service';
 import type { EmailOutboxDraft } from '@/types/email';
 
 const subjects: Record<EmailTemplate, string> = {
@@ -14,12 +15,21 @@ const subjects: Record<EmailTemplate, string> = {
   NEWSLETTER_CONTACT_SYNC: 'Newsletter contact synchronization',
   NEWSLETTER_CAMPAIGN: 'LINXASからのお知らせ',
   CONTACT_INQUIRY: '[LINXAS EC] お問い合わせ',
+  CONTACT_REPLY: '[LINXAS] お問い合わせについて',
 };
 
 export class EmailNotificationService {
-  public constructor(private readonly outbox = new EmailOutboxRepository()) {}
+  public constructor(
+    private readonly outbox = new EmailOutboxRepository(),
+    private readonly trigger = new EmailDispatchTriggerService(),
+  ) {}
 
-  public enqueue(input: Omit<EmailOutboxDraft, 'subject'>) {
-    return this.outbox.enqueue({ ...input, subject: subjects[input.template] });
+  public async enqueue(input: Omit<EmailOutboxDraft, 'subject'>) {
+    const outbox = await this.outbox.enqueue({
+      ...input,
+      subject: subjects[input.template],
+    });
+    await this.trigger.trigger(outbox.id);
+    return outbox;
   }
 }

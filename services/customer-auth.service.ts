@@ -26,6 +26,7 @@ import {
   isValidEmailActionToken,
 } from '@/lib/email-action-token';
 import { CustomerRepository } from '@/repositories/customer.repository';
+import { EmailDispatchTriggerService } from '@/services/email-dispatch-trigger.service';
 import type {
   CustomerLoginInput,
   CustomerRegisterInput,
@@ -39,7 +40,10 @@ const DUMMY_PASSWORD_HASH = hashSync(
 );
 
 export class CustomerAuthService {
-  public constructor(private readonly customers = new CustomerRepository()) {}
+  public constructor(
+    private readonly customers = new CustomerRepository(),
+    private readonly trigger = new EmailDispatchTriggerService(),
+  ) {}
 
   async register(input: CustomerRegisterInput) {
     let stage: 'TOKEN_GENERATION' | 'PASSWORD_HASH' = 'TOKEN_GENERATION';
@@ -79,6 +83,7 @@ export class CustomerAuthService {
             }
           : {}),
       });
+      await this.trigger.trigger();
       return { customer, verificationRequired: true as const };
     } catch (error) {
       const prismaCode =
@@ -152,6 +157,7 @@ export class CustomerAuthService {
       tokenHash: hashEmailActionToken(token),
       expiresAt: new Date(Date.now() + PASSWORD_RESET_TTL_MS),
     });
+    await this.trigger.trigger();
     return { accepted: true };
   }
 
@@ -171,6 +177,7 @@ export class CustomerAuthService {
     });
     if (!result)
       throw new UnauthorizedError('確認リンクが無効または期限切れです。');
+    await this.trigger.trigger();
     return {
       customer: result.customer,
       token: sessionToken,
@@ -196,7 +203,7 @@ export class CustomerAuthService {
     const now = new Date();
     const id = randomUUID();
     const token = createEmailActionToken(id, 'verify-email');
-    await this.customers.requestEmailVerification({
+    const result = await this.customers.requestEmailVerification({
       email,
       token: {
         id,
@@ -208,6 +215,7 @@ export class CustomerAuthService {
         now.getTime() - EMAIL_VERIFICATION_RESEND_COOLDOWN_MS,
       ),
     });
+    if (result.enqueued) await this.trigger.trigger();
     return { accepted: true };
   }
 

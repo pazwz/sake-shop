@@ -78,6 +78,9 @@ Last Update: 2026-08-14
 | email_webhook_events         | Resend webhook 去重    |
 | newsletter_subscriptions     | Newsletter consent     |
 | newsletter_campaigns         | Admin marketing campaign source of truth |
+| contact_inquiries            | Customer support inquiry source of truth |
+| contact_inquiry_messages     | Admin-to-customer reply history / outbox link |
+| contact_inquiry_notes        | Admin-only internal notes |
 
 ---
 

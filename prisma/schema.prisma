@@ -82,6 +82,19 @@ enum EmailTemplate {
   NEWSLETTER_CONTACT_SYNC
   NEWSLETTER_CAMPAIGN
   CONTACT_INQUIRY
+  CONTACT_REPLY
+}
+
+enum ContactInquiryStatus {
+  NEW
+  IN_PROGRESS
+  ANSWERED
+  CLOSED
+}
+
+enum ContactInquiryMessageDirection {
+  CUSTOMER
+  ADMIN
 }
 
 enum NewsletterStatus {
@@ -265,6 +278,7 @@ model Customer {
   sessions                CustomerSession[]
   emailVerificationTokens EmailVerificationToken[]
   passwordResetTokens     PasswordResetToken[]
+  contactInquiries        ContactInquiry[]
 
   @@map("customers")
 }
@@ -355,6 +369,7 @@ model Order {
   payments                Payment[]
   shipments               Shipment[]
   inventoryReservations   InventoryReservation[]
+  contactInquiries        ContactInquiry[]
 
   @@index([customerId])
   @@index([status])
@@ -534,6 +549,9 @@ model AdminUser {
   smaregiProductExclusions   SmaregiProductExclusion[] @relation("SmaregiProductExclusionCreator")
   createdNewsletterCampaigns NewsletterCampaign[]      @relation("NewsletterCampaignCreator")
   updatedNewsletterCampaigns NewsletterCampaign[]      @relation("NewsletterCampaignUpdater")
+  assignedContactInquiries   ContactInquiry[]          @relation("ContactInquiryAssignee")
+  contactInquiryMessages     ContactInquiryMessage[]   @relation("ContactInquiryMessageAuthor")
+  contactInquiryNotes        ContactInquiryNote[]      @relation("ContactInquiryNoteAuthor")
 
   @@map("admin_users")
 }
@@ -640,11 +658,75 @@ model EmailOutbox {
   updatedAt                DateTime                @updatedAt @map("updated_at")
   newsletterCampaign       NewsletterCampaign?     @relation(fields: [newsletterCampaignId], references: [id], onDelete: Restrict)
   newsletterSubscription   NewsletterSubscription? @relation(fields: [newsletterSubscriptionId], references: [id], onDelete: Restrict)
+  contactInquiryMessages   ContactInquiryMessage[]
 
   @@index([status, nextAttemptAt])
   @@index([newsletterCampaignId])
   @@index([newsletterSubscriptionId])
   @@map("email_outbox")
+}
+
+model ContactInquiry {
+  id               String                  @id @default(cuid())
+  submissionId     String                  @unique @map("submission_id")
+  publicId         String                  @unique @map("public_id")
+  status           ContactInquiryStatus    @default(NEW)
+  topic            String
+  name             String?
+  email            String
+  customerId       String?                 @map("customer_id")
+  orderId          String?                 @map("order_id")
+  orderNumber      String?                 @map("order_number")
+  message          String
+  assignedAdminId  String?                 @map("assigned_admin_id")
+  createdAt        DateTime                @default(now()) @map("created_at")
+  updatedAt        DateTime                @updatedAt @map("updated_at")
+  firstRespondedAt DateTime?               @map("first_responded_at")
+  closedAt         DateTime?               @map("closed_at")
+  customer         Customer?               @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  order            Order?                  @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  assignedAdmin    AdminUser?              @relation("ContactInquiryAssignee", fields: [assignedAdminId], references: [id], onDelete: SetNull)
+  messages         ContactInquiryMessage[]
+  notes            ContactInquiryNote[]
+
+  @@index([status, createdAt])
+  @@index([assignedAdminId, status])
+  @@index([email])
+  @@index([orderNumber])
+  @@map("contact_inquiries")
+}
+
+model ContactInquiryMessage {
+  id            String                         @id @default(cuid())
+  inquiryId     String                         @map("inquiry_id")
+  direction     ContactInquiryMessageDirection
+  authorAdminId String?                        @map("author_admin_id")
+  fromEmail     String                         @map("from_email")
+  toEmail       String                         @map("to_email")
+  subject       String
+  body          String
+  emailOutboxId String?                        @unique @map("email_outbox_id")
+  createdAt     DateTime                       @default(now()) @map("created_at")
+  inquiry       ContactInquiry                 @relation(fields: [inquiryId], references: [id], onDelete: Restrict)
+  authorAdmin   AdminUser?                     @relation("ContactInquiryMessageAuthor", fields: [authorAdminId], references: [id], onDelete: SetNull)
+  emailOutbox   EmailOutbox?                   @relation(fields: [emailOutboxId], references: [id], onDelete: SetNull)
+
+  @@index([inquiryId, createdAt])
+  @@map("contact_inquiry_messages")
+}
+
+model ContactInquiryNote {
+  id        String         @id @default(cuid())
+  inquiryId String         @map("inquiry_id")
+  adminId   String         @map("admin_id")
+  body      String
+  createdAt DateTime       @default(now()) @map("created_at")
+  updatedAt DateTime       @updatedAt @map("updated_at")
+  inquiry   ContactInquiry @relation(fields: [inquiryId], references: [id], onDelete: Restrict)
+  admin     AdminUser      @relation("ContactInquiryNoteAuthor", fields: [adminId], references: [id], onDelete: Restrict)
+
+  @@index([inquiryId, createdAt])
+  @@map("contact_inquiry_notes")
 }
 
 model EmailWebhookEvent {
@@ -676,26 +758,26 @@ model NewsletterSubscription {
 }
 
 model NewsletterCampaign {
-  id               String                   @id @default(cuid())
+  id               String                      @id @default(cuid())
   subject          String
   preheader        String?
   headline         String
-  heroImageUrl     String?                  @map("hero_image_url")
-  heroImageAlt     String?                  @map("hero_image_alt")
+  heroImageUrl     String?                     @map("hero_image_url")
+  heroImageAlt     String?                     @map("hero_image_alt")
   body             String
-  ctaLabel         String?                  @map("cta_label")
-  ctaUrl           String?                  @map("cta_url")
-  status           NewsletterCampaignStatus @default(DRAFT)
-  scheduledAt      DateTime?                @map("scheduled_at")
-  startedAt        DateTime?                @map("started_at")
-  completedAt      DateTime?                @map("completed_at")
-  resultSummary    String?                  @map("result_summary")
-  createdByAdminId String                   @map("created_by_admin_id")
-  updatedByAdminId String?                  @map("updated_by_admin_id")
-  createdAt        DateTime                 @default(now()) @map("created_at")
-  updatedAt        DateTime                 @updatedAt @map("updated_at")
-  createdByAdmin   AdminUser                @relation("NewsletterCampaignCreator", fields: [createdByAdminId], references: [id], onDelete: Restrict)
-  updatedByAdmin   AdminUser?               @relation("NewsletterCampaignUpdater", fields: [updatedByAdminId], references: [id], onDelete: SetNull)
+  ctaLabel         String?                     @map("cta_label")
+  ctaUrl           String?                     @map("cta_url")
+  status           NewsletterCampaignStatus    @default(DRAFT)
+  scheduledAt      DateTime?                   @map("scheduled_at")
+  startedAt        DateTime?                   @map("started_at")
+  completedAt      DateTime?                   @map("completed_at")
+  resultSummary    String?                     @map("result_summary")
+  createdByAdminId String                      @map("created_by_admin_id")
+  updatedByAdminId String?                     @map("updated_by_admin_id")
+  createdAt        DateTime                    @default(now()) @map("created_at")
+  updatedAt        DateTime                    @updatedAt @map("updated_at")
+  createdByAdmin   AdminUser                   @relation("NewsletterCampaignCreator", fields: [createdByAdminId], references: [id], onDelete: Restrict)
+  updatedByAdmin   AdminUser?                  @relation("NewsletterCampaignUpdater", fields: [updatedByAdminId], references: [id], onDelete: SetNull)
   outbox           EmailOutbox[]
   sections         NewsletterCampaignSection[]
 

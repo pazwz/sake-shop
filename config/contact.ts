@@ -9,6 +9,7 @@ const recipientSchema = z
 
 export type ContactEnvironment = {
   CONTACT_RECIPIENT_EMAIL?: string;
+  CONTACT_REPLY_TO_EMAIL?: string;
 };
 
 /**
@@ -18,10 +19,12 @@ export type ContactEnvironment = {
 export const getContactRuntimeConfig = (
   environment: ContactEnvironment = process.env as ContactEnvironment,
 ) => {
-  const parsed = recipientSchema.safeParse(
-    environment.CONTACT_RECIPIENT_EMAIL,
-  );
+  const parsed = recipientSchema.safeParse(environment.CONTACT_RECIPIENT_EMAIL);
   return parsed.success
     ? { available: true as const, recipient: parsed.data }
     : { available: false as const, recipient: null };
 };
+
+export const getContactReplyTo = (
+  environment: ContactEnvironment = process.env as ContactEnvironment,
+) => recipientSchema.safeParse(environment.CONTACT_REPLY_TO_EMAIL).data ?? null;

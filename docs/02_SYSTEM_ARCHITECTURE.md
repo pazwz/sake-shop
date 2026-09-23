@@ -33,6 +33,10 @@ Smaregi POS
 
 ## Frontend
 
+## Contact Inquiry Management
+
+公開お問い合わせは `ContactInquiry` を Source of Truth として保存し、同じ transaction 内で既存の内部 `CONTACT_INQUIRY` Outbox 通知を作成する。Admin の返信は Route → Service → Repository の順に、返信履歴・`CONTACT_REPLY` Outbox・Inquiry 状態を一緒に作成する。Resend は既存 EmailOutbox worker のみが呼び、API request 中には呼ばない。内部メモは Admin 専用でメール payload と AuditLog 本文に含めない。inbound email、添付、SLA、tag、定型文、assignment rule は後続段階で追加する。
+
 Next.js
 
 TypeScript
@@ -577,10 +581,29 @@ Browser → POST /api/v1/contact → ContactService → ContactRepository
 `CONTACT_INQUIRY` 投递时作为经过 email validation 的 Reply-To。订单号可由已登录 Customer
 做 scoped lookup，并只把 VERIFIED / UNVERIFIED 内部标记写入邮件；客户端响应不泄露订单存在性。
 
+EmailOutbox 采用 transactional outbox：业务事务先完成 Customer / Order / Inquiry 与对应 Outbox
+持久化，随后由统一 `EmailDispatchTriggerService` 以已有 CRON bearer authentication 唤醒 internal
+email worker。trigger 只接受 Outbox ID，绝不接收收件人、template 或 payload；其网络失败不会回滚已
+提交的业务事务，PENDING Outbox 留给 recovery。post-commit trigger 仅对 Next.js application → internal
+email worker 的网络唤醒做最多三次快速尝试（立即、约 1 秒、约 3 秒）；这不是 Resend provider retry，
+不会改变 Outbox 的 1m、5m、30m、2h earliest retry eligibility。验证与密码重置邮件发送前会重新核对
+token 未使用且未过期，失效时标记 `SKIPPED / EXPIRED_ACTION`，不调用 provider。EventBridge email worker
+以目标 `rate(10 minutes)` 作为 due RETRY、stranded-PENDING、stale-SENDING 的低频 recovery，而不是正常
+发送路径；因此 `EMAIL_RETRY_DELAYS_MS` 只表示最早允许重试的时间，在 10 分钟 recovery cadence 下不保证
+恰好在该延迟时刻执行。
+Email worker health 的 stale threshold 为 25 / 45 分钟，以容纳目标 10 分钟 recovery interval 的
+正常调度抖动；即时 trigger 失败本身只记录安全 failure signal，不会把已经提交的业务请求变成 500。
+
 ## Browser E2E boundary
 
 Playwright Chromium 是唯一 Browser E2E framework。默认 `test:e2e` 启动 local Next server，覆盖
-公开页面、浏览器 cart 与只读 UI validation；它不运行 server-side mutation。QA account、Order
+公开页面、浏览器 cart 与只读 UI validation；它不运行 server-side mutation。local E2E 必须显式设置
+`E2E_DATABASE_URL`（pooled）与 `E2E_DIRECT_URL`（direct）。启动的 Next server 使用前者作为
+`DATABASE_URL`、后者作为 `DIRECT_URL`；`pnpm e2e:prepare-db` 则只使用 direct URL 执行 `prisma migrate
+deploy` 与 seed，并拒绝与默认 `DATABASE_URL` 指向同一数据库的配置。没有完整 E2E 数据库配置时 fail
+closed，绝不自动 reset、truncate 或 seed 默认/production 数据库。由于本地 remote Neon E2E 连接可能在并发
+下发生 transient reset，默认 `test:e2e` 固定串行（`workers=1`）；CI 保持其既有并发策略。Production smoke
+使用独立命令，不读取 E2E 数据库配置。QA account、Order
 authorization、hidden/excluded product 与 mock checkout 的 fixture tests 必须先通过
 `requireNonProductionMutationEnvironment`：target 不能是 production，且必须显式设置
 `E2E_ALLOW_MUTATIONS=true`。Production smoke 使用独立命令、固定 production-safe base URL，

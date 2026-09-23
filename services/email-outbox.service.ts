@@ -8,6 +8,7 @@ import {
   EMAIL_RETRY_DELAYS_MS,
   getEmailRuntimeConfig,
 } from '@/config/email';
+import { getContactReplyTo } from '@/config/contact';
 import { EmailOutboxRepository } from '@/repositories/email-outbox.repository';
 import { getEmailAdapter } from '@/services/email-adapters/email-adapter.factory';
 import { EmailTemplateService } from '@/services/email-template.service';
@@ -37,12 +38,38 @@ export class EmailOutboxService {
       now,
       new Date(now.getTime() - EMAIL_LOCK_TIMEOUT_MS),
     );
+    return this.processClaimed(rows);
+  }
+
+  public async processOutbox(id: string) {
+    const config = getEmailRuntimeConfig();
+    if (!config.available || !this.adapter)
+      return { outcome: 'DISABLED', processed: 0, sent: 0, failed: 0 };
+    const row = await this.outbox.claimById(id);
+    return this.processClaimed(row ? [row] : []);
+  }
+
+  private async processClaimed(
+    rows: Awaited<ReturnType<EmailOutboxRepository['claimDue']>>,
+  ) {
+    const config = getEmailRuntimeConfig();
+    const adapter = this.adapter;
+    if (!config.available || !adapter)
+      return { outcome: 'DISABLED', processed: 0, sent: 0, failed: 0 };
     let sent = 0;
     let failed = 0;
     const completedCampaigns = new Set<string>();
     for (const row of rows) {
       try {
         const payload = row.payload as Record<string, unknown>;
+        if (
+          (row.template === EmailTemplate.EMAIL_VERIFICATION ||
+            row.template === EmailTemplate.PASSWORD_RESET) &&
+          !(await this.outbox.isActionCurrent(row.template, payload.tokenId))
+        ) {
+          await this.outbox.markSkipped(row.id, 'EXPIRED_ACTION');
+          continue;
+        }
         if (row.template === EmailTemplate.NEWSLETTER_CAMPAIGN) {
           if (
             !(await this.campaignDispatch.shouldSend(
@@ -78,7 +105,7 @@ export class EmailOutboxService {
           } else {
             await this.outbox.markSent(
               row.id,
-              this.adapter.provider,
+              adapter.provider,
               `contact-${row.id}`,
             );
           }
@@ -88,20 +115,24 @@ export class EmailOutboxService {
             row.template === EmailTemplate.CONTACT_INQUIRY
               ? contactReplyToSchema.safeParse(payload.email)
               : null;
-          const result = await this.adapter.send({
+          const replyTo =
+            row.template === EmailTemplate.CONTACT_REPLY
+              ? (getContactReplyTo() ?? undefined)
+              : contactReplyTo?.success
+                ? contactReplyTo.data
+                : undefined;
+          const result = await adapter.send({
             to: row.recipient,
             ...rendered,
             ...(row.template === EmailTemplate.NEWSLETTER_CAMPAIGN
               ? { subject: row.subject }
               : {}),
-            ...(contactReplyTo?.success
-              ? { replyTo: contactReplyTo.data }
-              : {}),
+            ...(replyTo ? { replyTo } : {}),
             idempotencyKey: `email-outbox:${row.id}`,
           });
           await this.outbox.markSent(
             row.id,
-            this.adapter.provider,
+            adapter.provider,
             result.messageId,
           );
         }
