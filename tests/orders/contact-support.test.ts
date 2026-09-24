@@ -1,58 +1,51 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
-import { EmailTemplate } from '@prisma/client';
-import { AppError } from '@/lib/errors';
-import { ContactRepository } from '@/repositories/contact.repository';
-import { ContactService } from '@/services/contact.service';
-import { EmailOutboxService } from '@/services/email-outbox.service';
+import { ContactInquiryStatus, EmailTemplate } from '@prisma/client';
+import { ForbiddenError } from '@/lib/errors';
+import { ContactInquiryService } from '@/services/contact-inquiry.service';
 import { EmailTemplateService } from '@/services/email-template.service';
-import { contactSubmitValidator } from '@/validators/contact.validator';
+import { EmailOutboxService } from '@/services/email-outbox.service';
+import {
+  customerInquiryCreateValidator,
+  customerInquiryMessageValidator,
+} from '@/validators/contact-inquiry.validator';
 
-const input = (overrides: Record<string, unknown> = {}) =>
-  contactSubmitValidator.parse({
-    submissionId: '8cdd1f4d-25b1-4e7d-ae46-6ce3c5a47211',
-    topic: 'PRODUCT',
-    email: 'BUYER@EXAMPLE.COM',
-    message: '商品について教えてください。',
-    website: '',
-    ...overrides,
-  });
-
-const withRecipient = async <T>(operation: () => Promise<T>) => {
-  const previous = process.env.CONTACT_RECIPIENT_EMAIL;
-  process.env.CONTACT_RECIPIENT_EMAIL = 'support@example.com';
-  try {
-    return await operation();
-  } finally {
-    if (previous === undefined)
-      Reflect.deleteProperty(process.env, 'CONTACT_RECIPIENT_EMAIL');
-    else process.env.CONTACT_RECIPIENT_EMAIL = previous;
-  }
-};
-
-test('anonymous contact creates only one durable support outbox draft', async () => {
-  const drafts: Array<Record<string, unknown>> = [];
-  const service = new ContactService({
-    enqueueSupportInquiry: async (draft: Record<string, unknown>) => {
-      drafts.push(draft);
-    },
-  } as never);
-  const result = await withRecipient(() => service.submit(input()));
-  assert.equal(result.accepted, true);
-  assert.equal(drafts.length, 1);
-  assert.equal(drafts[0].recipient, 'support@example.com');
-  assert.equal(drafts[0].email, 'buyer@example.com');
-  assert.equal(drafts[0].orderReferenceStatus, 'NOT_PROVIDED');
-  assert.equal(drafts[0].customerId, undefined);
+test('order-message validators accept only their strict customer payloads', () => {
+  assert.equal(
+    customerInquiryCreateValidator.safeParse({
+      message: '確認をお願いします。',
+    }).success,
+    true,
+  );
+  assert.equal(
+    customerInquiryMessageValidator.safeParse({ body: '追加のご連絡です。' })
+      .success,
+    true,
+  );
+  assert.equal(
+    customerInquiryCreateValidator.safeParse({
+      message: '確認をお願いします。',
+      customerId: 'another-customer',
+    }).success,
+    false,
+  );
+  assert.equal(
+    customerInquiryMessageValidator.safeParse({
+      body: '追加のご連絡です。',
+      status: ContactInquiryStatus.CLOSED,
+    }).success,
+    false,
+  );
 });
 
-test('contact triggers delivery only after the durable outbox write succeeds', async () => {
+test('an order-support message is triggered only after its durable outbox write', async () => {
   const sequence: string[] = [];
-  const service = new ContactService(
+  const service = new ContactInquiryService(
     {
-      enqueueSupportInquiry: async () => {
+      startOrAddCustomerMessage: async () => {
         sequence.push('outbox-committed');
+        return { inquiryId: 'inquiry-1', outboxId: 'outbox-1', created: true };
       },
     } as never,
     {
@@ -62,137 +55,94 @@ test('contact triggers delivery only after the durable outbox write succeeds', a
       },
     } as never,
   );
-  await withRecipient(() => service.submit(input()));
+  const result = await service.startOrderSupport(
+    'order-1',
+    '本文です。',
+    'customer-1',
+  );
+  assert.equal(result.inquiryId, 'inquiry-1');
   assert.deepEqual(sequence, ['outbox-committed', 'triggered']);
 });
 
-test('owned order references are internal-only while foreign references remain unverified', async () => {
-  const drafts: Array<Record<string, unknown>> = [];
-  const service = new ContactService({
-    hasOrderForCustomerReference: async (customerId: string) =>
-      customerId === 'customer-owned',
-    enqueueSupportInquiry: async (draft: Record<string, unknown>) => {
-      drafts.push(draft);
-    },
+test('a customer cannot load or append a message for another customers order', async () => {
+  const service = new ContactInquiryService({
+    findOwnedOrder: async () => null,
+    findOrderIdForCustomerInquiry: async () => null,
   } as never);
-  await withRecipient(async () => {
-    await service.submit(input({ orderNumber: 'LINXAS-20260918-ABC123' }), 'customer-owned');
-    await service.submit(
-      input({
-        submissionId: 'd7cce02c-923e-497f-9a53-24317a8e8f74',
-        orderNumber: 'LINXAS-20260918-OTHER',
-      }),
-      'customer-foreign',
-    );
-  });
-  assert.equal(drafts[0].orderReferenceStatus, 'VERIFIED');
-  assert.equal(drafts[1].orderReferenceStatus, 'UNVERIFIED');
-});
-
-test('honeypot submissions do not persist or send an email', async () => {
-  let writes = 0;
-  const service = new ContactService({
-    enqueueSupportInquiry: async () => {
-      writes += 1;
-    },
-  } as never);
-  const result = await service.submit(input({ website: 'https://spam.invalid' }));
-  assert.deepEqual(result, { accepted: true });
-  assert.equal(writes, 0);
-});
-
-test('contact fails closed when the support recipient is not configured', async () => {
-  const previous = process.env.CONTACT_RECIPIENT_EMAIL;
-  Reflect.deleteProperty(process.env, 'CONTACT_RECIPIENT_EMAIL');
-  try {
-    await assert.rejects(
-      () => new ContactService({} as never).submit(input()),
-      (error: unknown) =>
-        error instanceof AppError && error.code === 'CONTACT_UNAVAILABLE',
-    );
-  } finally {
-    if (previous !== undefined)
-      process.env.CONTACT_RECIPIENT_EMAIL = previous;
-  }
-});
-
-test('contact validation rejects unsafe and malformed public input', () => {
-  assert.equal(contactSubmitValidator.safeParse({ ...input(), email: 'invalid' }).success, false);
-  assert.equal(contactSubmitValidator.safeParse({ ...input(), message: '' }).success, false);
-  assert.equal(contactSubmitValidator.safeParse({ ...input(), message: 'x'.repeat(5001) }).success, false);
-  assert.equal(contactSubmitValidator.safeParse({ ...input(), topic: 'arbitrary subject' }).success, false);
-  assert.equal(contactSubmitValidator.safeParse({ ...input(), orderNumber: 'ORDER\r\nBcc:test@example.com' }).success, false);
-  assert.equal(contactSubmitValidator.safeParse({ ...input(), recipient: 'attacker@example.com' }).success, false);
-});
-
-test('contact repository uses a stable event key and cannot take recipient from client input', async () => {
-  const calls: Array<Record<string, unknown>> = [];
-  const repository = new ContactRepository({
-    emailOutbox: {
-      upsert: async (value: Record<string, unknown>) => {
-        calls.push(value);
-        return value;
-      },
-    },
-  } as never);
-  await repository.enqueueSupportInquiry({
-    submissionId: '8cdd1f4d-25b1-4e7d-ae46-6ce3c5a47211',
-    recipient: 'support@example.com',
-    email: 'buyer@example.com',
-    topic: 'PRODUCT',
-    topicLabel: '商品について',
-    message: 'message',
-    orderReferenceStatus: 'NOT_PROVIDED',
-    submittedAt: new Date('2026-09-18T00:00:00.000Z'),
-  });
-  assert.equal(
-    (calls[0].where as { eventKey: string }).eventKey,
-    'contact:8cdd1f4d-25b1-4e7d-ae46-6ce3c5a47211:support',
+  await assert.rejects(
+    () => service.getForCustomer('order-other', 'customer-1'),
+    ForbiddenError,
   );
-  const create = calls[0].create as { recipient: string; payload: Record<string, unknown> };
-  assert.equal(create.recipient, 'support@example.com');
-  assert.equal('recipient' in create.payload, false);
+  await assert.rejects(
+    () =>
+      service.addCustomerMessage('inquiry-other', '本文です。', 'customer-1'),
+    ForbiddenError,
+  );
 });
 
-test('contact email escapes user content and sends it only as Reply-To', async () => {
-  const rendered = new EmailTemplateService().render(EmailTemplate.CONTACT_INQUIRY, {
-      topic: 'PRODUCT',
-      topicLabel: '商品について',
-      email: 'buyer@example.com',
-      message: '<img src=x onerror=alert(1)>',
-      orderReferenceStatus: 'UNVERIFIED',
-      loggedIn: false,
-      submittedAt: '2026-09-18T00:00:00.000Z',
-  });
-  assert.equal(rendered.html.includes('<img src=x'), false);
-  assert.equal(rendered.html.includes('&lt;img'), true);
+test('an existing order thread reuses its owned order through the normal message path', async () => {
+  const calls: Array<Record<string, unknown>> = [];
+  const service = new ContactInquiryService({
+    findOrderIdForCustomerInquiry: async () => ({ orderId: 'order-1' }),
+    startOrAddCustomerMessage: async (input: Record<string, unknown>) => {
+      calls.push(input);
+      return { inquiryId: 'inquiry-1', outboxId: null, created: false };
+    },
+  } as never);
+  await service.addCustomerMessage(
+    'inquiry-1',
+    '再開をお願いします。',
+    'customer-1',
+  );
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].orderId, 'order-1');
+  assert.equal(calls[0].customerId, 'customer-1');
+});
 
-  const messages: Array<{ to: string; replyTo?: string }> = [];
+test('order message notification does not disclose message content or accept email replies', () => {
+  const secretMessage = '管理者だけの本文です。';
+  const rendered = new EmailTemplateService().render(
+    EmailTemplate.ORDER_MESSAGE_NOTIFICATION,
+    {
+      customerName: 'お客様',
+      orderNumber: 'LINXAS-20260924-ABC123',
+      body: secretMessage,
+      internalNote: '非公開メモ',
+    },
+  );
+  assert.match(rendered.html, /LINXAS-20260924-ABC123/);
+  assert.match(rendered.html, /メッセージを確認する/);
+  assert.equal(rendered.html.includes(secretMessage), false);
+  assert.equal(rendered.html.includes('非公開メモ'), false);
+  assert.match(rendered.text, /送信専用/);
+});
+
+test('order message notifications suppress a provider default Reply-To', async () => {
+  const messages: Array<Record<string, unknown>> = [];
   const service = new EmailOutboxService(
     {
       claimDue: async () => [
         {
-          id: 'contact-outbox-1',
-          recipient: 'support@example.com',
-          template: EmailTemplate.CONTACT_INQUIRY,
-          payload: { email: 'buyer@example.com' },
+          id: 'outbox-1',
+          recipient: 'customer@example.com',
+          template: EmailTemplate.ORDER_MESSAGE_NOTIFICATION,
+          payload: { orderNumber: 'LINXAS-20260924-ABC123' },
           attemptCount: 0,
         },
       ],
       markSent: async () => undefined,
     } as never,
-    { render: () => rendered } as never,
+    new EmailTemplateService(),
     {
       provider: 'test',
-      send: async (message) => {
+      send: async (message: Record<string, unknown>) => {
         messages.push(message);
-        return { messageId: 'support-message-1' };
+        return { messageId: 'message-1' };
       },
-    },
+    } as never,
     {} as never,
     {
-      dispatchDue: async () => ({ dispatched: 0, recipients: 0 }),
-      shouldSend: async () => true,
+      dispatchDue: async () => undefined,
       refresh: async () => undefined,
     } as never,
   );
@@ -201,21 +151,22 @@ test('contact email escapes user content and sends it only as Reply-To', async (
   try {
     await service.processDue();
   } finally {
-    if (previous === undefined) Reflect.deleteProperty(process.env, 'EMAIL_MODE');
+    if (previous === undefined)
+      Reflect.deleteProperty(process.env, 'EMAIL_MODE');
     else process.env.EMAIL_MODE = previous;
   }
   assert.equal(messages.length, 1);
-  assert.equal(messages[0].to, 'support@example.com');
-  assert.equal(messages[0].replyTo, 'buyer@example.com');
+  assert.equal(messages[0].suppressReplyTo, true);
 });
 
-test('contact route retains same-origin, validation, and optional-session boundaries', async () => {
-  const route = await readFile(
-    `${process.cwd()}/app/api/v1/contact/route.ts`,
-    'utf8',
-  );
-  assert.match(route, /assertSameOriginMutation/);
-  assert.match(route, /contactSubmitValidator/);
-  assert.match(route, /getCurrentCustomer/);
-  assert.match(route, /canAttemptCustomerAuth\('contact'/);
+test('public contact is a non-mutating support guide and disabled endpoint', async () => {
+  const [page, route] = await Promise.all([
+    readFile(`${process.cwd()}/app/contact/page.tsx`, 'utf8'),
+    readFile(`${process.cwd()}/app/api/v1/contact/route.ts`, 'utf8'),
+  ]);
+  assert.match(page, /お問い合わせについて/);
+  assert.equal(page.includes('<form'), false);
+  assert.match(route, /CONTACT_DISABLED/);
+  assert.match(route, /410/);
+  assert.equal(route.includes('ContactInquiryService'), false);
 });

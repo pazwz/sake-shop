@@ -151,23 +151,19 @@ export class EmailTemplateService {
       );
     }
     if (template === EmailTemplate.CONTACT_INQUIRY) {
-      const topic = escapeHtml(payload.topicLabel ?? payload.topic);
-      const orderNumber = payload.orderNumber
-        ? escapeHtml(payload.orderNumber)
-        : 'なし';
-      const orderReference =
-        payload.orderReferenceStatus === 'VERIFIED'
-          ? '確認済み'
-          : payload.orderReferenceStatus === 'UNVERIFIED'
-            ? '未確認'
-            : 'なし';
-      const content = escapeHtml(payload.message).replaceAll('\n', '<br>');
-      const publicId = payload.publicId ? escapeHtml(payload.publicId) : null;
-      const title = `[LINXAS EC] お問い合わせ：${String(payload.topicLabel ?? payload.topic ?? 'その他')}`;
       return frame(
-        title,
-        `<p>お問い合わせ種別：${topic}${publicId ? `<br>お問い合わせ番号：${publicId}` : ''}</p><p>メールアドレス：${escapeHtml(payload.email)}<br>会員：${payload.loggedIn === true ? 'ログイン済み' : '未ログイン'}<br>注文番号：${orderNumber}<br>注文参照：${orderReference}<br>受付日時：${escapeHtml(payload.submittedAt)}</p><p>お問い合わせ内容：</p><p>${content}</p>`,
-        `お問い合わせ種別: ${payload.topicLabel ?? payload.topic}${payload.publicId ? `\nお問い合わせ番号: ${payload.publicId}` : ''}\nメールアドレス: ${payload.email}\n会員: ${payload.loggedIn === true ? 'ログイン済み' : '未ログイン'}\n注文番号: ${payload.orderNumber ?? 'なし'}\n注文参照: ${orderReference}\n受付日時: ${payload.submittedAt}\n\nお問い合わせ内容:\n${payload.message}`,
+        '[LINXAS EC] 新しいお問い合わせがあります',
+        `<p>サイト内に新しいお問い合わせがあります。</p><p>注文番号：${escapeHtml(payload.orderNumber)}</p><p>管理画面より内容をご確認ください。</p><p>※このメールは送信専用です。メールへの返信は受け付けていません。</p>`,
+        `サイト内に新しいお問い合わせがあります。\n注文番号: ${payload.orderNumber}\n管理画面より内容をご確認ください。\n\nこのメールは送信専用です。メールへの返信は受け付けていません。`,
+      );
+    }
+    if (template === EmailTemplate.ORDER_MESSAGE_NOTIFICATION) {
+      const orderNumber = String(payload.orderNumber ?? '');
+      const url = `${siteUrl}/account/orders/${encodeURIComponent(orderNumber)}/messages`;
+      return frame(
+        '【LINXAS】新しいメッセージがあります',
+        `<p>${name} 様</p><p>ご注文に関する新しいメッセージがあります。</p><p>注文番号：${escapeHtml(orderNumber)}</p>${button('メッセージを確認する', url)}<p>※このメールは送信専用です。メールに直接返信いただいても回答できません。</p>`,
+        `${payload.customerName ?? 'お客様'} 様\n\nご注文に関する新しいメッセージがあります。\n注文番号: ${orderNumber}\n\nMY PAGEより内容をご確認ください。\n${url}\n\nこのメールは送信専用です。メールに直接返信いただいても回答できません。`,
       );
     }
     if (template === EmailTemplate.CONTACT_REPLY) {

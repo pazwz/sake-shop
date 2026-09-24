@@ -1,12 +1,16 @@
 import { defineConfig, devices } from '@playwright/test';
 import { getSafeE2EDatabaseEnvironment } from './config/e2e-database';
+import { e2eFixtureEnvironment } from './config/e2e-fixtures';
+import { loadLocalE2EEnvironment } from './config/e2e-local-env';
 
+loadLocalE2EEnvironment();
 const baseURL = process.env.E2E_BASE_URL ?? 'http://localhost:3000';
 const useExistingServer = process.env.E2E_BASE_URL !== undefined;
 const productionSmoke = process.env.E2E_PRODUCTION_SMOKE === 'true';
-const e2eDatabase = productionSmoke
-  ? null
-  : getSafeE2EDatabaseEnvironment();
+const e2eDatabase = productionSmoke ? null : getSafeE2EDatabaseEnvironment();
+const localFixtureEnvironment =
+  !productionSmoke && !useExistingServer ? e2eFixtureEnvironment() : {};
+Object.assign(process.env, localFixtureEnvironment);
 
 export default defineConfig({
   testDir: './e2e',
@@ -42,7 +46,7 @@ export default defineConfig({
           DIRECT_URL: e2eDatabase!.directUrl,
           EMAIL_MODE: 'console',
           CHECKOUT_MODE: 'disabled',
-          E2E_ENV: 'local',
+          ...localFixtureEnvironment,
         },
         reuseExistingServer: !process.env.CI,
         timeout: 120_000,

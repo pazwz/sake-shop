@@ -46,7 +46,7 @@ export function Footer() {
               私たちについて
             </Link>
             <Link href="/contact" className="block">
-              お問い合わせ
+              ご利用ガイド・お問い合わせ
             </Link>
           </div>
           <div>

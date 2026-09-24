@@ -1,4 +1,6 @@
+import { randomBytes } from 'node:crypto';
 import { AdminRole, ContactInquiryStatus } from '@prisma/client';
+import { getContactRuntimeConfig } from '@/config/contact';
 import { ForbiddenError, NotFoundError } from '@/lib/errors';
 import { ContactInquiryRepository } from '@/repositories/contact-inquiry.repository';
 import { EmailDispatchTriggerService } from '@/services/email-dispatch-trigger.service';
@@ -24,6 +26,45 @@ export class ContactInquiryService {
     const inquiry = await this.inquiries.get(id);
     if (!inquiry) throw new NotFoundError('お問い合わせが見つかりません。');
     return inquiry;
+  }
+
+  public async getForCustomer(orderId: string, customerId: string) {
+    const order = await this.inquiries.findOwnedOrder(orderId, customerId);
+    if (!order) throw new ForbiddenError('この注文にはアクセスできません。');
+    return this.inquiries.getForCustomer(orderId, customerId);
+  }
+
+  public async startOrderSupport(
+    orderId: string,
+    body: string,
+    customerId: string,
+  ) {
+    const config = getContactRuntimeConfig();
+    const result = await this.inquiries.startOrAddCustomerMessage({
+      orderId,
+      customerId,
+      body,
+      publicId: this.createPublicId(),
+      submissionId: randomBytes(16).toString('hex'),
+      adminNotificationRecipient: config.available ? config.recipient : null,
+    });
+    if (!result) throw new ForbiddenError('この注文にはアクセスできません。');
+    if (result.outboxId) await this.trigger.trigger(result.outboxId);
+    return result;
+  }
+
+  public async addCustomerMessage(
+    id: string,
+    body: string,
+    customerId: string,
+  ) {
+    const inquiry = await this.inquiries.findOrderIdForCustomerInquiry(
+      id,
+      customerId,
+    );
+    if (!inquiry?.orderId)
+      throw new ForbiddenError('このメッセージにはアクセスできません。');
+    return this.startOrderSupport(inquiry.orderId, body, customerId);
   }
 
   public async assign(
@@ -84,5 +125,10 @@ export class ContactInquiryService {
     if (!result) throw new NotFoundError('お問い合わせが見つかりません。');
     await this.trigger.trigger(result.outboxId);
     return result;
+  }
+
+  private createPublicId(now = new Date()) {
+    const date = now.toISOString().slice(0, 10).replaceAll('-', '');
+    return `INQ-${date}-${randomBytes(4).toString('hex').toUpperCase()}`;
   }
 }

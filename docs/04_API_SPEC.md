@@ -99,7 +99,7 @@ RPC 风格接口。
 
 ### お問い合わせ管理（Admin）
 
-Authenticated Admin は `GET /api/v1/admin/inquiries` で一覧・検索・フィルタを取得し、`GET /api/v1/admin/inquiries/{id}` で詳細を取得する。担当者、状態、内部メモ、返信は `/assign`、`/status`、`/notes`、`/reply` に分離する。返信 request は body、optional subject、idempotencyKey のみを受け、宛先・customer・order identity を client から受け取らない。返信は `CONTACT_REPLY` Outbox にのみ enqueue され、Route から provider を直接呼ばない。
+Authenticated Admin は `GET /api/v1/admin/inquiries` で一覧・検索・フィルタを取得し、`GET /api/v1/admin/inquiries/{id}` で詳細を取得する。担当者、状態、内部メモ、返信は `/assign`、`/status`、`/notes`、`/reply` に分離する。order-linked thread への回复 request は body、optional subject、idempotencyKey のみを受け、宛先・customer・order identity を client から受け取らない。返信は `ORDER_MESSAGE_NOTIFICATION` Outbox を enqueue し、Customer には订单号与 My Page 链接だけを通知する；legacy inquiry 的 `CONTACT_REPLY` 保持兼容。Route 从不直接调用 provider。
 
 ---
 
@@ -305,17 +305,20 @@ NewsletterSubscription 与 Newsletter contact Outbox 任一步失败时整体 ro
 Session。未知错误的客户端响应仍为通用 500；服务端只记录不含输入值和 secret 的 operation
 stage、request id、error name 与 Prisma code。
 
-### Contact support
+### Order-linked in-site messages
 
-`POST /api/v1/contact` 为公开支持咨询接口。body 严格限定为 UUID `submissionId`、topic
-(`PRODUCT` / `SHIPPING` / `PRE_ORDER` / `ORDER_CHANGE_CANCEL` / `OTHER`)、email、1–5000 字符
-message、可选安全格式 `orderNumber` 与空 honeypot `website`。Route 强制 same-origin，并使用
-最小进程内 rate limit。`website` 非空时返回与成功提交相同的通用成功响应且不写 Outbox。
+`/contact` 是支持指南；历史 `POST /api/v1/contact` 固定返回 `410 CONTACT_DISABLED`，没有 body
+schema、数据库写入或邮件副作用。仅已认证 Customer 可调用
+`POST /api/v1/my/orders/{orderId}/inquiries`，strict body 为 `{ message }`；也可调用
+`POST /api/v1/my/inquiries/{id}/messages`，strict body 为 `{ body }`。Route 均强制 same-origin、
+Customer Session 和 Zod strict validation。Service 以 Session customerId 确认 Order ownership；
+他人或不存在的 Order/Inquiry 不泄露其存在性。Customer 无法传入 customerId、status、orderId、
+recipient 或 subscription identity。
 
-收件人只能由 server-side `CONTACT_RECIPIENT_EMAIL` 决定；缺失时返回 `503 CONTACT_UNAVAILABLE`。
-合法请求返回 201 并用 `contact:{submissionId}:support` 幂等创建 `CONTACT_INQUIRY` EmailOutbox。
-用户 email 仅是 support email 的 Reply-To，不能成为 From 或收件人。`orderNumber` 不执行订单
-变更；对已登录用户只做 customer-scoped 内部引用验证，未登录或不匹配时外部响应保持相同。
+同一 Order 只保留一条 thread。Customer 新消息会在 transaction 内创建/追加 message，并将
+ANSWERED/CLOSED 恢复为 IN_PROGRESS；Admin 回复将状态设为 ANSWERED。Customer 通知为
+`ORDER_MESSAGE_NOTIFICATION`，仅包含订单号与 My Page 链接、无正文、无 Reply-To；邮件 provider
+只由 commit 后的 EmailOutbox worker 调用。
 
 ### Browser E2E production smoke
 

@@ -9,12 +9,11 @@ const recipientSchema = z
 
 export type ContactEnvironment = {
   CONTACT_RECIPIENT_EMAIL?: string;
-  CONTACT_REPLY_TO_EMAIL?: string;
 };
 
 /**
- * The recipient is intentionally independent from the provider's From and
- * default Reply-To settings. A public request can never choose this address.
+ * Optional internal notification recipient for new in-site order messages.
+ * Customer correspondence always remains in the authenticated My Page thread.
  */
 export const getContactRuntimeConfig = (
   environment: ContactEnvironment = process.env as ContactEnvironment,
@@ -24,7 +23,3 @@ export const getContactRuntimeConfig = (
     ? { available: true as const, recipient: parsed.data }
     : { available: false as const, recipient: null };
 };
-
-export const getContactReplyTo = (
-  environment: ContactEnvironment = process.env as ContactEnvironment,
-) => recipientSchema.safeParse(environment.CONTACT_REPLY_TO_EMAIL).data ?? null;

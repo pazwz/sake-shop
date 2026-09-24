@@ -18,7 +18,7 @@ test('local E2E rejects the configured default database', () => {
       getSafeE2EDatabaseEnvironment({
         DATABASE_URL: 'postgresql://user:password@production.example.test:5432/app',
         E2E_DATABASE_URL:
-          'postgresql://other:password@production.example.test:5432/app',
+          'postgresql://other:password@production-pooler.example.test:5432/app',
         E2E_DIRECT_URL:
           'postgresql://other:password@test.example.test:5432/e2e',
       }),
@@ -31,7 +31,8 @@ test('local E2E rejects a direct URL that targets the configured default databas
     () =>
       getSafeE2EDatabaseEnvironment({
         DATABASE_URL: 'postgresql://user:password@production.example.test:5432/app',
-        E2E_DATABASE_URL: 'postgresql://user:password@test.example.test:5432/e2e',
+        E2E_DATABASE_URL:
+          'postgresql://user:password@test-pooler.example.test:5432/e2e',
         E2E_DIRECT_URL:
           'postgresql://other:password@production.example.test:5432/app',
       }),
@@ -47,6 +48,28 @@ test('local E2E requires a direct URL instead of falling back to the pooled URL'
           'postgresql://user:password@test-pooler.example.test:5432/e2e',
       }),
     /E2E_DIRECT_URL is required/,
+  );
+});
+
+test('local E2E requires a pooled runtime URL and an unpooled direct preparation URL', () => {
+  assert.throws(
+    () =>
+      getSafeE2EDatabaseEnvironment({
+        E2E_DATABASE_URL: 'postgresql://user:password@test.example.test:5432/e2e',
+        E2E_DIRECT_URL:
+          'postgresql://user:password@test-pooler.example.test:5432/e2e',
+      }),
+    /E2E_DATABASE_URL must use the pooled endpoint/,
+  );
+  assert.throws(
+    () =>
+      getSafeE2EDatabaseEnvironment({
+        E2E_DATABASE_URL:
+          'postgresql://user:password@test-pooler.example.test:5432/e2e',
+        E2E_DIRECT_URL:
+          'postgresql://user:password@test-pooler.example.test:5432/e2e',
+      }),
+    /E2E_DIRECT_URL must not use a pooled endpoint/,
   );
 });
 

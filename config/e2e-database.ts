@@ -14,6 +14,10 @@ const databaseIdentity = (value: string) => {
   return `${url.protocol}//${hostname}:${url.port}${url.pathname}`;
 };
 
+const hostname = (value: string) => new URL(value).hostname;
+
+const isPooledEndpoint = (value: string) => hostname(value).includes('-pooler');
+
 export const getSafeE2EDatabaseEnvironment = (
   environment: E2EDatabaseEnvironment = process.env as E2EDatabaseEnvironment,
 ) => {
@@ -26,6 +30,14 @@ export const getSafeE2EDatabaseEnvironment = (
   if (!direct.success)
     throw new Error(
       'E2E_DIRECT_URL is required and must be a valid database URL. Refusing to prepare or run local E2E without an isolated direct connection.',
+    );
+  if (!isPooledEndpoint(parsed.data))
+    throw new Error(
+      'E2E_DATABASE_URL must use the pooled endpoint. Refusing to run the application runtime against a direct connection.',
+    );
+  if (isPooledEndpoint(direct.data))
+    throw new Error(
+      'E2E_DIRECT_URL must not use a pooled endpoint. Refusing to prepare the test database through a pooler.',
     );
   const current = environment.DATABASE_URL
     ? databaseUrlSchema.safeParse(environment.DATABASE_URL)

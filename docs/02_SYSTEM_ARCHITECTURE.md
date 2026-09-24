@@ -35,7 +35,7 @@ Smaregi POS
 
 ## Contact Inquiry Management
 
-公開お問い合わせは `ContactInquiry` を Source of Truth として保存し、同じ transaction 内で既存の内部 `CONTACT_INQUIRY` Outbox 通知を作成する。Admin の返信は Route → Service → Repository の順に、返信履歴・`CONTACT_REPLY` Outbox・Inquiry 状態を一緒に作成する。Resend は既存 EmailOutbox worker のみが呼び、API request 中には呼ばない。内部メモは Admin 専用でメール payload と AuditLog 本文に含めない。inbound email、添付、SLA、tag、定型文、assignment rule は後続段階で追加する。
+`ContactInquiry` 是订单关联站内消息的 Source of Truth。公开 `/contact` 仅保留支持指南，历史 POST 固定返回 410，绝不写入。Customer route 先以 Session customerId 做 Order ownership lookup，再由 Service 在同一 transaction 内取得或创建该订单唯一 thread、写入 Customer message、更新 thread 状态并创建可选内部 `CONTACT_INQUIRY` Outbox。Admin 回复在同一 transaction 内写入 Admin message、设为 ANSWERED，并创建 `ORDER_MESSAGE_NOTIFICATION`；通知只含订单号与 My Page 链接，永远不含消息正文、内部备注、Reply-To 或 inbound mailbox。Resend 仍仅由既有 EmailOutbox worker 调用；立即 trigger 发生在 transaction commit 后且失败不回滚消息。legacy 非订单 Inquiry 和 `CONTACT_REPLY` 保留仅供既有记录的 Admin 查看。
 
 Next.js
 
@@ -568,18 +568,19 @@ transactional conditional claim を使って一度だけ行い、recipient Outbo
 作成、編集、テスト enqueue、予約、取消は既存 `AuditLog` に最小の status/日時 snapshot と Admin identity を記録し、
 本文や収件者は audit payload に保存しない。
 
-公开 Contact 使用同一 outbox 管道，而不在 Route 内直接调用 Resend：
+订单站内消息使用同一 outbox 管道，而不在 Route 内直接调用 Resend：
 
 ```text
-Browser → POST /api/v1/contact → ContactService → ContactRepository
-        → EmailOutbox(CONTACT_INQUIRY, eventKey contact:{submissionId}:support)
+Customer My Page → POST /api/v1/my/orders/{orderId}/inquiries
+                 → ContactInquiryService → ContactInquiryRepository
+                 → ContactInquiry + ContactInquiryMessage + optional EmailOutbox(CONTACT_INQUIRY)
+Admin reply → ContactInquiryMessage + EmailOutbox(ORDER_MESSAGE_NOTIFICATION)
         → existing EmailOutboxService → EmailProviderAdapter
 ```
 
-`CONTACT_RECIPIENT_EMAIL` 只在 server runtime 读取，缺失时 Route 返回 503；其值不会进入
-浏览器、payload 或日志。`EmailOutbox.recipient` 是固定支持邮箱，用户 email 只在
-`CONTACT_INQUIRY` 投递时作为经过 email validation 的 Reply-To。订单号可由已登录 Customer
-做 scoped lookup，并只把 VERIFIED / UNVERIFIED 内部标记写入邮件；客户端响应不泄露订单存在性。
+`CONTACT_RECIPIENT_EMAIL` 只在 server runtime 读取，可选地作为内部新消息提醒收件人；其值不会进入
+浏览器、payload 或日志。Customer 与 Admin 的邮件都不设 Reply-To，业务往返只在已认证的 My Page
+消息线程中进行。订单访问始终使用 customer-scoped lookup，外部拒绝不泄露他人订单存在性。
 
 EmailOutbox 采用 transactional outbox：业务事务先完成 Customer / Order / Inquiry 与对应 Outbox
 持久化，随后由统一 `EmailDispatchTriggerService` 以已有 CRON bearer authentication 唤醒 internal
@@ -660,14 +661,14 @@ Provider の `AUTHORIZED`、`CAPTURED`、`SUCCESS` 等は Adapter 内だけで�
 PaymentLifecycleService は検証済みの統一 outcome を受け、serializable transaction 内で
 Payment、Order、InventoryReservation、PaymentWebhookEvent、最小の SyncLog/Outbox を更新する。
 
-| Event | Order transition | Payment transition | Reservation action |
-| --- | --- | --- | --- |
-| Provider success with active hold | PENDING → PAID | PENDING → SUCCEEDED | ACTIVE remains ACTIVE; `expiresAt` cleared |
-| Provider failed/cancelled | PENDING remains PENDING | PENDING → FAILED/CANCELLED | ACTIVE → RELEASED |
-| Provider success after expiration | PENDING remains PENDING | PENDING → REQUIRES_REVIEW | no re-hold or stock recreation |
-| Unpaid order cancellation | eligible → CANCELLED | successful payment is rejected | ACTIVE → RELEASED |
-| Approved full refund before fulfillment | eligible → REFUNDED | SUCCEEDED → REFUNDED | ACTIVE → RELEASED; never re-ACTIVE |
-| Shipment delivered | SHIPPED → COMPLETED | unchanged | ACTIVE → CONSUMED |
+| Event                                   | Order transition        | Payment transition             | Reservation action                         |
+| --------------------------------------- | ----------------------- | ------------------------------ | ------------------------------------------ |
+| Provider success with active hold       | PENDING → PAID          | PENDING → SUCCEEDED            | ACTIVE remains ACTIVE; `expiresAt` cleared |
+| Provider failed/cancelled               | PENDING remains PENDING | PENDING → FAILED/CANCELLED     | ACTIVE → RELEASED                          |
+| Provider success after expiration       | PENDING remains PENDING | PENDING → REQUIRES_REVIEW      | no re-hold or stock recreation             |
+| Unpaid order cancellation               | eligible → CANCELLED    | successful payment is rejected | ACTIVE → RELEASED                          |
+| Approved full refund before fulfillment | eligible → REFUNDED     | SUCCEEDED → REFUNDED           | ACTIVE → RELEASED; never re-ACTIVE         |
+| Shipment delivered                      | SHIPPED → COMPLETED     | unchanged                      | ACTIVE → CONSUMED                          |
 
 `REQUIRES_REVIEW` は自動処理の terminal state である。SHIPPED/COMPLETED 注文の自動 refund
 も禁止する。Provider HTTP は transaction 外、検証済み domain transition だけが transaction 内である。

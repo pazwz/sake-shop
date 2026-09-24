@@ -16,6 +16,7 @@ const subjects: Record<EmailTemplate, string> = {
   NEWSLETTER_CAMPAIGN: 'LINXASからのお知らせ',
   CONTACT_INQUIRY: '[LINXAS EC] お問い合わせ',
   CONTACT_REPLY: '[LINXAS] お問い合わせについて',
+  ORDER_MESSAGE_NOTIFICATION: '【LINXAS】新しいメッセージがあります',
 };
 
 export class EmailNotificationService {

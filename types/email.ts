@@ -3,6 +3,8 @@ import type { EmailTemplate } from '@prisma/client';
 export type EmailMessage = {
   to: string;
   replyTo?: string;
+  /** Prevent a provider-level default Reply-To for in-site-only correspondence. */
+  suppressReplyTo?: boolean;
   subject: string;
   html: string;
   text: string;

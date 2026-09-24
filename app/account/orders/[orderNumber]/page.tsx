@@ -1,4 +1,5 @@
 import { notFound, redirect } from 'next/navigation';
+import Link from 'next/link';
 import { NotFoundError } from '@/lib/errors';
 import { formatPrice } from '@/lib/products';
 import { getCurrentCustomer } from '@/services/customer-authorization.service';
@@ -61,6 +62,12 @@ export default async function AccountOrderPage({
             : ''}
         </p>
       ) : null}
+      <Link
+        href={`/account/orders/${encodeURIComponent(order.orderNumber)}/messages`}
+        className="btn btn-outline mt-8 inline-flex"
+      >
+        この注文について問い合わせる
+      </Link>
     </main>
   );
 }

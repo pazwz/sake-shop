@@ -5,6 +5,7 @@ import type {
 } from '@prisma/client';
 
 export type CustomerOrderSummary = {
+  id: string;
   orderNumber: string;
   createdAt: string;
   status: OrderStatus;

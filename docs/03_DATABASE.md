@@ -51,36 +51,36 @@ Last Update: 2026-08-14
 
 # 二、数据库列表
 
-| Table                        | 用途                   |
-| ---------------------------- | ---------------------- |
-| categories                   | 商品分类               |
-| products                     | 商品镜像               |
-| product_images               | 商品图片               |
-| inventory_mirror             | 库存镜像               |
-| inventory_reservations       | EC 商品级库存预留      |
-| customers                    | 顾客                   |
-| customer_addresses           | 收货地址               |
-| orders                       | 订单                   |
-| order_items                  | 订单商品               |
-| payments                     | 支付                   |
-| shipments                    | 配送                   |
-| featured_collections         | 专题                   |
-| featured_collection_products | 专题商品               |
-| editorial_sections           | Editorial 专题文章段落 |
-| admin_users                  | 后台用户               |
-| audit_logs                   | 操作日志               |
-| sync_logs                    | API同步日志            |
-| sync_log_items               | Smaregi 同步的実変更・warning明細 |
-| smaregi_product_exclusions   | LINXAS EC channel-level Smaregi 商品排除 tombstone |
-| email_verification_tokens    | 邮箱验证 token hash    |
-| password_reset_tokens        | 密码重置 token hash    |
-| email_outbox                 | 异步邮件投递队列       |
-| email_webhook_events         | Resend webhook 去重    |
-| newsletter_subscriptions     | Newsletter consent     |
-| newsletter_campaigns         | Admin marketing campaign source of truth |
-| contact_inquiries            | Customer support inquiry source of truth |
-| contact_inquiry_messages     | Admin-to-customer reply history / outbox link |
-| contact_inquiry_notes        | Admin-only internal notes |
+| Table                        | 用途                                                 |
+| ---------------------------- | ---------------------------------------------------- |
+| categories                   | 商品分类                                             |
+| products                     | 商品镜像                                             |
+| product_images               | 商品图片                                             |
+| inventory_mirror             | 库存镜像                                             |
+| inventory_reservations       | EC 商品级库存预留                                    |
+| customers                    | 顾客                                                 |
+| customer_addresses           | 收货地址                                             |
+| orders                       | 订单                                                 |
+| order_items                  | 订单商品                                             |
+| payments                     | 支付                                                 |
+| shipments                    | 配送                                                 |
+| featured_collections         | 专题                                                 |
+| featured_collection_products | 专题商品                                             |
+| editorial_sections           | Editorial 专题文章段落                               |
+| admin_users                  | 后台用户                                             |
+| audit_logs                   | 操作日志                                             |
+| sync_logs                    | API同步日志                                          |
+| sync_log_items               | Smaregi 同步的実変更・warning明細                    |
+| smaregi_product_exclusions   | LINXAS EC channel-level Smaregi 商品排除 tombstone   |
+| email_verification_tokens    | 邮箱验证 token hash                                  |
+| password_reset_tokens        | 密码重置 token hash                                  |
+| email_outbox                 | 异步邮件投递队列                                     |
+| email_webhook_events         | Resend webhook 去重                                  |
+| newsletter_subscriptions     | Newsletter consent                                   |
+| newsletter_campaigns         | Admin marketing campaign source of truth             |
+| contact_inquiries            | Order-linked in-site message thread source of truth  |
+| contact_inquiry_messages     | Customer/Admin in-site message history / Outbox link |
+| contact_inquiry_notes        | Admin-only internal notes                            |
 
 ---
 
@@ -483,10 +483,11 @@ next_attempt_at、provider message id 与 delivery state。不得保存 password
 API key 或 Payment internal metadata。Webhook event 仅保存 provider event id、type 与 raw
 payload hash，provider event id unique。
 
-Contact 不新增 inquiry table。`EmailTemplate.CONTACT_INQUIRY` 使用既有 EmailOutbox，event key
-为 `contact:{submissionId}:support`，使重复提交不会产生重复支持邮件。payload 只包含用户 email、
-topic、message、可选 orderNumber、内部 order reference 状态与提交时间；固定 support recipient
-存于 `EmailOutbox.recipient`，由 server 环境变量决定。
+`contact_inquiries` 支持历史 legacy inquiry 与新的 order-linked thread。对于 order-linked thread，
+`order_id` 是 nullable unique：每个 Order 最多一个 thread，legacy 记录可继续为 NULL。Customer
+message、thread status 和可选内部通知 Outbox 在同一 transaction 写入；`contact_inquiry_messages`
+保存站内消息而非邮件收件箱。Admin 回复使用 `ORDER_MESSAGE_NOTIFICATION`，其 payload 仅有订单号和
+My Page 目标，不含 message body、note 或 Reply-To。`CONTACT_REPLY` 只保留作 legacy 兼容。
 
 ## newsletter_subscriptions
 

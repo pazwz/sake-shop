@@ -1,6 +1,6 @@
 import {
-  ContactInquiryStatus,
   ContactInquiryMessageDirection,
+  ContactInquiryStatus,
   EmailTemplate,
   Prisma,
   type PrismaClient,
@@ -25,6 +25,32 @@ const inquirySelect = {
   closedAt: true,
   assignedAdmin: { select: { id: true, name: true } },
   customer: { select: { id: true, name: true } },
+  messages: {
+    take: 1,
+    orderBy: { createdAt: 'desc' },
+    select: { createdAt: true },
+  },
+} satisfies Prisma.ContactInquirySelect;
+
+const threadSelect = {
+  id: true,
+  publicId: true,
+  status: true,
+  topic: true,
+  orderId: true,
+  orderNumber: true,
+  createdAt: true,
+  updatedAt: true,
+  messages: {
+    orderBy: { createdAt: 'asc' },
+    select: {
+      id: true,
+      direction: true,
+      body: true,
+      createdAt: true,
+      authorAdmin: { select: { name: true } },
+    },
+  },
 } satisfies Prisma.ContactInquirySelect;
 
 export class ContactInquiryRepository {
@@ -52,13 +78,16 @@ export class ContactInquiryRepository {
       this.database.contactInquiry.findMany({
         where,
         select: inquirySelect,
-        orderBy: [{ status: 'asc' }, { createdAt: 'desc' }],
+        orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }],
         skip: (input.page - 1) * pageSize,
         take: pageSize,
       }),
     ]);
     return {
-      items,
+      items: items.map(({ messages, ...inquiry }) => ({
+        ...inquiry,
+        lastMessageAt: messages[0]?.createdAt ?? inquiry.createdAt,
+      })),
       pagination: {
         page: input.page,
         pageSize,
@@ -72,22 +101,13 @@ export class ContactInquiryRepository {
     return this.database.contactInquiry.findUnique({
       where: { id },
       select: {
-        ...inquirySelect,
+        ...threadSelect,
+        name: true,
+        email: true,
         message: true,
-        messages: {
-          orderBy: { createdAt: 'asc' },
-          select: {
-            id: true,
-            direction: true,
-            subject: true,
-            body: true,
-            createdAt: true,
-            emailOutbox: {
-              select: { status: true, sentAt: true, lastError: true },
-            },
-            authorAdmin: { select: { name: true } },
-          },
-        },
+        assignedAdminId: true,
+        assignedAdmin: { select: { id: true, name: true } },
+        customer: { select: { id: true, name: true } },
         notes: {
           orderBy: { createdAt: 'asc' },
           select: {
@@ -102,11 +122,123 @@ export class ContactInquiryRepository {
     });
   }
 
+  public getForCustomer(orderId: string, customerId: string) {
+    return this.database.contactInquiry.findFirst({
+      where: { orderId, order: { is: { customerId } } },
+      select: threadSelect,
+    });
+  }
+
+  public findOrderIdForCustomerInquiry(id: string, customerId: string) {
+    return this.database.contactInquiry.findFirst({
+      where: { id, order: { is: { customerId } } },
+      select: { orderId: true },
+    });
+  }
+
+  public findOwnedOrder(id: string, customerId: string) {
+    return this.database.order.findFirst({
+      where: { id, customerId },
+      select: {
+        id: true,
+        orderNumber: true,
+        customer: { select: { name: true, email: true } },
+      },
+    });
+  }
+
   public activeAdmins() {
     return this.database.adminUser.findMany({
       where: { isActive: true },
       select: { id: true, name: true, role: true },
       orderBy: { name: 'asc' },
+    });
+  }
+
+  public async startOrAddCustomerMessage(input: {
+    orderId: string;
+    customerId: string;
+    publicId: string;
+    submissionId: string;
+    body: string;
+    adminNotificationRecipient: string | null;
+  }) {
+    return this.database.$transaction(async (tx) => {
+      const order = await tx.order.findFirst({
+        where: { id: input.orderId, customerId: input.customerId },
+        select: {
+          id: true,
+          orderNumber: true,
+          customer: { select: { name: true, email: true } },
+        },
+      });
+      if (!order) return null;
+      const inquiry = await tx.contactInquiry.upsert({
+        where: { orderId: order.id },
+        create: {
+          submissionId: input.submissionId,
+          publicId: input.publicId,
+          topic: 'ORDER_SUPPORT',
+          name: order.customer.name,
+          email: order.customer.email,
+          message: input.body,
+          customerId: input.customerId,
+          orderId: order.id,
+          orderNumber: order.orderNumber,
+        },
+        update: {},
+        select: { id: true, publicId: true, status: true },
+      });
+      const nextStatus =
+        inquiry.status === ContactInquiryStatus.ANSWERED ||
+        inquiry.status === ContactInquiryStatus.CLOSED
+          ? ContactInquiryStatus.IN_PROGRESS
+          : inquiry.status;
+      const message = await tx.contactInquiryMessage.create({
+        data: {
+          inquiryId: inquiry.id,
+          direction: ContactInquiryMessageDirection.CUSTOMER,
+          fromEmail: order.customer.email,
+          toEmail: '',
+          subject: `注文についてのお問い合わせ（${order.orderNumber}）`,
+          body: input.body,
+        },
+        select: { id: true },
+      });
+      await tx.contactInquiry.update({
+        where: { id: inquiry.id },
+        data: { status: nextStatus, closedAt: null },
+      });
+      if (!input.adminNotificationRecipient)
+        return {
+          inquiryId: inquiry.id,
+          outboxId: null,
+          created: inquiry.publicId === input.publicId,
+        };
+      const outbox = await tx.emailOutbox.create({
+        data: {
+          eventKey: `order-support:${order.id}:customer-message:${message.id}`,
+          type: 'CONTACT_INQUIRY',
+          recipient: input.adminNotificationRecipient,
+          subject: '[LINXAS EC] 新しいお問い合わせがあります',
+          template: EmailTemplate.CONTACT_INQUIRY,
+          payload: {
+            publicId: inquiry.publicId,
+            orderNumber: order.orderNumber,
+            siteOnly: true,
+          },
+        },
+        select: { id: true },
+      });
+      await tx.contactInquiryMessage.update({
+        where: { id: message.id },
+        data: { emailOutboxId: outbox.id },
+      });
+      return {
+        inquiryId: inquiry.id,
+        outboxId: outbox.id,
+        created: inquiry.publicId === input.publicId,
+      };
     });
   }
 
@@ -229,32 +361,46 @@ export class ContactInquiryRepository {
           name: true,
           status: true,
           firstRespondedAt: true,
+          orderId: true,
+          orderNumber: true,
         },
       });
       if (!inquiry) return null;
-      const eventKey = `contact-reply:${inquiry.id}:${input.idempotencyKey}`;
+      const eventKey = `order-support:reply:${inquiry.id}:${input.idempotencyKey}`;
       const existing = await tx.emailOutbox.findUnique({
         where: { eventKey },
         select: { id: true },
       });
       if (existing) return { outboxId: existing.id, duplicate: true };
-      const subject =
-        input.subject ??
-        `Re: [LINXAS] お問い合わせについて（${inquiry.publicId}）`;
+      const orderLinked = Boolean(inquiry.orderId && inquiry.orderNumber);
+      const subject = orderLinked
+        ? '【LINXAS】新しいメッセージがあります'
+        : (input.subject ??
+          `Re: [LINXAS] お問い合わせについて（${inquiry.publicId}）`);
+      const template = orderLinked
+        ? EmailTemplate.ORDER_MESSAGE_NOTIFICATION
+        : EmailTemplate.CONTACT_REPLY;
       const outbox = await tx.emailOutbox.create({
         data: {
           eventKey,
-          type: 'CONTACT_REPLY',
+          type: orderLinked ? 'ORDER_MESSAGE_NOTIFICATION' : 'CONTACT_REPLY',
           recipient: inquiry.email,
           subject,
-          template: EmailTemplate.CONTACT_REPLY,
-          payload: {
-            publicId: inquiry.publicId,
-            customerName: inquiry.name ?? 'お客様',
-            body: input.body,
-            subject,
-          },
+          template,
+          payload: orderLinked
+            ? {
+                customerName: inquiry.name ?? 'お客様',
+                orderNumber: inquiry.orderNumber,
+                orderId: inquiry.orderId,
+              }
+            : {
+                publicId: inquiry.publicId,
+                customerName: inquiry.name ?? 'お客様',
+                body: input.body,
+                subject,
+              },
         },
+        select: { id: true },
       });
       const message = await tx.contactInquiryMessage.create({
         data: {
@@ -271,10 +417,7 @@ export class ContactInquiryRepository {
       await tx.contactInquiry.update({
         where: { id: inquiry.id },
         data: {
-          status:
-            inquiry.status === ContactInquiryStatus.CLOSED
-              ? ContactInquiryStatus.CLOSED
-              : ContactInquiryStatus.ANSWERED,
+          status: ContactInquiryStatus.ANSWERED,
           firstRespondedAt: inquiry.firstRespondedAt ?? new Date(),
         },
       });

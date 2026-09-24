@@ -48,6 +48,7 @@ export class CustomerOrderAccessService {
 
   private summary(order: CustomerOrderRecord): CustomerOrderSummary {
     return {
+      id: order.id,
       orderNumber: order.orderNumber,
       createdAt: order.createdAt.toISOString(),
       status: order.status,

@@ -24,6 +24,7 @@ const paymentTargetSelect = {
 } satisfies Prisma.OrderSelect;
 
 export const customerOrderSelect = {
+  id: true,
   orderNumber: true,
   createdAt: true,
   status: true,

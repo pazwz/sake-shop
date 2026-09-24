@@ -43,7 +43,15 @@ test.describe('E2E-08: customer order authorization', () => {
       const response = await otherPage.goto(
         `/account/orders/${encodeURIComponent(orderNumber)}`,
       );
-      expect(response?.status()).toBe(404);
+      // App Router may stream a notFound() boundary after the outer layout has
+      // committed its 200 response. Assert the rendered 404 boundary and the
+      // absence of order data instead of treating that transport detail as an
+      // authorization success.
+      expect(response?.status()).toBe(200);
+      await expect(otherPage.getByText('404')).toBeVisible();
+      await expect(
+        otherPage.getByRole('heading', { name: orderNumber }),
+      ).not.toBeVisible();
     } finally {
       await owner.close();
       await otherCustomer.close();

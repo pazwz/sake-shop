@@ -83,6 +83,7 @@ enum EmailTemplate {
   NEWSLETTER_CAMPAIGN
   CONTACT_INQUIRY
   CONTACT_REPLY
+  ORDER_MESSAGE_NOTIFICATION
 }
 
 enum ContactInquiryStatus {
@@ -675,7 +676,7 @@ model ContactInquiry {
   name             String?
   email            String
   customerId       String?                 @map("customer_id")
-  orderId          String?                 @map("order_id")
+  orderId          String?                 @unique @map("order_id")
   orderNumber      String?                 @map("order_number")
   message          String
   assignedAdminId  String?                 @map("assigned_admin_id")

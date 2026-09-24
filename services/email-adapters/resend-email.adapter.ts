@@ -15,7 +15,9 @@ export class ResendEmailAdapter implements EmailProviderAdapter {
   }
 
   public async send(message: EmailMessage) {
-    const replyTo = message.replyTo ?? this.replyTo;
+    const replyTo = message.suppressReplyTo
+      ? undefined
+      : (message.replyTo ?? this.replyTo);
     const result = await this.resend.emails.send(
       {
         from: this.from!,

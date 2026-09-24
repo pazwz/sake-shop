@@ -33,4 +33,12 @@ export const inquiryNoteValidator = z
   .object({ body: z.string().trim().min(1).max(5000) })
   .strict();
 
+export const customerInquiryCreateValidator = z
+  .object({ message: z.string().trim().min(1).max(5000) })
+  .strict();
+
+export const customerInquiryMessageValidator = z
+  .object({ body: z.string().trim().min(1).max(5000) })
+  .strict();
+
 export type InquiryListInput = z.infer<typeof inquiryListValidator>;

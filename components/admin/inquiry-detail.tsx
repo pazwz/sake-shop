@@ -23,15 +23,9 @@ type Inquiry = {
   messages: Array<{
     id: string;
     direction: string;
-    subject: string;
     body: string;
     createdAt: Date;
     authorAdmin: { name: string } | null;
-    emailOutbox: {
-      status: string;
-      sentAt: Date | null;
-      lastError: string | null;
-    } | null;
   }>;
   notes: Array<{
     id: string;
@@ -88,7 +82,7 @@ export function InquiryDetail({
       <div className="mt-5 flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="eyebrow">{inquiry.publicId}</p>
-          <h1 className="serif mt-3 text-4xl">お問い合わせ詳細</h1>
+          <h1 className="serif mt-3 text-4xl">注文メッセージ詳細</h1>
         </div>
         <span className="text-sm">
           {CONTACT_INQUIRY_STATUS_LABELS[inquiry.status]}
@@ -99,7 +93,10 @@ export function InquiryDetail({
         <div>
           <h2 className="font-medium">基本情報</h2>
           <dl className="mt-3 space-y-2 text-sm">
-            <div>お問い合わせ種別：{inquiry.topic}</div>
+            <div>
+              種別：
+              {inquiry.order ? '注文サポート' : 'Legacy / General inquiry'}
+            </div>
             <div>
               受付日時：
               {new Intl.DateTimeFormat('ja-JP', {
@@ -182,13 +179,7 @@ export function InquiryDetail({
         </div>
       </section>
       <section className="mt-6 border line bg-white p-6">
-        <h2 className="font-medium">お問い合わせ内容</h2>
-        <p className="mt-4 whitespace-pre-wrap text-sm leading-7">
-          {inquiry.message}
-        </p>
-      </section>
-      <section className="mt-6 border line bg-white p-6">
-        <h2 className="font-medium">対応履歴</h2>
+        <h2 className="font-medium">サイト内メッセージ</h2>
         <div className="mt-4 space-y-4">
           {inquiry.messages.map((message) => (
             <article
@@ -200,21 +191,16 @@ export function InquiryDetail({
                 {message.authorAdmin ? `・ ${message.authorAdmin.name}` : ''}
               </p>
               <p className="mt-2 whitespace-pre-wrap">{message.body}</p>
-              {message.emailOutbox ? (
-                <p className="mt-2 text-xs text-stone-500">
-                  送信状態：
-                  {message.emailOutbox.status === 'FAILED'
-                    ? '送信失敗'
-                    : message.emailOutbox.status === 'SENT'
-                      ? '送信済み'
-                      : '送信待ち'}
-                </p>
-              ) : null}
             </article>
           ))}
         </div>
+        {inquiry.messages.length === 0 ? (
+          <p className="mt-4 whitespace-pre-wrap text-sm leading-7">
+            {inquiry.message}
+          </p>
+        ) : null}
         <p className="mt-6 text-xs text-stone-500">
-          お客様がメールで返信した内容は現在自動取込されません。
+          メール返信は受け付けず、すべてサイト内で対応します。
         </p>
       </section>
       <section className="mt-6 border line bg-white p-6">

@@ -57,11 +57,10 @@ export default async function InquiriesPage({
             <tr>
               <th className="p-4">ステータス</th>
               <th className="p-4">お問い合わせ番号</th>
-              <th className="p-4">種別</th>
               <th className="p-4">お客様</th>
               <th className="p-4">注文番号</th>
               <th className="p-4">担当者</th>
-              <th className="p-4">受付日時</th>
+              <th className="p-4">最終メッセージ</th>
               <th className="p-4" />
             </tr>
           </thead>
@@ -72,7 +71,6 @@ export default async function InquiriesPage({
                   {CONTACT_INQUIRY_STATUS_LABELS[inquiry.status]}
                 </td>
                 <td className="p-4 font-medium">{inquiry.publicId}</td>
-                <td className="p-4">{inquiry.topic}</td>
                 <td className="p-4">
                   {inquiry.customer?.name ?? inquiry.name ?? '—'}
                   <br />
@@ -89,7 +87,7 @@ export default async function InquiriesPage({
                     dateStyle: 'medium',
                     timeStyle: 'short',
                     timeZone: 'Asia/Tokyo',
-                  }).format(inquiry.createdAt)}
+                  }).format(inquiry.lastMessageAt)}
                 </td>
                 <td className="p-4">
                   <Link
@@ -103,7 +101,7 @@ export default async function InquiriesPage({
             ))}
             {result.items.length === 0 ? (
               <tr>
-                <td colSpan={8} className="p-8 text-center text-stone-500">
+                <td colSpan={7} className="p-8 text-center text-stone-500">
                   お問い合わせはありません。
                 </td>
               </tr>
