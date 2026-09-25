@@ -10,6 +10,11 @@ type EditorialItem = {
   title: string;
   imageUrl: string | null;
   productCount: number;
+  placement: {
+    type: string;
+    affectedArea: string;
+    publicPath: string | null;
+  };
 };
 
 type Feedback = { kind: 'success' | 'error'; text: string };
@@ -180,6 +185,17 @@ export function EditorialManager({
                 現在表示中 {index + 1}
               </span>
               <h3 className="serif mt-2 text-xl">{item.title}</h3>
+              <p className="mt-2 text-xs font-semibold text-[#6d2227]">
+                {item.placement.type}
+              </p>
+              <p className="mt-1 text-xs text-stone-600">
+                {item.placement.affectedArea}
+              </p>
+              {item.placement.publicPath ? (
+                <p className="mt-1 text-xs text-stone-500">
+                  公開ページ：{item.placement.publicPath}
+                </p>
+              ) : null}
               <p className="mt-2 text-xs text-stone-500">
                 掲載商品 {item.productCount}件
               </p>

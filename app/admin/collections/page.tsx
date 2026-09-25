@@ -4,7 +4,10 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { HOME_CONTENT_LIMITS } from '@/config/home';
 import { EditorialManager } from '@/components/admin/editorial-manager';
-import { seasonLabels } from '@/lib/collection-presentation';
+import {
+  getCollectionPlacement,
+  seasonLabels,
+} from '@/lib/collection-presentation';
 import { getCurrentAdmin } from '@/services/admin-authorization.service';
 import { FeaturedCollectionService } from '@/services/collection.service';
 
@@ -52,6 +55,11 @@ function CurrentContent({
   }
 
   const imageUrl = collection.desktopImageUrl ?? collection.mobileImageUrl;
+  const placement = getCollectionPlacement(
+    collection.type,
+    collection.season,
+    collection.id,
+  );
   return (
     <div className="mt-6 grid items-center gap-4 border-t line py-5 sm:grid-cols-[120px_1fr_auto]">
       <div className="relative aspect-[4/3] overflow-hidden bg-stone-100">
@@ -74,6 +82,15 @@ function CurrentContent({
           現在表示中
         </span>
         <h3 className="serif mt-3 text-xl">{collection.title}</h3>
+        <p className="mt-2 text-xs font-semibold text-[#6d2227]">
+          {placement.type}
+        </p>
+        <p className="mt-2 text-xs text-stone-600">{placement.affectedArea}</p>
+        {placement.publicPath ? (
+          <p className="mt-1 text-xs text-stone-500">
+            公開ページ：{placement.publicPath}
+          </p>
+        ) : null}
         <p className="mt-2 text-xs text-stone-500">
           掲載商品 {collection.products.length}件
         </p>
@@ -98,6 +115,7 @@ function ProductArea({
   canEdit: boolean;
   type: 'SHOPKEEPER' | 'GIFT';
 }) {
+  const placement = getCollectionPlacement(type, null, collection?.id);
   return (
     <section className="border line bg-white p-6 md:p-8">
       <div className="flex flex-wrap items-start justify-between gap-5">
@@ -124,6 +142,13 @@ function ProductArea({
         ) : null}
       </div>
       <div className="mt-6 bg-[#faf8f4] p-5">
+        <p className="text-xs font-semibold text-[#6d2227]">{placement.type}</p>
+        <p className="mt-2 text-xs text-stone-600">{placement.affectedArea}</p>
+        {placement.publicPath ? (
+          <p className="mt-1 text-xs text-stone-500">
+            公開ページ：{placement.publicPath}
+          </p>
+        ) : null}
         <p className="text-xs text-stone-500">現在の掲載商品</p>
         <p className="serif mt-2 text-3xl">
           {collection?.products.length ?? 0}件
@@ -181,18 +206,12 @@ function FixedContentList({
       </div>
       <div className="mt-6">
         {collections.map((collection, index) => (
-          <div
+          <CollectionContentRow
             key={collection.id}
-            className="grid items-center gap-4 border-t line py-5 sm:grid-cols-[1fr_auto]"
-          >
-            <div>
-              <span className="text-xs font-semibold text-emerald-700">
-                現在表示中 {index + 1}
-              </span>
-              <h3 className="serif mt-2 text-xl">{collection.title}</h3>
-            </div>
-            <EditLink id={collection.id} canEdit={canEdit} />
-          </div>
+            collection={collection}
+            index={index}
+            canEdit={canEdit}
+          />
         ))}
         {collections.length === 0 ? (
           <p className="border-t line py-6 text-sm text-stone-500">
@@ -206,6 +225,45 @@ function FixedContentList({
         </p>
       ) : null}
     </section>
+  );
+}
+
+function CollectionContentRow({
+  collection,
+  index,
+  canEdit,
+}: {
+  collection: CollectionItem;
+  index: number;
+  canEdit: boolean;
+}) {
+  const placement = getCollectionPlacement(
+    collection.type,
+    collection.season,
+    collection.id,
+  );
+  return (
+    <div className="grid items-center gap-4 border-t line py-5 sm:grid-cols-[1fr_auto]">
+      <div>
+        <span className="text-xs font-semibold text-emerald-700">
+          現在表示中 {index + 1}
+        </span>
+        <h3 className="serif mt-2 text-xl">{collection.title}</h3>
+        <p className="mt-2 text-xs font-semibold text-[#6d2227]">
+          {placement.type}
+        </p>
+        <p className="mt-1 text-xs text-stone-600">{placement.affectedArea}</p>
+        {placement.publicPath ? (
+          <p className="mt-1 text-xs text-stone-500">
+            公開ページ：{placement.publicPath}
+          </p>
+        ) : null}
+        <p className="mt-1 text-xs text-stone-500">
+          掲載商品：{collection.products.length}件
+        </p>
+      </div>
+      <EditLink id={collection.id} canEdit={canEdit} />
+    </div>
   );
 }
 
@@ -272,11 +330,28 @@ export default async function AdminCollectionsPage() {
             </p>
           </div>
           <div className="mt-7 grid gap-4 md:grid-cols-2">
-            {management.seasonal.map(({ season, collection, fallback }) => (
+            {management.seasonal.map(({ season, collection, fallback }) => {
+              const placement = getCollectionPlacement(
+                'SEASONAL',
+                season,
+                collection?.id ?? fallback?.id,
+              );
+              return (
               <div key={season} className="border line p-5">
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <p className="serif text-2xl">{seasonLabels[season]}</p>
+                    <p className="mt-2 text-xs font-semibold text-[#6d2227]">
+                      {placement.type}
+                    </p>
+                    <p className="mt-1 text-xs text-stone-600">
+                      {placement.affectedArea}
+                    </p>
+                    {placement.publicPath ? (
+                      <p className="mt-1 text-xs text-stone-500">
+                        公開ページ：{placement.publicPath}
+                      </p>
+                    ) : null}
                     <p className="mt-2 text-sm text-stone-600">
                       {collection?.title ?? '未設定'}
                     </p>
@@ -301,7 +376,8 @@ export default async function AdminCollectionsPage() {
                   ) : null}
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         </section>
 
@@ -330,6 +406,11 @@ export default async function AdminCollectionsPage() {
             title: collection.title,
             imageUrl: collection.desktopImageUrl ?? collection.mobileImageUrl,
             productCount: collection.products.length,
+            placement: getCollectionPlacement(
+              collection.type,
+              collection.season,
+              collection.id,
+            ),
           }))}
           canEdit={canEdit}
           maximum={HOME_CONTENT_LIMITS.editorial}

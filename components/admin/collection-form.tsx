@@ -5,7 +5,10 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { CollectionImageUpload } from '@/components/admin/collection-image-upload';
 import { HOME_CONTENT_LIMITS } from '@/config/home';
-import { getCollectionAreaLabel } from '@/lib/collection-presentation';
+import {
+  getCollectionAreaLabel,
+  getCollectionPlacement,
+} from '@/lib/collection-presentation';
 import type {
   CollectionProductCandidate,
   CollectionProductCandidateResult,
@@ -87,6 +90,11 @@ export function CollectionForm({
   const defaultType = collection?.type ?? initialType;
   const defaultSeason = collection?.season ?? initialSeason;
   const areaLabel = getCollectionAreaLabel(defaultType, defaultSeason);
+  const placement = getCollectionPlacement(
+    defaultType,
+    defaultSeason,
+    collection?.id,
+  );
   const productLimit =
     defaultType === 'SHOPKEEPER' || defaultType === 'GIFT'
       ? HOME_CONTENT_LIMITS.shopkeeperProducts
@@ -213,7 +221,9 @@ export function CollectionForm({
         mobileImageUrl: String(formData.get('mobileImageUrl')) || null,
         status: String(formData.get('status')),
         displayOrder: Number(formData.get('displayOrder')),
-        productIds: selected,
+        ...(placement.productSelectionAffectsProductGrid
+          ? { productIds: selected }
+          : {}),
       };
       const response = await fetch(
         collection
@@ -289,6 +299,32 @@ export function CollectionForm({
           {feedback.text}
         </p>
       ) : null}
+      <section className="border border-[#6d2227]/20 bg-[#faf8f4] p-5 text-sm">
+        <dl className="grid gap-4 sm:grid-cols-3">
+          <div>
+            <dt className="text-xs text-stone-500">種類</dt>
+            <dd className="mt-1 font-semibold text-[#6d2227]">
+              {placement.type}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-xs text-stone-500">反映位置</dt>
+            <dd className="mt-1 font-medium">{placement.affectedArea}</dd>
+          </div>
+          <div>
+            <dt className="text-xs text-stone-500">公開ページ</dt>
+            <dd className="mt-1">
+              {placement.publicPath ? (
+                <Link href={placement.publicPath} className="underline">
+                  {placement.publicPath}
+                </Link>
+              ) : (
+                'なし'
+              )}
+            </dd>
+          </div>
+        </dl>
+      </section>
       <div className="grid gap-6 border-y line py-8 md:grid-cols-2">
         <input type="hidden" name="type" value={defaultType} />
         <input type="hidden" name="season" value={defaultSeason ?? ''} />
@@ -353,11 +389,12 @@ export function CollectionForm({
           onUploadingChange={setMobileImageUploading}
         />
       </div>
+      {placement.productSelectionAffectsProductGrid ? (
       <section>
         <p className="eyebrow">FEATURED PRODUCTS</p>
         <h2 className="serif mt-3 text-3xl">掲載商品</h2>
         <p className="mt-2 text-sm text-stone-600">
-          チェックした商品をこの特集に掲載します。矢印で表示順を調整できます。
+          {placement.productSelectionDescription} 矢印で表示順を調整できます。
           {productLimit
             ? ` トップページには先頭${productLimit}件、特集ページには選択した商品をすべて表示します。`
             : ''}
@@ -537,6 +574,15 @@ export function CollectionForm({
           </div>
         ) : null}
       </section>
+      ) : (
+        <section className="border-y line py-8">
+          <p className="eyebrow">PRODUCTS</p>
+          <h2 className="serif mt-3 text-3xl">掲載商品</h2>
+          <p className="mt-2 text-sm leading-7 text-stone-600">
+            {placement.productSelectionDescription}
+          </p>
+        </section>
+      )}
       <button
         disabled={saving || imageUploading}
         className="btn bg-[#171412] text-white disabled:opacity-50"

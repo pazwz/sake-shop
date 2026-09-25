@@ -13,6 +13,25 @@ import { useCart } from './cart-provider';
 import { useAuth } from './auth-provider';
 import { useLanguage } from './language-provider';
 
+function BellIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      aria-hidden="true"
+      className={className}
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth="1.7"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M14.5 18.75a2.75 2.75 0 0 1-5 0m8.6-3.1c-.7-.8-1.35-1.9-1.35-3.65v-1.2a4.75 4.75 0 1 0-9.5 0V12c0 1.75-.65 2.85-1.35 3.65-.32.37-.06.93.43.93h11.34c.49 0 .75-.56.43-.93Z"
+      />
+    </svg>
+  );
+}
+
 export function Header({
   navigation,
   features,
@@ -87,7 +106,20 @@ export function Header({
           >
             {member ? 'MY PAGE' : 'LOGIN'}
           </Link>
-          {member ? <Link href="/account/notifications" aria-label="お知らせ" className="relative text-base leading-none">♢{unreadNotifications ? <span className="absolute -right-2 -top-2 min-w-4 rounded-full bg-[#6d2227] px-1 text-center text-[10px] leading-4 text-white">{unreadNotifications}</span> : null}</Link> : null}
+          {member ? (
+            <Link
+              href="/account/notifications"
+              aria-label="お知らせ"
+              className="relative inline-flex h-5 w-5 items-center justify-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#6d2227]"
+            >
+              <BellIcon className="h-4 w-4" />
+              {unreadNotifications ? (
+                <span className="absolute -right-2 -top-2 min-w-4 rounded-full bg-[#6d2227] px-1 text-center text-[10px] leading-4 text-white">
+                  {unreadNotifications > 9 ? '9+' : unreadNotifications}
+                </span>
+              ) : null}
+            </Link>
+          ) : null}
           <Link href="/cart">BAG ({count})</Link>
           <button className="lg:hidden" onClick={() => setMobile(!mobile)}>
             MENU
@@ -175,7 +207,16 @@ export function Header({
             >
               {member ? 'マイページ' : 'ログイン'}
             </Link>
-            {member ? <Link href="/account/notifications" onClick={() => setMobile(false)}>お知らせ{unreadNotifications ? `（${unreadNotifications}）` : ''}</Link> : null}
+            {member ? (
+              <Link
+                href="/account/notifications"
+                onClick={() => setMobile(false)}
+                className="flex items-center gap-2"
+              >
+                <BellIcon className="h-4 w-4" />
+                お知らせ{unreadNotifications ? `（${unreadNotifications > 9 ? '9+' : unreadNotifications}）` : ''}
+              </Link>
+            ) : null}
           </nav>
         </div>
       ) : null}
