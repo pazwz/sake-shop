@@ -18,6 +18,7 @@
     "format:check": "prettier --check .",
     "prisma:generate": "prisma generate",
     "prisma:seed": "prisma db seed",
+    "seed:dev": "ALLOW_DEVELOPMENT_SEED=true DEVELOPMENT_SEED_ENV=local pnpm prisma db seed",
     "seed:qa-customer": "tsx scripts/seed-qa-customer.ts"
   },
   "prisma": {

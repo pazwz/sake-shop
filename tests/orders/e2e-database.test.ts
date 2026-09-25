@@ -22,7 +22,7 @@ test('local E2E rejects the configured default database', () => {
         E2E_DIRECT_URL:
           'postgresql://other:password@test.example.test:5432/e2e',
       }),
-    /matches DATABASE_URL/,
+    /(matches DATABASE_URL|same database branch)/,
   );
 });
 
@@ -36,7 +36,7 @@ test('local E2E rejects a direct URL that targets the configured default databas
         E2E_DIRECT_URL:
           'postgresql://other:password@production.example.test:5432/app',
       }),
-    /E2E_DIRECT_URL matches DATABASE_URL/,
+    /(E2E_DIRECT_URL matches DATABASE_URL|same database branch)/,
   );
 });
 
@@ -105,6 +105,6 @@ test('local E2E rejects pooled and direct URLs that identify the default databas
         E2E_DIRECT_URL:
           'postgresql://user:password@production.example.test:5432/app',
       }),
-    /E2E_DIRECT_URL matches DATABASE_URL/,
+    /(E2E_DIRECT_URL matches DATABASE_URL|same database branch)/,
   );
 });

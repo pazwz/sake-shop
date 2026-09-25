@@ -1115,3 +1115,12 @@ BI分析
 E2E 不新增 Production fixture table。Local / Preview 仅复用既有 guarded QA Customer seed；其
 guard 同时要求 `ALLOW_QA_SEED=true`、`QA_SEED_ENV=local|preview`，并拒绝 production runtime。
 E2E fixture cleanup 只能作用于明确 QA/test identity，不能用于 Production Customer、Order 或库存。
+
+## Development seed safety
+
+`prisma/seed.ts` 是仅供本机开发的 demo dataset，绝不用于 Preview、Production 或远端 Neon E2E。
+运行必须同时显式设置 `ALLOW_DEVELOPMENT_SEED=true` 与
+`DEVELOPMENT_SEED_ENV=local`，并且 `DATABASE_URL` 与 `DIRECT_URL` 都必须解析为同一个
+localhost target；缺少任一条件、目标不明、目标不一致或 Vercel runtime 都会 fail closed。
+推荐命令是 `pnpm seed:dev`。远端 E2E 只使用 `scripts/seed-e2e-fixtures.ts` 的 `e2e-*`
+fixtures，永远不导入 `DEV-*` Product 或 development homepage collections。

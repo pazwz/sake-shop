@@ -14,13 +14,14 @@ import {
   developmentSeedProducts,
   developmentSeedSubcategories,
 } from '../config/seed';
+import { assertDevelopmentSeedTarget } from '../config/development-seed';
 
 const prisma = new PrismaClient();
 
 const seed = async (): Promise<void> => {
-  if (process.env.NODE_ENV === 'production') {
-    throw new Error('Development seed must not run in production.');
-  }
+  const safety = assertDevelopmentSeedTarget();
+  process.stdout.write('Development seed safety check passed\n');
+  process.stdout.write(`Target classified as ${safety.target}\n`);
   const passwordHash = process.env.ADMIN_SEED_PASSWORD
     ? await hash(process.env.ADMIN_SEED_PASSWORD, 12)
     : null;
