@@ -21,7 +21,7 @@ test.describe('E2E-12: authenticated order support messages', () => {
       `/account/orders/${encodeURIComponent(process.env.E2E_QA_ORDER_NUMBER!)}`,
     );
     await page
-      .getByRole('link', { name: 'この注文について問い合わせる' })
+      .getByRole('link', { name: /この注文について問い合わせる|メッセージを確認/ })
       .click();
     await page.getByLabel('メッセージ入力').fill('E2E order support message.');
     const response = page.waitForResponse(

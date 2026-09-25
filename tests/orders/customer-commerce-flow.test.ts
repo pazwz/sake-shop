@@ -146,6 +146,7 @@ test('customer commerce integration: auth, checkout ownership, history and faile
     createdAt: new Date(),
     status: 'PENDING',
     paymentStatus: 'PENDING',
+    shipmentStatus: 'PENDING',
     subtotal: 1000,
     shippingFee: 0,
     taxAmount: 91,
@@ -163,6 +164,7 @@ test('customer commerce integration: auth, checkout ownership, history and faile
       },
     ],
     shipments: [],
+    contactInquiries: [],
   };
   const ownedOrders = new CustomerOrderAccessService(
     {

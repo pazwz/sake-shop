@@ -61,6 +61,7 @@ export default async function AdminPage() {
       >
         お問い合わせ{newInquiryCount ? ` ${newInquiryCount}` : ''}
       </Link>
+      <Link href="/admin/announcements" className="btn ml-3 mt-8 border border-[#171412]">お知らせを管理</Link>
     </main>
   );
 }

@@ -27,6 +27,7 @@ export default async function AccountPage() {
         {[
           ['/account/profile', '会員情報', 'お名前と登録メールアドレス'],
           ['/account/orders', 'ご注文履歴', 'これまでのご注文と配送状況'],
+          ['/account/notifications', 'お知らせ', '注文メッセージとサイトからのお知らせ'],
           ['/account/addresses', 'お届け先', '配送先住所の登録と管理'],
           [
             '/account/preferences',

@@ -826,3 +826,7 @@ S3
 动态管理
 
 禁止硬编码
+
+## Customer notification boundary
+
+Customer notification APIs derive the authenticated customer from the session. Order support notifications always scope the thread through `Order.customerId`; legacy inquiries without an `orderId` remain admin-only. Customer announcement reads are persisted through a service/repository boundary and do not accept a client-supplied customer identity.

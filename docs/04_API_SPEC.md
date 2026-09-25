@@ -1435,4 +1435,11 @@ HTTP 200
   "error": null
 }
 本文件作为整个项目 API 开发唯一标准，所有后续开发必须遵循本规范。
+
+## Customer notifications
+
+- `GET /api/v1/customer/notifications/summary` returns only the current customer's unread counts.
+- `POST /api/v1/customer/notifications/announcements/{id}/read` marks a currently visible announcement as read for the current customer.
+- `POST /api/v1/my/inquiries/{id}/read` marks an order-linked support thread as read after ownership is verified.
+- Admin announcement create and update routes are restricted to OWNER and MANAGER.
 ```

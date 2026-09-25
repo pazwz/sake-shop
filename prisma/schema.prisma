@@ -98,6 +98,13 @@ enum ContactInquiryMessageDirection {
   ADMIN
 }
 
+enum SiteAnnouncementType {
+  GENERAL
+  IMPORTANT
+  MAINTENANCE
+  BUSINESS_HOURS
+}
+
 enum NewsletterStatus {
   SUBSCRIBED
   UNSUBSCRIBED
@@ -280,6 +287,7 @@ model Customer {
   emailVerificationTokens EmailVerificationToken[]
   passwordResetTokens     PasswordResetToken[]
   contactInquiries        ContactInquiry[]
+  announcementReads       CustomerAnnouncementRead[]
 
   @@map("customers")
 }
@@ -684,6 +692,7 @@ model ContactInquiry {
   updatedAt        DateTime                @updatedAt @map("updated_at")
   firstRespondedAt DateTime?               @map("first_responded_at")
   closedAt         DateTime?               @map("closed_at")
+  customerLastReadAt DateTime?             @map("customer_last_read_at")
   customer         Customer?               @relation(fields: [customerId], references: [id], onDelete: SetNull)
   order            Order?                  @relation(fields: [orderId], references: [id], onDelete: SetNull)
   assignedAdmin    AdminUser?              @relation("ContactInquiryAssignee", fields: [assignedAdminId], references: [id], onDelete: SetNull)
@@ -695,6 +704,36 @@ model ContactInquiry {
   @@index([email])
   @@index([orderNumber])
   @@map("contact_inquiries")
+}
+
+model SiteAnnouncement {
+  id          String               @id @default(cuid())
+  title       String
+  body        String
+  type        SiteAnnouncementType @default(GENERAL)
+  publishedAt DateTime             @map("published_at")
+  expiresAt   DateTime?            @map("expires_at")
+  isPublished Boolean              @default(false) @map("is_published")
+  createdAt   DateTime             @default(now()) @map("created_at")
+  updatedAt   DateTime             @updatedAt @map("updated_at")
+  reads       CustomerAnnouncementRead[]
+
+  @@index([isPublished, publishedAt])
+  @@index([expiresAt])
+  @@map("site_announcements")
+}
+
+model CustomerAnnouncementRead {
+  id             String           @id @default(cuid())
+  customerId     String           @map("customer_id")
+  announcementId String           @map("announcement_id")
+  readAt         DateTime         @default(now()) @map("read_at")
+  customer       Customer         @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  announcement   SiteAnnouncement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+
+  @@unique([customerId, announcementId])
+  @@index([customerId, readAt])
+  @@map("customer_announcement_reads")
 }
 
 model ContactInquiryMessage {

@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 type Thread = {
   id: string;
@@ -26,6 +26,10 @@ export function CustomerOrderMessages({
   const [body, setBody] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  useEffect(() => {
+    if (!thread) return;
+    void fetch(`/api/v1/my/inquiries/${thread.id}/read`, { method: 'POST' });
+  }, [thread]);
   const submit = async () => {
     if (!body.trim()) return;
     setBusy(true);

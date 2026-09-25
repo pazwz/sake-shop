@@ -1076,6 +1076,12 @@ Smaregi
 
 # 八、未来扩展
 
+## Customer notifications
+
+`ContactInquiry.customerLastReadAt` is a customer-owned read marker for an order-linked support thread. Only ADMIN messages created after this marker contribute to the customer unread count; customer messages and internal notes do not.
+
+`SiteAnnouncement` stores centrally published customer announcements. `CustomerAnnouncementRead` is a per-customer read marker with a compound unique key, so publishing never creates recipient fan-out rows. Customer visibility is limited to published, already-started, non-expired announcements.
+
 支持：
 
 优惠券

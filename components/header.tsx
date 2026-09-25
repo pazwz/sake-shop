@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { PUBLIC_FEATURE_NAVIGATION } from '@/config/public-navigation';
 import type {
   HeaderNavigationGroup,
@@ -28,6 +28,8 @@ export function Header({
   const [search, setSearch] = useState(false);
   const [query, setQuery] = useState('');
   const [mobile, setMobile] = useState(false);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
+  useEffect(() => { if (!member) { setUnreadNotifications(0); return; } void fetch('/api/v1/customer/notifications/summary').then((response) => response.ok ? response.json() : null).then((payload) => setUnreadNotifications(payload?.data?.unreadTotal ?? 0)).catch(() => setUnreadNotifications(0)); }, [member]);
   const openSearch = () => {
     setActive(null);
     setMobile(false);
@@ -85,6 +87,7 @@ export function Header({
           >
             {member ? 'MY PAGE' : 'LOGIN'}
           </Link>
+          {member ? <Link href="/account/notifications" aria-label="お知らせ" className="relative text-base leading-none">♢{unreadNotifications ? <span className="absolute -right-2 -top-2 min-w-4 rounded-full bg-[#6d2227] px-1 text-center text-[10px] leading-4 text-white">{unreadNotifications}</span> : null}</Link> : null}
           <Link href="/cart">BAG ({count})</Link>
           <button className="lg:hidden" onClick={() => setMobile(!mobile)}>
             MENU
@@ -172,6 +175,7 @@ export function Header({
             >
               {member ? 'マイページ' : 'ログイン'}
             </Link>
+            {member ? <Link href="/account/notifications" onClick={() => setMobile(false)}>お知らせ{unreadNotifications ? `（${unreadNotifications}）` : ''}</Link> : null}
           </nav>
         </div>
       ) : null}

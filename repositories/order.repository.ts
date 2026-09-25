@@ -29,6 +29,7 @@ export const customerOrderSelect = {
   createdAt: true,
   status: true,
   paymentStatus: true,
+  shipmentStatus: true,
   subtotal: true,
   shippingFee: true,
   taxAmount: true,
@@ -43,6 +44,7 @@ export const customerOrderSelect = {
       unitPrice: true,
       quantity: true,
       subtotal: true,
+      product: { select: { images: { orderBy: { displayOrder: 'asc' }, take: 1, select: { imageUrl: true, altText: true } } } },
     },
     orderBy: { createdAt: 'asc' },
   },
@@ -56,6 +58,10 @@ export const customerOrderSelect = {
     },
     orderBy: { createdAt: 'desc' },
     take: 1,
+  },
+  contactInquiries: {
+    where: { orderId: { not: null } }, take: 1,
+    select: { id: true, customerLastReadAt: true, messages: { where: { direction: 'ADMIN' }, orderBy: { createdAt: 'desc' }, take: 1, select: { createdAt: true } } },
   },
 } satisfies Prisma.OrderSelect;
 

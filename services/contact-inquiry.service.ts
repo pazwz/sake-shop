@@ -67,6 +67,11 @@ export class ContactInquiryService {
     return this.startOrderSupport(inquiry.orderId, body, customerId);
   }
 
+  public async markCustomerRead(id: string, customerId: string) {
+    const result = await this.inquiries.markCustomerRead(id, customerId);
+    if (!result) throw new ForbiddenError('このメッセージにはアクセスできません。');
+  }
+
   public async assign(
     id: string,
     assignedAdminId: string | null,

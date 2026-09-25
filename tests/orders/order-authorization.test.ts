@@ -92,6 +92,7 @@ test('authenticated customer can read only an ownership-scoped order', async () 
     createdAt: new Date('2026-09-13T00:00:00.000Z'),
     status: 'PENDING',
     paymentStatus: 'PENDING',
+    shipmentStatus: 'PENDING',
     subtotal: 1000,
     shippingFee: 500,
     taxAmount: 91,
@@ -100,6 +101,7 @@ test('authenticated customer can read only an ownership-scoped order', async () 
     shippingAddressSnapshot: null,
     items: [],
     shipments: [],
+    contactInquiries: [],
   };
   const service = new CustomerOrderAccessService(
     {

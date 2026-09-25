@@ -1,0 +1,2 @@
+import { redirect } from 'next/navigation'; import { AnnouncementForm } from '@/components/admin/announcement-form'; import { cmsAdminRoles, getCurrentAdmin } from '@/services/admin-authorization.service';
+export default async function NewAnnouncementPage() { const admin = await getCurrentAdmin(); if (!admin) redirect('/admin/login'); if (!cmsAdminRoles.includes(admin.role)) redirect('/admin/announcements'); return <main className="wrap py-16"><p className="eyebrow">SITE INFORMATION</p><h1 className="serif mt-3 text-4xl">お知らせを作成</h1><AnnouncementForm /></main>; }

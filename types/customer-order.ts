@@ -10,10 +10,14 @@ export type CustomerOrderSummary = {
   createdAt: string;
   status: OrderStatus;
   paymentStatus: PaymentStatus;
+  shipmentStatus: ShipmentStatus;
   totalAmount: number;
+  items: Array<{ productName: string; quantity: number; imageUrl: string | null; imageAlt: string | null }>;
+  shipment: { status: ShipmentStatus; carrier: string; trackingNumber: string | null; shippedAt: string | null; deliveredAt: string | null } | null;
+  hasUnreadMessage: boolean;
 };
 
-export type CustomerOrderDetail = CustomerOrderSummary & {
+export type CustomerOrderDetail = Omit<CustomerOrderSummary, 'items' | 'shipment'> & {
   subtotal: number;
   shippingFee: number;
   taxAmount: number;
@@ -34,6 +38,8 @@ export type CustomerOrderDetail = CustomerOrderSummary & {
     unitPrice: number;
     quantity: number;
     subtotal: number;
+    imageUrl: string | null;
+    imageAlt: string | null;
   }>;
   shipment: {
     status: ShipmentStatus;

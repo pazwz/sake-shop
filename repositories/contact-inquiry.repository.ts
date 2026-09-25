@@ -41,6 +41,7 @@ const threadSelect = {
   orderNumber: true,
   createdAt: true,
   updatedAt: true,
+  customerLastReadAt: true,
   messages: {
     orderBy: { createdAt: 'asc' },
     select: {
@@ -133,6 +134,17 @@ export class ContactInquiryRepository {
     return this.database.contactInquiry.findFirst({
       where: { id, order: { is: { customerId } } },
       select: { orderId: true },
+    });
+  }
+
+  public async markCustomerRead(id: string, customerId: string) {
+    const owned = await this.database.contactInquiry.findFirst({
+      where: { id, orderId: { not: null }, order: { is: { customerId } } },
+      select: { id: true },
+    });
+    if (!owned) return null;
+    return this.database.contactInquiry.update({
+      where: { id: owned.id }, data: { customerLastReadAt: new Date() }, select: { id: true },
     });
   }
 

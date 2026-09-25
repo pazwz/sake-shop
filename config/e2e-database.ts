@@ -16,6 +16,9 @@ const databaseIdentity = (value: string) => {
 
 const hostname = (value: string) => new URL(value).hostname;
 
+const branchIdentity = (value: string) =>
+  hostname(value).replace(/-pooler(?=\.|$)/, '');
+
 const isPooledEndpoint = (value: string) => hostname(value).includes('-pooler');
 
 export const getSafeE2EDatabaseEnvironment = (
@@ -38,6 +41,10 @@ export const getSafeE2EDatabaseEnvironment = (
   if (isPooledEndpoint(direct.data))
     throw new Error(
       'E2E_DIRECT_URL must not use a pooled endpoint. Refusing to prepare the test database through a pooler.',
+    );
+  if (branchIdentity(parsed.data) !== branchIdentity(direct.data))
+    throw new Error(
+      'E2E pooled and direct URLs must target the same database branch.',
     );
   const current = environment.DATABASE_URL
     ? databaseUrlSchema.safeParse(environment.DATABASE_URL)
