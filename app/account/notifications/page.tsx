@@ -6,25 +6,17 @@ import {
   type CustomerNotification,
 } from '@/services/customer-notification.service';
 
-function NotificationGroup({
-  title,
-  description,
+function NotificationList({
   emptyMessage,
   items,
 }: {
-  title: string;
-  description: string;
   emptyMessage: string;
   items: CustomerNotification[];
 }) {
   return (
-    <section className="mt-12 first:mt-10" aria-label={title}>
-      <div className="border-b border-[#171412] pb-4">
-        <h2 className="serif text-2xl">{title}</h2>
-        <p className="mt-2 text-sm leading-6 text-stone-600">{description}</p>
-      </div>
+    <section className="mt-8" aria-live="polite">
       {items.length ? (
-        <div className="divide-y border-b line">
+        <div className="divide-y border-y line">
           {items.map((item) => (
             <Link key={item.id} href={item.href} className="block py-5">
               <div className="flex gap-3">
@@ -50,40 +42,72 @@ function NotificationGroup({
           ))}
         </div>
       ) : (
-        <p className="border-b line py-8 text-sm text-stone-600">{emptyMessage}</p>
+        <p className="border-y line py-8 text-sm text-stone-600">{emptyMessage}</p>
       )}
     </section>
   );
 }
 
-export default async function NotificationsPage() {
+export default async function NotificationsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string }>;
+}) {
   const customer = await getCurrentCustomer();
   if (!customer) redirect('/login?redirect=/account/notifications');
 
   const notifications = await new CustomerNotificationService().list(customer.id);
+  const selectedTab = (await searchParams).tab === 'site' ? 'site' : 'personal';
   const orderNotifications = notifications.filter(
     (item) => item.kind === 'ORDER_MESSAGE',
   );
   const siteNotifications = notifications.filter(
     (item) => item.kind === 'ANNOUNCEMENT',
   );
+  const isPersonal = selectedTab === 'personal';
 
   return (
     <main className="wrap py-14 md:py-20">
       <p className="eyebrow">Notifications</p>
       <h1 className="serif mt-4 text-5xl">お知らせ</h1>
-      <NotificationGroup
-        title="ご注文・個別のお知らせ"
-        description="ご注文に関するメッセージや、お客様への個別のお知らせをご確認いただけます。"
-        emptyMessage="ご注文・個別のお知らせはありません。"
-        items={orderNotifications}
-      />
-      <NotificationGroup
-        title="サイトからのお知らせ"
-        description="LINXASからのお知らせや、サービスに関するご案内です。"
-        emptyMessage="サイトからのお知らせはありません。"
-        items={siteNotifications}
-      />
+      <nav
+        aria-label="お知らせの種類"
+        className="mt-10 flex gap-6 border-b line text-sm md:gap-9"
+      >
+        <Link
+          href="/account/notifications?tab=personal"
+          aria-current={isPersonal ? 'page' : undefined}
+          className={
+            isPersonal
+              ? '-mb-px border-b-2 border-[#171412] pb-3 font-medium text-[#171412]'
+              : 'pb-3 text-stone-500'
+          }
+        >
+          ご注文・個別のお知らせ
+        </Link>
+        <Link
+          href="/account/notifications?tab=site"
+          aria-current={!isPersonal ? 'page' : undefined}
+          className={
+            !isPersonal
+              ? '-mb-px border-b-2 border-[#171412] pb-3 font-medium text-[#171412]'
+              : 'pb-3 text-stone-500'
+          }
+        >
+          サイトからのお知らせ
+        </Link>
+      </nav>
+      {isPersonal ? (
+        <NotificationList
+          emptyMessage="ご注文・個別のお知らせはありません。"
+          items={orderNotifications}
+        />
+      ) : (
+        <NotificationList
+          emptyMessage="サイトからのお知らせはありません。"
+          items={siteNotifications}
+        />
+      )}
     </main>
   );
 }

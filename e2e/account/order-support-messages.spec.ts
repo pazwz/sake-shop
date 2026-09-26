@@ -50,7 +50,7 @@ test.describe('E2E-12: authenticated order support messages', () => {
         .locator('[data-message-direction="CUSTOMER"]')
         .filter({ hasText: 'E2E order support message.' })
         .last()
-        .getByText('お客様', { exact: true }),
+        .getByText('E2E Customer様', { exact: true }),
     ).toBeVisible();
   });
 });

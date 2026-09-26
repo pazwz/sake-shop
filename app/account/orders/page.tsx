@@ -20,7 +20,13 @@ export default async function AccountOrdersPage({
   ).getOrderPage(Number.isFinite(requested) ? requested : 1);
   return (
     <main className="wrap py-14 md:py-20">
-      <p className="eyebrow">Order history</p>
+      <Link
+        href="/account"
+        className="block w-fit text-sm underline underline-offset-4"
+      >
+        MY PAGEへ戻る
+      </Link>
+      <p className="eyebrow mt-8">Order history</p>
       <h1 className="serif mt-4 text-5xl">ご注文履歴</h1>
       {orders.total === 0 ? (
         <p className="mt-10 border-y line py-10 text-sm text-stone-600">
