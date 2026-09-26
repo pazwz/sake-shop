@@ -31,6 +31,9 @@ export default async function AccountOrderPage({
   const order = await loadOrder(orderNumber, customer);
   return (
     <main className="wrap py-14 md:py-20">
+      <Link href="/account/orders" className="text-sm underline underline-offset-4">
+        注文履歴へ戻る
+      </Link>
       <p className="eyebrow">Order detail</p>
       <h1 className="serif mt-4 text-4xl">{order.orderNumber}</h1>
       <div className="mt-8 flex flex-wrap gap-6 text-sm">

@@ -63,27 +63,46 @@ export function CustomerOrderMessages({
     <section className="mt-10 border line bg-white p-5 md:p-7">
       <h2 className="serif text-2xl">この注文について問い合わせる</h2>
       {thread ? (
-        <div className="mt-6 space-y-4" aria-label="メッセージ履歴">
+        <div className="mt-6 space-y-5" aria-label="メッセージ履歴">
           {thread.messages.map((message) => (
             <article
               key={message.id}
+              data-message-direction={message.direction}
               className={
                 message.direction === 'ADMIN'
-                  ? 'border-l-2 border-[#6f1831] pl-4'
-                  : 'border-l-2 border-stone-300 pl-4'
+                  ? 'flex justify-start'
+                  : 'flex justify-end'
               }
             >
-              <p className="text-xs font-medium text-[#6f1831]">
-                {message.direction === 'ADMIN'
-                  ? `LINXAS${message.authorAdmin ? ` / ${message.authorAdmin.name}` : ''}`
-                  : 'お客様'}
-              </p>
-              <p className="mt-2 whitespace-pre-wrap text-sm leading-7">
-                {message.body}
-              </p>
-              <time className="mt-2 block text-xs text-stone-500">
-                {new Date(message.createdAt).toLocaleString('ja-JP')}
-              </time>
+              <div
+                className={
+                  message.direction === 'ADMIN'
+                    ? 'max-w-[88%] border border-stone-200 bg-[#fffdf9] px-4 py-3 md:max-w-[72%]'
+                    : 'max-w-[88%] bg-[#6d2227] px-4 py-3 text-white md:max-w-[72%]'
+                }
+              >
+                <p
+                  className={
+                    message.direction === 'ADMIN'
+                      ? 'text-xs font-semibold text-[#6d2227]'
+                      : 'text-xs font-semibold text-white/85'
+                  }
+                >
+                  {message.direction === 'ADMIN' ? 'カスタマーセンター' : 'お客様'}
+                </p>
+                <p className="mt-2 whitespace-pre-wrap text-sm leading-7">
+                  {message.body}
+                </p>
+                <time
+                  className={
+                    message.direction === 'ADMIN'
+                      ? 'mt-2 block text-xs text-stone-500'
+                      : 'mt-2 block text-xs text-white/70'
+                  }
+                >
+                  {new Date(message.createdAt).toLocaleString('ja-JP')}
+                </time>
+              </div>
             </article>
           ))}
         </div>

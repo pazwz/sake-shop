@@ -15,8 +15,11 @@ test.describe('E2E-13: customer notifications', () => {
     await expect(page.getByText('× 1')).toBeVisible();
     await expect(page.getByRole('link', { name: 'お知らせ' })).toBeVisible();
     await page.getByRole('link', { name: /この注文について問い合わせる|メッセージを確認/ }).click();
+    await expect(page.getByRole('link', { name: '注文詳細へ戻る' })).toBeVisible();
     await expect(page.getByLabel('メッセージ履歴')).toBeVisible();
     await page.goto('/account/notifications', { waitUntil: 'domcontentloaded' });
+    await expect(page.getByRole('heading', { name: 'ご注文・個別のお知らせ' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'サイトからのお知らせ' })).toBeVisible();
     await expect(page.getByText(`注文 ${process.env.E2E_QA_ORDER_NUMBER!} への返信`)).toBeVisible();
     await expect(page.getByText('E2E fixture admin reply.')).toBeVisible();
   });

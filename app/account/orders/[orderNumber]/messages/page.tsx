@@ -1,4 +1,5 @@
 import { notFound, redirect } from 'next/navigation';
+import Link from 'next/link';
 import { CustomerOrderMessages } from '@/components/customer-order-messages';
 import { NotFoundError } from '@/lib/errors';
 import { getCurrentCustomer } from '@/services/customer-authorization.service';
@@ -32,6 +33,12 @@ export default async function OrderMessagesPage({
   );
   return (
     <main className="wrap py-14 md:py-20">
+      <Link
+        href={`/account/orders/${encodeURIComponent(order.orderNumber)}`}
+        className="text-sm underline underline-offset-4"
+      >
+        注文詳細へ戻る
+      </Link>
       <p className="eyebrow">Order support</p>
       <h1 className="serif mt-4 text-4xl">注文についてのメッセージ</h1>
       <p className="mt-4 text-sm text-stone-600">

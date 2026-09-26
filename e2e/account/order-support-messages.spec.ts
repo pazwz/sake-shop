@@ -20,9 +20,15 @@ test.describe('E2E-12: authenticated order support messages', () => {
     await page.goto(
       `/account/orders/${encodeURIComponent(process.env.E2E_QA_ORDER_NUMBER!)}`,
     );
-    await page
-      .getByRole('link', { name: /この注文について問い合わせる|メッセージを確認/ })
-      .click();
+    await expect(page.getByRole('link', { name: '注文履歴へ戻る' })).toBeVisible();
+    await Promise.all([
+      page.waitForURL(/\/account\/orders\/[^/]+\/messages$/),
+      page
+        .getByRole('link', { name: /この注文について問い合わせる|メッセージを確認/ })
+        .click(),
+    ]);
+    await expect(page.getByRole('link', { name: '注文詳細へ戻る' })).toBeVisible();
+    await expect(page.getByText('カスタマーセンター')).toBeVisible();
     await page.getByLabel('メッセージ入力').fill('E2E order support message.');
     const response = page.waitForResponse(
       (candidate) => {
@@ -38,6 +44,13 @@ test.describe('E2E-12: authenticated order support messages', () => {
     await expect((await response).status()).toBe(201);
     await expect(
       page.getByLabel('メッセージ履歴').getByText('E2E order support message.').last(),
+    ).toBeVisible();
+    await expect(
+      page
+        .locator('[data-message-direction="CUSTOMER"]')
+        .filter({ hasText: 'E2E order support message.' })
+        .last()
+        .getByText('お客様', { exact: true }),
     ).toBeVisible();
   });
 });
