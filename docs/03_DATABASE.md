@@ -629,6 +629,8 @@ product_name
 
 product_code
 
+product_image_url_snapshot（nullable；下单时保存首张商品图的持久 URL，旧订单不回填）
+
 unit_price
 
 quantity

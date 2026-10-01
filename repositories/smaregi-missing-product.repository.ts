@@ -18,10 +18,12 @@ export type SmaregiMissingProductRecord = {
 };
 
 export class SmaregiMissingProductRepository {
+  public constructor(private readonly database = prisma) {}
+
   public async findAbsentFromSource(
     sourceProductIds: readonly string[],
   ): Promise<SmaregiMissingProductRecord[]> {
-    const products = await prisma.product.findMany({
+    const products = await this.database.product.findMany({
       where: { smaregiProductId: { notIn: [...sourceProductIds] } },
       orderBy: { smaregiProductId: 'asc' },
       select: {
@@ -63,20 +65,21 @@ export class SmaregiMissingProductRepository {
   }
 
   public async countImageUrlReferences(imageUrl: string) {
-    const [products, desktopCollections, mobileCollections, editorial, labels] =
+    const [products, orderItems, desktopCollections, mobileCollections, editorial, labels] =
       await Promise.all([
-        prisma.productImage.count({ where: { imageUrl } }),
-        prisma.featuredCollection.count({
+        this.database.productImage.count({ where: { imageUrl } }),
+        this.database.orderItem.count({ where: { productImageUrlSnapshot: imageUrl } }),
+        this.database.featuredCollection.count({
           where: { desktopImageUrl: imageUrl },
         }),
-        prisma.featuredCollection.count({
+        this.database.featuredCollection.count({
           where: { mobileImageUrl: imageUrl },
         }),
-        prisma.editorialSection.count({ where: { imageUrl } }),
-        prisma.shipment.count({ where: { labelFileUrl: imageUrl } }),
+        this.database.editorialSection.count({ where: { imageUrl } }),
+        this.database.shipment.count({ where: { labelFileUrl: imageUrl } }),
       ]);
     return (
-      products + desktopCollections + mobileCollections + editorial + labels
+      products + orderItems + desktopCollections + mobileCollections + editorial + labels
     );
   }
 }

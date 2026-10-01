@@ -7,6 +7,7 @@ import { prisma } from '@/lib/prisma';
 
 const productInclude = {
   category: true,
+  images: { orderBy: { displayOrder: 'asc' }, take: 1 },
   inventoryMirrors: {
     orderBy: { createdAt: 'asc' },
   },
@@ -42,6 +43,7 @@ export type ReservedOrderInput = {
     productId: string;
     productName: string;
     productCode: string;
+    productImageUrlSnapshot: string | null;
     unitPrice: number;
     quantity: number;
     taxRate: Prisma.Decimal;
@@ -117,6 +119,7 @@ class PrismaLockedInventoryReservationTransaction
             productId: item.productId,
             productName: item.productName,
             productCode: item.productCode,
+            productImageUrlSnapshot: item.productImageUrlSnapshot,
             unitPrice: item.unitPrice,
             quantity: item.quantity,
             taxRate: item.taxRate,

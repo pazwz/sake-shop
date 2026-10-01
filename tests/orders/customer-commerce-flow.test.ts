@@ -85,6 +85,7 @@ test('customer commerce integration: auth, checkout ownership, history and faile
             smaregiProductId: '8000001',
             productCode: '4900000000001',
             name: 'Test bottle',
+            images: [{ imageUrl: 'https://example.test/ordered-bottle.jpg' }],
             price: new Prisma.Decimal(1000),
             taxRate: new Prisma.Decimal(10),
             isActive: true,
@@ -120,6 +121,10 @@ test('customer commerce integration: auth, checkout ownership, history and faile
   ).createForCustomer(orderInput, current!.id);
   const persistedOrder = persistedOrders[0];
   assert.equal(persistedOrder.customerId, current!.id);
+  assert.equal(
+    (persistedOrder.items as Array<{ productImageUrlSnapshot: string | null }>)[0].productImageUrlSnapshot,
+    'https://example.test/ordered-bottle.jpg',
+  );
   assert.deepEqual(persistedOrder.shippingQuoteSnapshot, {
     baseFee: 880,
     coolFee: 0,

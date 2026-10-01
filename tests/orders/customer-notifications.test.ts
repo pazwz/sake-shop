@@ -29,7 +29,7 @@ test('customer message sender uses the customer profile name with a safe fallbac
 });
 
 test('customer notification and order-message pages retain distinct notification groups and conversation semantics', async () => {
-  const [notificationsPage, messagesPage, ordersPage, orderPage, orderMessagesPage] = await Promise.all([
+  const [notificationsPage, messagesPage, ordersPage, orderPage, orderMessagesPage, orderDetail] = await Promise.all([
     readFile(`${process.cwd()}/app/account/notifications/page.tsx`, 'utf8'),
     readFile(`${process.cwd()}/components/customer-order-messages.tsx`, 'utf8'),
     readFile(`${process.cwd()}/app/account/orders/page.tsx`, 'utf8'),
@@ -38,6 +38,7 @@ test('customer notification and order-message pages retain distinct notification
       `${process.cwd()}/app/account/orders/[orderNumber]/messages/page.tsx`,
       'utf8',
     ),
+    readFile(`${process.cwd()}/components/customer-order-detail.tsx`, 'utf8'),
   ]);
 
   assert.match(notificationsPage, /ご注文・個別のお知らせ/);
@@ -50,6 +51,7 @@ test('customer notification and order-message pages retain distinct notification
   assert.match(messagesPage, /customerDisplayName/);
   assert.match(messagesPage, /data-message-direction/);
   assert.match(ordersPage, /MY PAGEへ戻る/);
-  assert.match(orderPage, /注文履歴へ戻る/);
+  assert.match(orderPage, /<CustomerOrderDetail order=\{order\}/);
+  assert.match(orderDetail, /注文履歴へ戻る/);
   assert.match(orderMessagesPage, /注文詳細へ戻る/);
 });

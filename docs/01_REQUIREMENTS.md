@@ -8,6 +8,11 @@ Last Update: 2026-08-08
 
 # 一、项目目标
 
+Customer 注文詳細は注文時の商品名・単価・画像 URL と配送先 snapshot を表示する。
+画像 snapshot がない旧注文のみ現在の商品画像へ fallback し、画像がなければ placeholder
+を表示する。注文・支払・配送状態は顧客向け日本語へ変換し、実在する支払・配送情報と
+注文金額のみ表示する。Order ownership は必ず session customerId と注文番号で限定する。
+
 开发一套面向日本市场的高端酒类 EC 网站。
 
 定位：

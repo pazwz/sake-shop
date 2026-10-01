@@ -35,12 +35,14 @@ export const customerOrderSelect = {
   taxAmount: true,
   discountAmount: true,
   totalAmount: true,
+  paymentMethod: true,
   shippingAddressSnapshot: true,
   items: {
     select: {
       productId: true,
       productName: true,
       productCode: true,
+      productImageUrlSnapshot: true,
       unitPrice: true,
       quantity: true,
       subtotal: true,
@@ -56,6 +58,11 @@ export const customerOrderSelect = {
       shippedAt: true,
       deliveredAt: true,
     },
+    orderBy: { createdAt: 'desc' },
+    take: 1,
+  },
+  payments: {
+    select: { status: true, paidAt: true },
     orderBy: { createdAt: 'desc' },
     take: 1,
   },

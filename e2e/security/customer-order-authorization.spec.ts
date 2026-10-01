@@ -32,7 +32,8 @@ test.describe('E2E-08: customer order authorization', () => {
         process.env.E2E_QA_PASSWORD!,
       );
       await ownerPage.goto(`/account/orders/${encodeURIComponent(orderNumber)}`);
-      await expect(ownerPage.getByRole('heading', { name: orderNumber })).toBeVisible();
+      await expect(ownerPage.getByRole('heading', { name: '注文詳細', exact: true })).toBeVisible();
+      await expect(ownerPage.getByTestId('order-number')).toContainText(orderNumber);
 
       const otherPage = await otherCustomer.newPage();
       await loginCustomer(
@@ -50,7 +51,7 @@ test.describe('E2E-08: customer order authorization', () => {
       expect(response?.status()).toBe(200);
       await expect(otherPage.getByText('404')).toBeVisible();
       await expect(
-        otherPage.getByRole('heading', { name: orderNumber }),
+        otherPage.getByTestId('order-number'),
       ).not.toBeVisible();
     } finally {
       await owner.close();

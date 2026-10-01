@@ -55,7 +55,7 @@ export class CustomerOrderAccessService {
       paymentStatus: order.paymentStatus,
       shipmentStatus: order.shipmentStatus,
       totalAmount: asNumber(order.totalAmount),
-      items: order.items.map((item) => ({ productName: item.productName, quantity: item.quantity, imageUrl: item.product?.images[0]?.imageUrl ?? null, imageAlt: item.product?.images[0]?.altText ?? null })),
+      items: order.items.map((item) => ({ productName: item.productName, quantity: item.quantity, imageUrl: item.productImageUrlSnapshot ?? item.product?.images[0]?.imageUrl ?? null, imageAlt: item.productImageUrlSnapshot ? item.productName : item.product?.images[0]?.altText ?? null })),
       shipment: order.shipments[0] ? { ...order.shipments[0], shippedAt: order.shipments[0].shippedAt?.toISOString() ?? null, deliveredAt: order.shipments[0].deliveredAt?.toISOString() ?? null } : null,
       hasUnreadMessage: (() => { const thread = order.contactInquiries[0]; const last = thread?.messages[0]?.createdAt; return !!last && (!thread.customerLastReadAt || last > thread.customerLastReadAt); })(),
     };
@@ -76,14 +76,19 @@ export class CustomerOrderAccessService {
       shippingFee: asNumber(order.shippingFee),
       taxAmount: asNumber(order.taxAmount),
       discountAmount: asNumber(order.discountAmount),
+      paymentMethod: order.paymentMethod ?? null,
+      payment: order.payments?.[0] ? {
+        status: order.payments[0].status,
+        paidAt: order.payments[0].paidAt?.toISOString() ?? null,
+      } : null,
       shippingAddress: addressFrom(order.shippingAddressSnapshot),
       items: order.items.map((item) => ({
         productId: item.productId, productName: item.productName, productCode: item.productCode,
         unitPrice: asNumber(item.unitPrice),
         subtotal: asNumber(item.subtotal),
         quantity: item.quantity,
-        imageUrl: item.product?.images[0]?.imageUrl ?? null,
-        imageAlt: item.product?.images[0]?.altText ?? null,
+        imageUrl: item.productImageUrlSnapshot ?? item.product?.images[0]?.imageUrl ?? null,
+        imageAlt: item.productImageUrlSnapshot ? item.productName : item.product?.images[0]?.altText ?? null,
       })),
     };
   }

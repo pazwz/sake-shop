@@ -22,6 +22,8 @@ export type CustomerOrderDetail = Omit<CustomerOrderSummary, 'items' | 'shipment
   shippingFee: number;
   taxAmount: number;
   discountAmount: number;
+  paymentMethod: string | null;
+  payment: { status: PaymentStatus; paidAt: string | null } | null;
   shippingAddress: {
     postalCode: string;
     prefecture: string;

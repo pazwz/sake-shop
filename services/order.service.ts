@@ -187,6 +187,7 @@ export class OrderService {
               productId: product.id,
               productName: product.name,
               productCode: product.productCode,
+              productImageUrlSnapshot: product.images?.[0]?.imageUrl ?? null,
               unitPrice,
               quantity,
               taxRate: product.taxRate,

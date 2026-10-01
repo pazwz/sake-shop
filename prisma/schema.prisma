@@ -391,6 +391,7 @@ model OrderItem {
   productId         String                @map("product_id")
   productName       String                @map("product_name")
   productCode       String                @map("product_code")
+  productImageUrlSnapshot String?         @map("product_image_url_snapshot")
   unitPrice         Decimal               @map("unit_price") @db.Decimal(12, 2)
   quantity          Int
   taxRate           Decimal               @map("tax_rate") @db.Decimal(5, 2)
