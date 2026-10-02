@@ -1,4 +1,3 @@
-import { AdminRole } from '@prisma/client';
 import { notFound, redirect } from 'next/navigation';
 import { NewsletterCampaignForm } from '@/components/admin/newsletter-campaign-form';
 import { NEWSLETTER_CAMPAIGN_AUDIT_LABELS } from '@/config/newsletter-campaign';
@@ -28,7 +27,6 @@ export default async function NewsletterCampaignPage({
     throw error;
   }
   const editable =
-    (admin.role === AdminRole.OWNER || admin.role === AdminRole.MANAGER) &&
     ['DRAFT', 'SCHEDULED'].includes(campaign.status);
   return (
     <main className="wrap py-16">

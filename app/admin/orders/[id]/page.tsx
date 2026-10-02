@@ -1,4 +1,3 @@
-import { AdminRole } from '@prisma/client';
 import { AdminOrderDetail } from '@/components/admin/admin-order-detail';
 import { getCurrentAdmin } from '@/services/admin-authorization.service';
 
@@ -11,9 +10,7 @@ export default async function AdminOrderPage({
   return (
     <AdminOrderDetail
       orderId={id}
-      canManage={
-        admin?.role === AdminRole.OWNER || admin?.role === AdminRole.MANAGER
-      }
+      canManage={Boolean(admin)}
     />
   );
 }

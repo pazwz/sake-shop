@@ -1,24 +1,9 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { jwtVerify } from 'jose';
+import { ADMIN_SESSION_COOKIE, readAdminSessionToken } from '@/lib/admin-session';
 
-const sessionCookie = 'kura_admin_session';
-const getKey = () => {
-  const secret = process.env.ADMIN_SESSION_SECRET ?? process.env.JWT_SECRET;
-  return secret ? new TextEncoder().encode(secret) : null;
-};
-
-const readSession = async (request: NextRequest) => {
-  const token = request.cookies.get(sessionCookie)?.value;
-  const key = getKey();
-  if (!token || !key) return null;
-  try {
-    const { payload } = await jwtVerify(token, key, { algorithms: ['HS256'] });
-    return typeof payload.role === 'string' ? { role: payload.role } : null;
-  } catch {
-    return null;
-  }
-};
+const readSession = (request: NextRequest) =>
+  readAdminSessionToken(request.cookies.get(ADMIN_SESSION_COOKIE)?.value);
 
 const getProductDetailSlug = (pathname: string) => {
   const match = /^\/products\/([^/]+)$/.exec(pathname);
@@ -50,10 +35,7 @@ export async function proxy(request: NextRequest) {
     const previewToken = request.nextUrl.searchParams.get('previewToken');
     if (previewToken) {
       const previewSession = await readSession(request);
-      if (
-        previewSession?.role === 'OWNER' ||
-        previewSession?.role === 'MANAGER'
-      ) {
+      if (previewSession) {
         // The page performs the authoritative admin, token, product ID, and
         // slug checks. This only prevents the public visibility guard from
         // rejecting a legitimate unpublished preview before it reaches SSR.
@@ -75,12 +57,6 @@ export async function proxy(request: NextRequest) {
   if (pathname.startsWith('/api/v1/admin/auth/')) return NextResponse.next();
   const session = await readSession(request);
   if (session) {
-    if (
-      session.role === 'STAFF' &&
-      pathname.startsWith('/admin/collections/')
-    ) {
-      return NextResponse.redirect(new URL('/admin/collections', request.url));
-    }
     return NextResponse.next();
   }
   if (pathname.startsWith('/api/'))

@@ -208,11 +208,19 @@ test('admin workspace: dual-session authors, independent reads and concurrent re
     ).toBe(422);
 
     const adminText = `${text} admin`;
+    const adminReplyKey = crypto.randomUUID();
     const adminReply = await page.request.post(
       `/api/v1/admin/inquiries/${inquiryId}/reply`,
-      { data: { body: adminText, idempotencyKey: crypto.randomUUID() } },
+      { data: { body: adminText, idempotencyKey: adminReplyKey } },
     );
     expect(adminReply.status()).toBe(201);
+    const repeatedReply = await page.request.post(
+      `/api/v1/admin/inquiries/${inquiryId}/reply`,
+      { data: { body: adminText, idempotencyKey: adminReplyKey } },
+    );
+    expect(repeatedReply.status()).toBe(201);
+    expect((await repeatedReply.json()).data.duplicate).toBe(true);
+    expect(await database.contactInquiryMessage.count({ where: { inquiryId, body: adminText } })).toBe(1);
     const adminMessage = await database.contactInquiryMessage.findFirstOrThrow({
       where: { inquiryId, body: adminText },
       include: { authorAdmin: true },

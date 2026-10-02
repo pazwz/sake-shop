@@ -82,7 +82,7 @@ export default async function AdminPage() {
       >
         注文を管理
       </Link>
-      {admin.role !== 'STAFF' ? (
+      {admin ? (
         <Link
           href="/admin/integrations/smaregi"
           className="btn ml-3 mt-8 border border-[#171412]"

@@ -6,6 +6,7 @@ import { AdminRepository } from '@/repositories/admin.repository';
 export const CMS_ADMIN_ROLES: AdminRole[] = [
   AdminRole.OWNER,
   AdminRole.MANAGER,
+  AdminRole.STAFF,
 ];
 
 export class AdminService {

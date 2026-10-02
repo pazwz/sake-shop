@@ -1,6 +1,6 @@
 import { AdminRole } from '@prisma/client';
 import { cookies } from 'next/headers';
-import { ForbiddenError, UnauthorizedError } from '@/lib/errors';
+import { UnauthorizedError } from '@/lib/errors';
 import {
   ADMIN_SESSION_COOKIE,
   readAdminSessionToken,
@@ -20,13 +20,12 @@ export const getCurrentAdmin = async () => {
   }
 };
 
-export const requireAdmin = async (roles?: AdminRole[]) => {
+// Legacy role arguments remain source-compatible; validity is checked against
+// the current database account on every request, never against its role.
+export const requireAdmin = async (_legacyRoles?: AdminRole[]) => {
   const admin = await getCurrentAdmin();
   if (!admin)
     throw new UnauthorizedError('Administrator authentication is required.');
-  if (roles && !roles.includes(admin.role)) {
-    throw new ForbiddenError('Administrator permission is denied.');
-  }
   return admin;
 };
 

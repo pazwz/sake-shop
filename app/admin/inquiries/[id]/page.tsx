@@ -13,19 +13,15 @@ export default async function InquiryPage({
   if (!admin) redirect('/admin/login');
   const service = new ContactInquiryService();
   let inquiry;
-  let admins;
   try {
-    [inquiry, admins] = await Promise.all([
-      service.get((await params).id),
-      service.activeAdmins(),
-    ]);
+    inquiry = await service.get((await params).id);
   } catch (error) {
     if (error instanceof NotFoundError) notFound();
     throw error;
   }
   return (
     <main className="wrap py-16">
-      <InquiryDetail inquiry={inquiry} admins={admins} currentAdmin={admin} />
+      <InquiryDetail inquiry={inquiry} />
     </main>
   );
 }

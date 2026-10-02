@@ -133,17 +133,10 @@ const createHarness = (options?: {
   return { service, applied, succeeded, failed };
 };
 
-test('accepts only OWNER/MANAGER for manual synchronization', () => {
+test('valid admin roles share manual synchronization permission', () => {
   assert.doesNotThrow(() => assertSmaregiSyncAdminRole(AdminRole.OWNER));
   assert.doesNotThrow(() => assertSmaregiSyncAdminRole(AdminRole.MANAGER));
-  assert.throws(
-    () => assertSmaregiSyncAdminRole(AdminRole.STAFF),
-    (error: unknown) =>
-      typeof error === 'object' &&
-      error !== null &&
-      'statusCode' in error &&
-      error.statusCode === 403,
-  );
+  assert.doesNotThrow(() => assertSmaregiSyncAdminRole(AdminRole.STAFF));
 });
 
 test('rejects missing or incorrect CRON_SECRET and accepts an exact bearer token', () => {

@@ -1,36 +1,36 @@
 import { AdminRole } from '@prisma/client';
 
 export const developmentSeedAdmin = {
-  email: 'owner@kura.local',
-  name: 'KURA Development Owner',
+  email: 'admin-a@example.test',
+  name: 'Test Admin A',
   role: AdminRole.OWNER,
   isActive: true,
 } as const;
 
 export const developmentSeedAdminAccessAccounts = [
   {
-    email: 'manager@kura.local',
-    name: 'KURA Development Manager',
+    email: 'admin-b@example.test',
+    name: 'Test Admin B',
     role: AdminRole.MANAGER,
     isActive: true,
   },
   {
-    email: 'staff@kura.local',
-    name: 'KURA Development Staff',
+    email: 'admin-c@example.test',
+    name: 'Test Admin C',
     role: AdminRole.STAFF,
     isActive: true,
   },
   {
-    email: 'disabled@kura.local',
-    name: 'KURA Disabled Admin',
+    email: 'admin-disabled@example.test',
+    name: 'Test Admin Disabled',
     role: AdminRole.MANAGER,
     isActive: false,
   },
 ] as const;
 
 export const developmentSeedAdminWithoutPassword = {
-  email: 'unconfigured@kura.local',
-  name: 'KURA Unconfigured Admin',
+  email: 'admin-unconfigured@example.test',
+  name: 'Test Admin Unconfigured',
   role: AdminRole.STAFF,
   isActive: true,
 } as const;

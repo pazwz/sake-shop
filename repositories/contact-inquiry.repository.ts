@@ -192,6 +192,13 @@ export class ContactInquiryRepository {
       where: { id },
       select: {
         ...threadSelect,
+        messages: {
+          ...threadSelect.messages,
+          select: {
+            ...threadSelect.messages.select,
+            authorAdmin: { select: { name: true, isActive: true } },
+          },
+        },
         name: true,
         email: true,
         message: true,
@@ -204,7 +211,7 @@ export class ContactInquiryRepository {
             id: true,
             body: true,
             createdAt: true,
-            admin: { select: { name: true } },
+            admin: { select: { name: true, isActive: true } },
           },
         },
         order: { select: { id: true, orderNumber: true } },

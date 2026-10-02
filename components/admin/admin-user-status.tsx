@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 export function AdminUserStatus({
   admin,
 }: {
-  admin: { name: string; role: string };
+  admin: { name: string };
 }) {
   const router = useRouter();
   const logout = async () => {
@@ -16,7 +16,7 @@ export function AdminUserStatus({
   return (
     <div className="flex items-center gap-3 text-xs">
       <span>
-        管理者としてログイン中：{admin.name} / {admin.role}
+        管理者としてログイン中：{admin.name}
       </span>
       <button
         type="button"

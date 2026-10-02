@@ -13,6 +13,12 @@ MY PAGE / BAG / 商品カテゴリ navigation を表示しない。お問い合�
 独立して保存し、表示した Customer message ID のみ既読にする。同一 browser の Admin / Customer
 session は共存可能だが、actor は各 route の認証だけで決定する。
 
+正式運用は一つの有効な LINXAS Admin を使用する。Admin は認証済み session、
+isActive=true、設定済み password の確認を必須とし、OWNER / MANAGER / STAFF による
+業務権限差を設けない。enum、過去の担当者・作者・管理者別既読は保持するが、担当者と role は UI に表示しない。
+無効化済みの歴史作者は「旧管理者」と表示する。状態保存中は操作を無効にし、成功・失敗を表示、失敗時は元の値へ戻す。
+返信中は重複操作を防ぎ、成功時だけ入力を消去する。
+
 Customer 注文詳細は注文時の商品名・単価・画像 URL と配送先 snapshot を表示する。
 画像 snapshot がない旧注文のみ現在の商品画像へ fallback し、画像がなければ placeholder
 を表示する。注文・支払・配送状態は顧客向け日本語へ変換し、実在する支払・配送情報と
@@ -206,7 +212,7 @@ Smaregi Product ID、Category、EC 公開状态及数据来源筛选。默认每
 
 Smaregi 管理的商品名、商品代码、Category、价格、有效状态、同步时间和四店库存为
 只读。LINXAS Admin 只可编辑 slug、商品说明、tasting notes、生产者、产地、容量、
-酒精度、商品图片和 EC 公開状态。OWNER / MANAGER 可修改；STAFF 只可查看列表。
+酒精度、商品图片和 EC 公開状态。所有有效 Admin 均可修改。
 
 非公開商品只有在 Smaregi 商品有效、价格大于 0、slug 合法且唯一、至少有一张图片、
 且同步来源有效时才可公开。说明和库存为 0 只显示 warning，不阻止公开。
@@ -231,9 +237,9 @@ Seasonal、サイトマップおよび直接商品詳細から常に除外する
 対象外とする。対象は確認済み Smaregi identity の明示 allow/deny 設定で管理し、名称の
 部分一致だけで通常商品を除外しない。
 
-OWNER / MANAGER は Admin 商品編集画面から短時間の署名付き URL を発行し、現在の
+有効な Admin は商品編集画面から短時間の署名付き URL を発行し、現在の
 Admin session を保持したまま非公開商品の実商品詳細 UI を確認できる。preview token
-単体ではアクセスできず、一般利用者および STAFF は利用できない。
+単体ではアクセスできず、一般利用者および無効な Admin は利用できない。
 
 トップナビゲーションは実在し、公開可能な独立商品を持つ Category だけを動的に
 メガメニューへ表示する。固定の存在しない小分類を作らず、特集入口は公開中の
@@ -418,7 +424,7 @@ stera EC（待确认）
 
 价格同步
 
-Production 商品・Category・四店库存必须支持每 15 分钟的增量同步及 OWNER / MANAGER
+Production 商品・Category・四店库存必须支持每 15 分钟的增量同步及有效 Admin
 手动立即同步。两个入口共用同一全局锁、异常分类、原子写入与 SyncLog；Smaregi
 始终只读。单商品税/负库存异常隔离，source identity、Store 集合、全局税率或 plan
 不一致时整批停止。新增商品默认 `isEcAvailable=false`，既有 LINXAS-owned 字段不得覆盖。

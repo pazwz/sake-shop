@@ -9,6 +9,7 @@ import type {
 export const SMAREGI_SYNC_ADMIN_ROLES = [
   AdminRole.OWNER,
   AdminRole.MANAGER,
+  AdminRole.STAFF,
 ] as const;
 
 export const assertSmaregiSyncAdminRole = (role: AdminRole) => {

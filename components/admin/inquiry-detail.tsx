@@ -1,11 +1,12 @@
 'use client';
 
-import { AdminRole, ContactInquiryStatus } from '@prisma/client';
+import { ContactInquiryStatus } from '@prisma/client';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { CONTACT_INQUIRY_STATUS_LABELS } from '@/config/contact-inquiry';
 import { ADMIN_INQUIRY_READ_EVENT } from '@/lib/admin-inquiry-polling';
+import { getAdminDisplayName } from '@/lib/admin-display-name';
 
 type Inquiry = {
   id: string;
@@ -21,21 +22,21 @@ type Inquiry = {
   assignedAdminId: string | null;
   assignedAdmin: { id: string; name: string } | null;
   createdAt: Date;
+  updatedAt: Date;
   messages: Array<{
     id: string;
     direction: string;
     body: string;
     createdAt: Date;
-    authorAdmin: { name: string } | null;
+    authorAdmin: { name: string; isActive: boolean } | null;
   }>;
   notes: Array<{
     id: string;
     body: string;
     createdAt: Date;
-    admin: { name: string };
+    admin: { name: string; isActive: boolean };
   }>;
 };
-type Admin = { id: string; name: string; role: AdminRole };
 
 const call = async (
   url: string,
@@ -48,21 +49,40 @@ const call = async (
     body: JSON.stringify(body),
   });
   if (!response.ok) throw new Error('更新に失敗しました。');
+  return response;
 };
-export function InquiryDetail({
-  inquiry,
-  admins,
-  currentAdmin,
-}: {
-  inquiry: Inquiry;
-  admins: Admin[];
-  currentAdmin: Admin;
-}) {
+export function InquiryDetail({ inquiry }: { inquiry: Inquiry }) {
   const router = useRouter();
   const [reply, setReply] = useState('');
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const locked = useRef(false);
+  const [status, setStatus] = useState(inquiry.status);
+  const savedStatus = useRef({
+    status: inquiry.status,
+    updatedAt: new Date(inquiry.updatedAt).getTime(),
+  });
+  const [statusFeedback, setStatusFeedback] = useState<
+    'idle' | 'pending' | 'success' | 'error'
+  >('idle');
+  const [replyFeedback, setReplyFeedback] = useState<
+    'idle' | 'pending' | 'success' | 'error'
+  >('idle');
+  const replyKey = useRef<string | null>(null);
+
+  useEffect(() => {
+    const updatedAt = new Date(inquiry.updatedAt).getTime();
+    if (updatedAt <= savedStatus.current.updatedAt) return;
+    savedStatus.current = { status: inquiry.status, updatedAt };
+    if (!locked.current) setStatus(inquiry.status);
+  }, [inquiry.status, inquiry.updatedAt]);
+
+  useEffect(() => {
+    if (statusFeedback !== 'success') return;
+    const timer = window.setTimeout(() => setStatusFeedback('idle'), 1800);
+    return () => window.clearTimeout(timer);
+  }, [statusFeedback]);
   useEffect(() => {
     let active = true;
     let started = false;
@@ -96,6 +116,8 @@ export function InquiryDetail({
     };
   }, [inquiry.id, inquiry.messages]);
   const run = async (operation: () => Promise<void>) => {
+    if (locked.current) return;
+    locked.current = true;
     setBusy(true);
     setError('');
     try {
@@ -104,6 +126,58 @@ export function InquiryDetail({
     } catch (e) {
       setError(e instanceof Error ? e.message : '更新に失敗しました。');
     } finally {
+      locked.current = false;
+      setBusy(false);
+    }
+  };
+  const saveStatus = async (next: ContactInquiryStatus) => {
+    if (locked.current || next === status) return;
+    locked.current = true;
+    setBusy(true);
+    setStatus(next);
+    setStatusFeedback('pending');
+    try {
+      const response = await call(`/api/v1/admin/inquiries/${inquiry.id}/status`, 'PATCH', {
+        status: next,
+      });
+      const { data } = (await response.json()) as {
+        data: { status: ContactInquiryStatus; updatedAt: string };
+      };
+      const updatedAt = new Date(data.updatedAt).getTime();
+      if (updatedAt >= savedStatus.current.updatedAt)
+        savedStatus.current = { status: data.status, updatedAt };
+      setStatus(savedStatus.current.status);
+      setStatusFeedback('success');
+      router.refresh();
+    } catch {
+      setStatus(savedStatus.current.status);
+      setStatusFeedback('error');
+    } finally {
+      locked.current = false;
+      setBusy(false);
+    }
+  };
+  const sendReply = async () => {
+    if (locked.current || !reply.trim()) return;
+    locked.current = true;
+    setBusy(true);
+    setReplyFeedback('pending');
+    // Keep the same key after an uncertain failure; retry cannot create a duplicate.
+    const idempotencyKey = replyKey.current ?? crypto.randomUUID();
+    replyKey.current = idempotencyKey;
+    try {
+      await call(`/api/v1/admin/inquiries/${inquiry.id}/reply`, 'POST', {
+        body: reply,
+        idempotencyKey,
+      });
+      setReply('');
+      replyKey.current = null;
+      setReplyFeedback('success');
+      router.refresh();
+    } catch {
+      setReplyFeedback('error');
+    } finally {
+      locked.current = false;
       setBusy(false);
     }
   };
@@ -117,9 +191,7 @@ export function InquiryDetail({
           <p className="eyebrow">{inquiry.publicId}</p>
           <h1 className="serif mt-3 text-4xl">注文メッセージ詳細</h1>
         </div>
-        <span className="text-sm">
-          {CONTACT_INQUIRY_STATUS_LABELS[inquiry.status]}
-        </span>
+        <span className="text-sm">{CONTACT_INQUIRY_STATUS_LABELS[status]}</span>
       </div>
       {error ? <p className="mt-4 text-sm text-red-700">{error}</p> : null}
       <section className="mt-8 grid gap-6 border line bg-white p-6 lg:grid-cols-[1.5fr_1fr]">
@@ -158,47 +230,14 @@ export function InquiryDetail({
           </dl>
         </div>
         <div>
-          <h2 className="font-medium">担当者・ステータス</h2>
+          <h2 className="font-medium">ステータス</h2>
           <div className="mt-3 flex flex-wrap gap-2">
             <select
-              value={inquiry.assignedAdminId ?? ''}
+              aria-label="ステータス"
+              value={status}
               disabled={busy}
               onChange={(event) =>
-                run(() =>
-                  call(
-                    `/api/v1/admin/inquiries/${inquiry.id}/assign`,
-                    'PATCH',
-                    { assignedAdminId: event.target.value || null },
-                  ),
-                )
-              }
-              className="border line p-2 text-sm"
-            >
-              <option value="">未設定</option>
-              {admins.map((admin) => (
-                <option
-                  key={admin.id}
-                  value={admin.id}
-                  disabled={
-                    currentAdmin.role === AdminRole.STAFF &&
-                    admin.id !== currentAdmin.id
-                  }
-                >
-                  {admin.name}
-                </option>
-              ))}
-            </select>
-            <select
-              value={inquiry.status}
-              disabled={busy}
-              onChange={(event) =>
-                run(() =>
-                  call(
-                    `/api/v1/admin/inquiries/${inquiry.id}/status`,
-                    'PATCH',
-                    { status: event.target.value },
-                  ),
-                )
+                void saveStatus(event.target.value as ContactInquiryStatus)
               }
               className="border line p-2 text-sm"
             >
@@ -210,6 +249,18 @@ export function InquiryDetail({
                 ),
               )}
             </select>
+            <span role="status" className="flex items-center gap-2 text-sm">
+              {statusFeedback === 'pending' ? (
+                <>
+                  <PendingSpinner />
+                  保存中…
+                </>
+              ) : null}
+              {statusFeedback === 'success' ? '保存済み' : null}
+              {statusFeedback === 'error' ? (
+                <span className="text-red-700">保存に失敗しました</span>
+              ) : null}
+            </span>
           </div>
         </div>
       </section>
@@ -227,7 +278,9 @@ export function InquiryDetail({
             >
               <p className="font-medium">
                 {message.direction === 'ADMIN' ? 'LINXASからの返信' : 'お客様'}{' '}
-                {message.authorAdmin ? `・ ${message.authorAdmin.name}` : ''}
+                {message.authorAdmin
+                  ? `・ ${getAdminDisplayName(message.authorAdmin)}`
+                  : ''}
               </p>
               <p className="mt-3 whitespace-pre-wrap break-words leading-7">
                 {message.body}
@@ -257,33 +310,42 @@ export function InquiryDetail({
         <textarea
           aria-label="お客様への返信"
           value={reply}
-          onChange={(event) => setReply(event.target.value)}
+          disabled={busy}
+          onChange={(event) => {
+            setReply(event.target.value);
+            replyKey.current = null;
+            setReplyFeedback('idle');
+          }}
           maxLength={5000}
           className="mt-4 min-h-36 w-full border line p-3 text-sm"
           placeholder="返信内容を入力してください。"
         />
         <button
           disabled={busy || !reply.trim()}
-          onClick={() =>
-            run(async () => {
-              await call(
-                `/api/v1/admin/inquiries/${inquiry.id}/reply`,
-                'POST',
-                { body: reply, idempotencyKey: crypto.randomUUID() },
-              );
-              setReply('');
-            })
-          }
+          onClick={() => void sendReply()}
           className="btn mt-3 bg-[#171412] text-white"
         >
-          返信する
+          {replyFeedback === 'pending' ? (
+            <>
+              <PendingSpinner />
+              送信中…
+            </>
+          ) : (
+            '返信する'
+          )}
         </button>
+        <p role="status" className="mt-3 text-sm">
+          {replyFeedback === 'success' ? '送信済み' : null}
+          {replyFeedback === 'error' ? (
+            <span className="text-red-700">送信に失敗しました</span>
+          ) : null}
+        </p>
       </section>
       <section className="mt-6 border line bg-white p-6">
         <h2 className="font-medium">内部メモ</h2>
         {inquiry.notes.map((item) => (
           <article key={item.id} className="mt-3 text-sm">
-            <strong>{item.admin.name}</strong>
+            <strong>{getAdminDisplayName(item.admin)}</strong>
             <p className="mt-1 whitespace-pre-wrap">{item.body}</p>
           </article>
         ))}
@@ -312,5 +374,14 @@ export function InquiryDetail({
         </button>
       </section>
     </>
+  );
+}
+
+function PendingSpinner() {
+  return (
+    <span
+      aria-hidden="true"
+      className="inline-block size-3 shrink-0 animate-spin rounded-full border border-current border-r-transparent motion-reduce:animate-none"
+    />
   );
 }

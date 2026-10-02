@@ -189,7 +189,7 @@ GET
 
 ## Smaregi 管理（Admin）
 
-すべて OWNER / MANAGER 専用で、Customer / public client は利用できない。
+すべて有効な Admin 専用で、Customer / public client は利用できない。
 
 - `POST /api/v1/admin/products/{id}/exclusion`：Smaregi-backed Product を
   「EC販売対象から除外」として tombstone 化する。Smaregi には write せず、local mirror は
@@ -556,7 +556,7 @@ POST
 
 /api/v1/admin/media/presign
 
-Role：OWNER / MANAGER
+权限：有效 Admin（已认证、active、password-backed）。
 
 Request：
 
@@ -613,7 +613,7 @@ GET
 
 /api/v1/admin/products
 
-Role：OWNER / MANAGER / STAFF
+权限：有效 Admin。
 
 Query：`q`（商品名、商品代码或 Smaregi Product ID）、`category`、`ecStatus`、
 `source`、`imageStatus`（`all` / `with` / `without`）、`page`、`limit`。默认
@@ -630,7 +630,7 @@ GET
 
 /api/v1/admin/products/{id}
 
-Role：OWNER / MANAGER / STAFF
+权限：有效 Admin。
 
 ---
 
@@ -640,9 +640,9 @@ GET
 
 /api/v1/admin/products/{id}/preview
 
-Role：OWNER / MANAGER。短時間の署名付き `previewToken` を生成して実際の
-`/products/{slug}` へ redirect する。商品ページ側でも現在の OWNER / MANAGER session、
-adminId、productId を再検証するため、token 単体または STAFF session では表示できない。
+有効な Admin は短時間の署名付き `previewToken` を生成して実際の
+`/products/{slug}` へ redirect する。商品ページ側でも現在の有効な Admin session、
+adminId、productId を再検証するため、token 単体または無効な session では表示できない。
 
 ---
 
@@ -662,7 +662,7 @@ PATCH
 `smaregiProductId`、`productCode`、`name`、`categoryId`、`price`、`taxRate`、
 `isActive`、`lastSyncedAt`、库存及其他未列入白名单的字段。
 
-Role：OWNER / MANAGER。Request 使用 strict validation。`isEcAvailable` 从 false
+权限：有效 Admin。Request 使用 strict validation。`isEcAvailable` 从 false
 改为 true 时必须通过统一 publication validation；true 改为 false 可直接执行。
 
 ---
@@ -681,7 +681,7 @@ PATCH
 
 /api/v1/admin/products/{id}/images/order
 
-Role：OWNER / MANAGER。图片文件先通过 `/api/v1/admin/media/presign` 直传 S3，
+权限：有效 Admin。图片文件先通过 `/api/v1/admin/media/presign` 直传 S3，
 上述 API 只保存 CloudFront URL、删除数据库关联或更新显示顺序。公开商品不能删除
 最后一张图片。
 
@@ -763,7 +763,7 @@ GET
 
 /api/v1/admin/collections/product-candidates
 
-Role：OWNER / MANAGER / STAFF（读取）。Query：`q`（商品名、producer、商品代码）、
+权限：有效 Admin（读取）。Query：`q`（商品名、producer、商品代码）、
 `category`（实际 Category ID）、`page`、`limit`（默认 50，最大 100）。
 
 只返回 `isActive=true`、`isEcAvailable=true` 且独立销售可能的 Product；库存为 0 的公开
@@ -801,8 +801,7 @@ PUT 使用固定字段的有序 Section 数组整体保存：
 
 权限：
 
-- OWNER / MANAGER：读取与保存
-- STAFF：只读
+- 有效 Admin：读取与保存（无 role 差异）
 - 未登录：401
 
 该 API 仅允许父 Collection 类型为 EDITORIAL。Section 商品关联不修改 FeaturedCollectionProduct。
@@ -911,13 +910,13 @@ verification / password-reset action 标记 `SKIPPED`，不会调用 provider。
 
 ### Admin email preview
 
-`/admin/email-preview` 仅 OWNER 可访问，只渲染 Verification、Password Reset、Order
+`/admin/email-preview` 仅有效 Admin 可访问，只渲染 Verification、Password Reset、Order
 Received、Shipment Sent 模板，不提供任意收件人发送功能。
 
 ### Admin newsletter campaigns
 
-全て Admin session 必須。`OWNER` / `MANAGER` は create、edit、test、schedule、send-now、cancel を
-実行でき、`STAFF` は list/detail/preview/result の read-only だけを利用できる。
+全て有効な Admin session 必須。create、edit、test、schedule、send-now、cancel、
+list/detail/preview/result の権限に role 差を設けない。
 
 - `GET|POST /api/v1/admin/newsletters`
 - `GET|PATCH /api/v1/admin/newsletters/{id}`
@@ -930,7 +929,7 @@ Received、Shipment Sent 模板，不提供任意收件人发送功能。
 
 schedule/send-now は campaign status を `SCHEDULED` にするだけで、Admin request 内で provider を
 呼ばない。worker は due campaign を一度だけ dispatch し、開始時点の `SUBSCRIBED` を Outbox にする。
-キャンペーンテストは `OWNER` / `MANAGER` が request body の strict な `{ email }` に指定した
+キャンペーンテストは有効な Admin が request body の strict な `{ email }` に指定した
 テスト送信先だけへ Outbox を作る。Campaign status、正式対象数、NewsletterSubscription を変更せず、
 機能する unsubscribe link を含めない。テスト送信先は AuditLog に記録しない。
 `DRAFT` / `SCHEDULED` は配信開始前まで編集でき、`SENDING` / `SENT` / `PARTIAL_FAILED` /
@@ -941,7 +940,7 @@ Campaign status と分離して管理画面に表示する。
 第二阶段的 Section 编辑 API 将接收动态 `sections` 数组，而不是固定数量的 image 字段。每个元素只可包含
 `imageUrl`、`imageAlt`、`headline`、`body`、`ctaLabel`、`ctaUrl` 与排序所需字段；至少一种内容必填，
 CTA label / URL 成对校验，Service 防御性限制为最多 20 个。现有 Hero 字段继续保持向后兼容。
-`PUT /api/v1/admin/newsletters/{id}/sections` 仅允许 OWNER / MANAGER，数组顺序即目标
+`PUT /api/v1/admin/newsletters/{id}/sections` 仅允许有效 Admin，数组顺序即目标
 顺序，服务端在单一 transaction 内重新写入连续 `sortOrder`；`DRAFT` 与尚未开始的 `SCHEDULED` 可编辑。
 
 ---
@@ -1139,7 +1138,7 @@ POST
 /api/v1/admin/integrations/smaregi/sync
 
 - 认证：Admin session
-- 权限：OWNER / MANAGER（STAFF 返回 403）
+- 权限：有效 Admin；role 不造成权限差异，inactive 或无 password 账号拒绝访问
 - 并发：已有同步运行时返回 409 `SYNC_ALREADY_RUNNING`
 - 执行：只调用 `ProductionSmaregiSyncService.run('ADMIN')`
 - Response：统一 API envelope 内返回 create/update/zero、deferred、quarantine、
@@ -1290,29 +1289,8 @@ Website
 
 ---
 
-STAFF：
-
-订单
-
-发货
-
----
-
-MANAGER：
-
-商品
-
-专题
-
-订单
-
-发货
-
----
-
-OWNER：
-
-全部权限
+有效 Admin：统一后台权限，不区分 OWNER / MANAGER / STAFF。
+必须同时验证独立 Admin session、isActive 和 password-backed account。
 
 ---
 
@@ -1454,5 +1432,5 @@ HTTP 200
 - `GET /api/v1/customer/notifications/summary` returns only the current customer's unread counts.
 - `POST /api/v1/customer/notifications/announcements/{id}/read` marks a currently visible announcement as read for the current customer.
 - `POST /api/v1/my/inquiries/{id}/read` marks an order-linked support thread as read after ownership is verified.
-- Admin announcement create and update routes are restricted to OWNER and MANAGER.
+- Admin announcement create and update routes require a valid active Admin session.
 ```

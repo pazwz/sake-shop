@@ -6,7 +6,7 @@ export default async function AdminLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   const admin = await getCurrentAdmin();
   return admin ? (
-    <AdminWorkspace admin={{ name: admin.name, role: admin.role }}>
+    <AdminWorkspace admin={{ name: admin.name }}>
       {children}
     </AdminWorkspace>
   ) : (

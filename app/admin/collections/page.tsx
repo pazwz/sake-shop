@@ -1,4 +1,3 @@
-import { AdminRole } from '@prisma/client';
 import Image from 'next/image';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
@@ -270,8 +269,7 @@ function CollectionContentRow({
 export default async function AdminCollectionsPage() {
   const admin = await getCurrentAdmin();
   if (!admin) redirect('/admin/login');
-  const canEdit =
-    admin.role === AdminRole.OWNER || admin.role === AdminRole.MANAGER;
+  const canEdit = true;
   const management = await collectionService.getAdminHomeManagement();
 
   return (

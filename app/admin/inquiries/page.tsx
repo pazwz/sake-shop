@@ -60,7 +60,6 @@ export default async function InquiriesPage({
               <th className="p-4">種別・お問い合わせ番号</th>
               <th className="p-4">お客様</th>
               <th className="p-4">注文番号</th>
-              <th className="p-4">担当者</th>
               <th className="p-4">最後のメッセージ</th>
               <th className="p-4" />
             </tr>
@@ -99,9 +98,6 @@ export default async function InquiriesPage({
                 </td>
                 <td className="p-4">{inquiry.orderNumber ?? '—'}</td>
                 <td className="p-4">
-                  {inquiry.assignedAdmin?.name ?? '未設定'}
-                </td>
-                <td className="p-4">
                   <p className="max-w-xs line-clamp-2">
                     {inquiry.lastMessagePreview}
                   </p>
@@ -130,7 +126,7 @@ export default async function InquiriesPage({
             ))}
             {result.items.length === 0 ? (
               <tr>
-                <td colSpan={7} className="p-8 text-center text-stone-500">
+                <td colSpan={6} className="p-8 text-center text-stone-500">
                   お問い合わせはありません。
                 </td>
               </tr>

@@ -1,4 +1,3 @@
-import { AdminRole } from '@prisma/client';
 import Image from 'next/image';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
@@ -104,8 +103,7 @@ export default async function AdminProductsPage({
 }) {
   const admin = await getCurrentAdmin();
   if (!admin) redirect('/admin/login');
-  const canEdit =
-    admin.role === AdminRole.OWNER || admin.role === AdminRole.MANAGER;
+  const canEdit = true;
   const query = adminProductQueryValidator.parse(
     scalarParams(await searchParams),
   );

@@ -1,4 +1,3 @@
-import { AdminRole } from '@prisma/client';
 import { redirect } from 'next/navigation';
 import { ProductionSmaregiSyncPanel } from '@/components/admin/production-smaregi-sync-panel';
 import { SmaregiSyncLogDetails } from '@/components/admin/smaregi-sync-log-details';
@@ -15,7 +14,7 @@ const formatDate = (value: Date | null | undefined) =>
 
 export default async function SmaregiIntegrationPage() {
   const admin = await getCurrentAdmin();
-  if (!admin || admin.role === AdminRole.STAFF) redirect('/admin');
+  if (!admin) redirect('/admin/login');
   const [status, productionStatus, activeExclusions] = await Promise.all([
     service.getSmaregiStatus(),
     service.getProductionSmaregiSyncStatus(),

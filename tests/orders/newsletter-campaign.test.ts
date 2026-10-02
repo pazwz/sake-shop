@@ -134,9 +134,9 @@ test('dynamic sections accept all supported content shapes and reject invalid co
   );
 });
 
-test('test-send permission is restricted to OWNER and MANAGER', () => {
-  assert.deepEqual(cmsAdminRoles, [AdminRole.OWNER, AdminRole.MANAGER]);
-  assert.equal((cmsAdminRoles as AdminRole[]).includes(AdminRole.STAFF), false);
+test('valid admin roles share campaign permissions', () => {
+  for (const role of Object.values(AdminRole))
+    assert.equal(cmsAdminRoles.includes(role), true);
 });
 
 test('campaign repository never passes internal adminId to Prisma create data', async () => {

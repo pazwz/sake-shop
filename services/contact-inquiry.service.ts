@@ -84,8 +84,6 @@ export class ContactInquiryService {
     assignedAdminId: string | null,
     actor: { id: string; role: AdminRole },
   ) {
-    if (actor.role === AdminRole.STAFF && assignedAdminId !== actor.id)
-      throw new ForbiddenError('担当者は自分自身にのみ設定できます。');
     const result = await this.inquiries.assign(id, assignedAdminId, actor.id);
     if (!result)
       throw new NotFoundError('お問い合わせまたは担当者が見つかりません。');
@@ -97,22 +95,6 @@ export class ContactInquiryService {
     status: ContactInquiryStatus,
     actor: { id: string; role: AdminRole },
   ) {
-    if (
-      status === ContactInquiryStatus.IN_PROGRESS &&
-      actor.role === AdminRole.STAFF
-    ) {
-      const inquiry = await this.get(id);
-      if (inquiry.status === ContactInquiryStatus.CLOSED)
-        throw new ForbiddenError(
-          '完了したお問い合わせを再開する権限がありません。',
-        );
-    }
-    if (
-      status === ContactInquiryStatus.IN_PROGRESS &&
-      actor.role === AdminRole.STAFF
-    ) {
-      // STAFF may progress work but cannot reopen CLOSED; repository preserves all other state.
-    }
     const result = await this.inquiries.updateStatus(id, status, actor.id);
     if (!result) throw new NotFoundError('お問い合わせが見つかりません。');
     return result;

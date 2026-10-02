@@ -24,15 +24,11 @@ export function AdminWorkspace({
   admin,
   children,
 }: {
-  admin: { name: string; role: string };
+  admin: { name: string };
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const visible = links.filter(
-    ([href]) =>
-      (href !== '/admin/email-preview' || admin.role === 'OWNER') &&
-      (href !== '/admin/integrations/smaregi' || admin.role !== 'STAFF'),
-  );
+  const visible = links;
   const current =
     [...visible]
       .reverse()

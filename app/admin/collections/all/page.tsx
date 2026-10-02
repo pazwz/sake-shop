@@ -1,4 +1,4 @@
-import { AdminRole, CollectionStatus, CollectionType } from '@prisma/client';
+import { CollectionStatus, CollectionType } from '@prisma/client';
 import Image from 'next/image';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
@@ -21,8 +21,7 @@ const statusLabels: Record<string, string> = {
 export default async function AdminContentCollectionsPage() {
   const admin = await getCurrentAdmin();
   if (!admin) redirect('/admin/login');
-  const canEdit =
-    admin.role === AdminRole.OWNER || admin.role === AdminRole.MANAGER;
+  const canEdit = true;
   const collections = await collectionService.getAdminContentCollections();
 
   return (

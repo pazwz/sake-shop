@@ -348,7 +348,7 @@ generator 启用 `relationJoins`；这是客户端查询能力配置，不改变
 失效的 HTTP request，既不 retry，也不吞掉当前有效请求的错误。
 
 非公开商品 preview 使用 `Admin preview route → Preview Service → Product Service`。
-route 只允许 OWNER / MANAGER 发出 5 分钟署名 token；商品页同时验证 token、productId、
+route 只允许有效 Admin 发出 5 分钟署名 token；商品页同时验证 token、productId、
 adminId 和当前有效 Admin session。preview 复用同一 ProductDetail，不建立第二套详情 UI，
 且 preview 中禁止实际加入购物袋。
 
@@ -755,29 +755,10 @@ gate 禁用。
 
 # 七、权限
 
-Owner
-
-↓
-
-全部权限
-
-Manager
-
-↓
-
-商品
-
-订单
-
-专题
-
-Staff
-
-↓
-
-订单
-
-发货
+Admin session + active account + configured password → 统一 Admin 权限。
+OWNER / MANAGER / STAFF enum 保留用于历史兼容，不作为业务授权差异。
+Customer 与 Admin actor resolution 完全独立；inactive Admin 的旧 session 同样被拒绝。
+Inquiry 不再提供担当者 UI，历史 assignment 保留。Admin reply authorAdminId 仅由服务器认证上下文传入。
 
 ---
 

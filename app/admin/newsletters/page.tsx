@@ -1,4 +1,3 @@
-import { AdminRole } from '@prisma/client';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { NEWSLETTER_CAMPAIGN_STATUS_LABELS } from '@/config/newsletter-campaign';
@@ -15,8 +14,7 @@ export default async function NewsletterCampaignsPage() {
     service.list(),
     service.currentRecipientEstimate(),
   ]);
-  const canEdit =
-    admin.role === AdminRole.OWNER || admin.role === AdminRole.MANAGER;
+  const canEdit = true;
   return (
     <main className="wrap py-16">
       <div className="flex flex-wrap items-end justify-between gap-5">
