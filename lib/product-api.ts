@@ -17,9 +17,10 @@ const readResponse = async <T>(response: Response): Promise<T> => {
 
 export const getProducts = async (
   query: URLSearchParams,
+  signal?: AbortSignal,
 ): Promise<ProductListResult> =>
   readResponse<ProductListResult>(
-    await fetch(`/api/v1/products?${query.toString()}`),
+    await fetch(`/api/v1/products?${query.toString()}`, { signal }),
   );
 
 export const getProduct = async (identifier: string): Promise<ProductRecord> =>

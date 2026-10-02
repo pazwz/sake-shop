@@ -140,6 +140,7 @@ export class ProductRepository {
   public async findById(id: string): Promise<ProductWithRelations | null> {
     return prisma.product.findUnique({
       where: { id },
+      relationLoadStrategy: 'join',
       include: productInclude,
     });
   }
@@ -147,6 +148,7 @@ export class ProductRepository {
   public async findBySlug(slug: string): Promise<ProductWithRelations | null> {
     return prisma.product.findUnique({
       where: { slug },
+      relationLoadStrategy: 'join',
       include: productInclude,
     });
   }
@@ -175,6 +177,7 @@ export class ProductRepository {
       );
       const items = await transaction.product.findMany({
         where,
+        relationLoadStrategy: 'join',
         include: productListInclude,
         orderBy: this.getOrderBy(query.sort),
         skip: (page - 1) * query.limit,

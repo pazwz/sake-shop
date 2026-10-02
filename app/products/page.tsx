@@ -81,6 +81,7 @@ function ProductsCollection() {
 
   useEffect(() => {
     let active = true;
+    const controller = new AbortController();
     const query = new URLSearchParams({
       page: String(routePage),
       limit: String(routePerPage),
@@ -92,7 +93,7 @@ function ProductsCollection() {
 
     setIsLoading(true);
     setHasError(false);
-    void getProducts(query)
+    void getProducts(query, controller.signal)
       .then((nextResult) => {
         if (!active) return;
         setResult(nextResult);
@@ -129,6 +130,7 @@ function ProductsCollection() {
       });
     return () => {
       active = false;
+      controller.abort();
     };
   }, [
     routeCategory,

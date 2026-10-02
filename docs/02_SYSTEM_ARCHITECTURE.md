@@ -340,6 +340,13 @@ selected IDs 和已知商品快照。既存非公开关联可以保留或由运�
 再以规范化页码执行 `skip` / `take`。排序始终追加 Product.id 作为 secondary order，避免
 相同价格或创建时间的商品跨页重复/跳动；列表查询只读取第一张 ProductImage。
 
+Product detail/list 的关系读取显式使用 Prisma `relationLoadStrategy=join`，在同一 SQL 中读取
+Category、ProductImage、InventoryMirror 与可选 box，避免远端数据库逐个关系往返。Prisma client
+generator 启用 `relationJoins`；这是客户端查询能力配置，不改变数据库结构或要求 migration。
+该 preview feature 也将其他适用的 relation reads 默认切换为 join；保留的 Admin/Inquiry 查询由完整 E2E 回归验证。
+库存预留仍实时独立聚合，不新增库存 cache。商品列表在 filter/page 变化与 effect cleanup 时取消
+失效的 HTTP request，既不 retry，也不吞掉当前有效请求的错误。
+
 非公开商品 preview 使用 `Admin preview route → Preview Service → Product Service`。
 route 只允许 OWNER / MANAGER 发出 5 分钟署名 token；商品页同时验证 token、productId、
 adminId 和当前有效 Admin session。preview 复用同一 ProductDetail，不建立第二套详情 UI，
