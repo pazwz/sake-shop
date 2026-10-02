@@ -4,6 +4,7 @@ import { getCurrentAdmin } from '@/services/admin-authorization.service';
 import { redirect } from 'next/navigation';
 import { SyncService } from '@/services/sync.service';
 import { ProductService } from '@/services/product.service';
+import { isDeveloper } from '@/lib/admin-access';
 
 export const dynamic = 'force-dynamic';
 
@@ -43,7 +44,10 @@ export default async function AdminPage() {
           公開商品{' '}
           <span className="ml-3 font-semibold">{publicProductCount}</span>
         </Link>
-        <Link href="/admin/operations" className="border line bg-white p-5">
+        <Link
+          href="/admin/integrations/smaregi"
+          className="border line bg-white p-5"
+        >
           スマレジ最終同期{' '}
           <span className="mt-2 block text-sm text-stone-600">
             {sync.completedAt
@@ -90,12 +94,14 @@ export default async function AdminPage() {
           Smaregi 連携
         </Link>
       ) : null}
-      <Link
-        href="/admin/operations"
-        className="btn ml-3 mt-8 border border-[#171412]"
-      >
-        運用状態
-      </Link>
+      {isDeveloper(admin.role) ? (
+        <Link
+          href="/admin/operations"
+          className="btn ml-3 mt-8 border border-[#171412]"
+        >
+          運用状態
+        </Link>
+      ) : null}
       <Link
         href="/admin/newsletters"
         className="btn ml-3 mt-8 border border-[#171412]"

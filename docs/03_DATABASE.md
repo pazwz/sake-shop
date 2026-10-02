@@ -883,6 +883,10 @@ updated_at
 
 ## admin_users
 
+Admin email 为 nullable unique（PostgreSQL 允许多个 NULL），现有 email 保持不变。
+正式 role 为 ADMIN / DEVELOPER；旧 OWNER / MANAGER / STAFF enum 和历史账号保留。
+新增账号默认 ADMIN；DEVELOPER 必须显式配置。username/password 登录不要求 email。
+
 用途：
 
 后台账号。
@@ -912,11 +916,11 @@ updated_at
 
 Role
 
-OWNER
+ADMIN（正式运营）
 
-MANAGER
+DEVELOPER（运营 + 开发维护）
 
-STAFF
+OWNER / MANAGER / STAFF（保留历史兼容，只有运营权限）
 
 ---
 

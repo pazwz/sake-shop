@@ -1,13 +1,19 @@
 import { redirect } from 'next/navigation';
 import { OperationsHealthCards } from '@/components/admin/operations-health-cards';
-import { getCurrentAdmin } from '@/services/admin-authorization.service';
+import { requireDeveloper } from '@/services/admin-authorization.service';
+import { ForbiddenError, UnauthorizedError } from '@/lib/errors';
 import { OperationsHealthService } from '@/services/operations-health.service';
 
 export const dynamic = 'force-dynamic';
 
 export default async function OperationsPage() {
-  const admin = await getCurrentAdmin();
-  if (!admin) redirect('/admin/login');
+  try {
+    await requireDeveloper();
+  } catch (error) {
+    if (error instanceof ForbiddenError) redirect('/admin');
+    if (error instanceof UnauthorizedError) redirect('/admin/login');
+    throw error;
+  }
   const health = await new OperationsHealthService().getHealth();
   return (
     <main className="wrap py-16">

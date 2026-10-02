@@ -7,6 +7,8 @@ import type {
 } from '@/types/smaregi-production-sync';
 
 export const SMAREGI_SYNC_ADMIN_ROLES = [
+  AdminRole.ADMIN,
+  AdminRole.DEVELOPER,
   AdminRole.OWNER,
   AdminRole.MANAGER,
   AdminRole.STAFF,

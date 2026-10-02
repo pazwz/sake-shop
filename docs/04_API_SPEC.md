@@ -199,7 +199,7 @@ GET
   明示解除する。次回同期から通常 candidate になるが、自動公開しない。
 - `GET /api/v1/admin/integrations/smaregi/sync/{syncLogId}/items?page=1&limit=50`：
   個別 SyncLog の変更・warning明細。最大 100 件/page、未変更データは返さない。
-- `GET /api/v1/admin/operations/health`：すべての authenticated Admin（STAFF を含む）が read-only
+- `GET /api/v1/admin/operations/health`：有効な DEVELOPER のみ read-only
   operations health DTO を取得する。raw SyncLog、email address、payload、provider secret、stack trace は
   返さない。
 
@@ -520,11 +520,11 @@ PATCH
 
 Role：
 
-OWNER
+ADMIN（日常运营）
 
-MANAGER
+DEVELOPER（日常运营 + 技术维护）
 
-STAFF
+OWNER / MANAGER / STAFF 仅为历史兼容，不自动获得开发权限。
 
 ---
 
@@ -547,6 +547,12 @@ Request：
 
 正式后台使用 username 作为登录 ID。过渡期间，包含 `@` 的登录 ID 可以按
 现有 email 查询，以保证历史管理员账号继续可用。
+Admin email 可为空，不要求验证邮件。null-email 账号通过 username/password 登录。
+ADMIN 与旧角色仅拥有日常运营权限，DEVELOPER 额外拥有技术权限。
+`/admin/email-preview`、`/admin/operations` 对非 DEVELOPER 重定向 `/admin`。
+`GET /api/v1/admin/operations/health`、`GET /api/v1/admin/integrations/smaregi`、
+`GET /api/v1/admin/integrations/smaregi/sync/{syncLogId}/items` 使用 requireDeveloper，非开发管理员返回 403。
+日常 Smaregi 同步、EC exclusion 与 Newsletter Campaign preview/test 保持运营权限。
 
 ---
 
@@ -918,7 +924,7 @@ verification / password-reset action 标记 `SKIPPED`，不会调用 provider。
 
 ### Admin email preview
 
-`/admin/email-preview` 仅有效 Admin 可访问，只渲染 Verification、Password Reset、Order
+`/admin/email-preview` 仅有效 DEVELOPER 可访问，只渲染 Verification、Password Reset、Order
 Received、Shipment Sent 模板，不提供任意收件人发送功能。
 
 ### Admin newsletter campaigns
@@ -1297,7 +1303,7 @@ Website
 
 ---
 
-有效 Admin：统一后台权限，不区分 OWNER / MANAGER / STAFF。
+有效 Admin：统一日常运营权限，不区分旧 OWNER / MANAGER / STAFF；技术诊断仅 DEVELOPER。
 必须同时验证独立 Admin session、isActive 和 password-backed account。
 
 ---

@@ -755,8 +755,11 @@ gate 禁用。
 
 # 七、权限
 
-Admin session + active account + configured password → 统一 Admin 权限。
-OWNER / MANAGER / STAFF enum 保留用于历史兼容，不作为业务授权差异。
+Admin session + active account + configured password → ADMIN 日常运营权限。
+DEVELOPER 额外获得 email-preview、operations、Smaregi configuration/detail 等技术诊断权限。
+requireDeveloper 在服务端重新查询当前账号 role，不能信任 cookie 中的历史 role 或仅隐藏 UI。
+OWNER / MANAGER / STAFF enum 保留用于历史兼容，只有日常运营权限，不自动授予开发权限。
+Admin email 为 nullable unique；username/password 为正式登录方式，email 登录保持历史兼容。
 Customer 与 Admin actor resolution 完全独立；inactive Admin 的旧 session 同样被拒绝。
 Inquiry 不再提供担当者 UI，历史 assignment 保留。Admin reply authorAdminId 仅由服务器认证上下文传入。
 

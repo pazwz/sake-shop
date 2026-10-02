@@ -5,9 +5,8 @@ import {
   createSuccessResponse,
 } from '@/lib/api-response';
 import { AppError, ValidationError } from '@/lib/errors';
-import { requireAdmin } from '@/services/admin-authorization.service';
+import { requireDeveloper } from '@/services/admin-authorization.service';
 import { SmaregiSyncDetailService } from '@/services/smaregi/smaregi-sync-detail.service';
-import { SMAREGI_SYNC_ADMIN_ROLES } from '@/services/smaregi/smaregi-sync-access.service';
 
 const service = new SmaregiSyncDetailService();
 const queryValidator = z.object({
@@ -20,7 +19,7 @@ export const GET = async (
   { params }: { params: Promise<{ syncLogId: string }> },
 ) => {
   try {
-    await requireAdmin([...SMAREGI_SYNC_ADMIN_ROLES]);
+    await requireDeveloper();
     const { syncLogId } = await params;
     const query = queryValidator.parse(
       Object.fromEntries(new URL(request.url).searchParams),

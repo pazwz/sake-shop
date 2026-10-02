@@ -1,9 +1,17 @@
-import { AdminRole, EmailTemplate } from '@prisma/client';
+import { EmailTemplate } from '@prisma/client';
+import { redirect } from 'next/navigation';
+import { ForbiddenError, UnauthorizedError } from '@/lib/errors';
 import { EmailTemplateService } from '@/services/email-template.service';
-import { requireAdmin } from '@/services/admin-authorization.service';
+import { requireDeveloper } from '@/services/admin-authorization.service';
 
 export default async function AdminEmailPreviewPage() {
-  await requireAdmin([AdminRole.OWNER]);
+  try {
+    await requireDeveloper();
+  } catch (error) {
+    if (error instanceof ForbiddenError) redirect('/admin');
+    if (error instanceof UnauthorizedError) redirect('/admin/login');
+    throw error;
+  }
   const templates = new EmailTemplateService();
   const examples = [
     [

@@ -30,3 +30,12 @@ export const requireAdmin = async (_legacyRoles?: AdminRole[]) => {
 };
 
 export const cmsAdminRoles = CMS_ADMIN_ROLES;
+
+export const requireDeveloper = async () => {
+  const token = (await cookies()).get(ADMIN_SESSION_COOKIE)?.value;
+  const session = await readAdminSessionToken(token);
+  if (!session) {
+    throw new UnauthorizedError('Administrator authentication is required.');
+  }
+  return adminService.getActiveDeveloper(session.adminId);
+};

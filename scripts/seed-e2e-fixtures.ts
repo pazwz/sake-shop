@@ -21,6 +21,13 @@ const run = async () => {
     prisma.adminUser.upsert({ where: { username: E2E_FIXTURES.staff.username }, update: { email: 'e2e-staff@example.test', name: 'E2E Staff', role: AdminRole.STAFF, isActive: true, passwordHash: staffPasswordHash }, create: { username: E2E_FIXTURES.staff.username, email: 'e2e-staff@example.test', name: 'E2E Staff', role: AdminRole.STAFF, isActive: true, passwordHash: staffPasswordHash } }),
   ]));
   const [customer, secondaryCustomer] = accounts;
+  const developerPasswordHash = await hash(E2E_FIXTURES.developer.password, CUSTOMER_PASSWORD_HASH_ROUNDS);
+  await prisma.adminUser.upsert({
+    where: { username: E2E_FIXTURES.developer.username },
+    update: { email: null, name: 'Test Developer', role: AdminRole.DEVELOPER, isActive: true, passwordHash: developerPasswordHash },
+    create: { username: E2E_FIXTURES.developer.username, email: null, name: 'Test Developer', role: AdminRole.DEVELOPER, isActive: true, passwordHash: developerPasswordHash },
+  });
+  await prisma.adminUser.update({ where: { username: E2E_FIXTURES.staff.username }, data: { role: AdminRole.ADMIN } });
   await prisma.adminUser.upsert({
     where: { username: E2E_FIXTURES.secondaryStaff.username },
     update: { name: 'E2E Secondary Staff', role: AdminRole.STAFF, isActive: true, passwordHash: staffPasswordHash },

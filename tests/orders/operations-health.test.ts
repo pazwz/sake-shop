@@ -129,12 +129,12 @@ test('payment requires-review queue is warning and returns to healthy when clear
   assert.equal(recovered.paymentReview.status, 'HEALTHY');
 });
 
-test('operations health endpoint requires an Admin session and exposes no raw payload DTO', async () => {
+test('operations health endpoint requires a Developer session and exposes no raw payload DTO', async () => {
   const source = await readFile(
     `${process.cwd()}/app/api/v1/admin/operations/health/route.ts`,
     'utf8',
   );
-  assert.match(source, /await requireAdmin\(\)/);
+  assert.match(source, /await requireDeveloper\(\)/);
   assert.doesNotMatch(source, /responsePayload/);
   assert.doesNotMatch(source, /recipient/);
 });

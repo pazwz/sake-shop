@@ -23,9 +23,11 @@ const statusLabel = (status: SmaregiProductionSyncStatus) => {
 export function ProductionSmaregiSyncPanel({
   status,
   canSync,
+  canViewDiagnostics = false,
 }: {
   status: SmaregiProductionSyncStatus;
   canSync: boolean;
+  canViewDiagnostics?: boolean;
 }) {
   const router = useRouter();
   const [running, setRunning] = useState(false);
@@ -92,17 +94,21 @@ export function ProductionSmaregiSyncPanel({
             ソース {status.summary.sourceProductCount}件（同期候補{' '}
             {status.summary.syncCandidateProductCount}件、EC販売対象外{' '}
             {status.summary.suppressedProductCount}件）、商品 作成{' '}
-            {status.summary.productsCreated} / 更新 {status.summary.productsUpdated}、在庫 作成{' '}
-            {status.summary.inventoryCreated} / 更新 {status.summary.inventoryUpdated} / ゼロ更新{' '}
-            {status.summary.inventoryZeroed}、削除 {status.summary.deletedProductCount} / 退役{' '}
-            {status.summary.retiredProductCount}、警告 {status.summary.warningsCount}
+            {status.summary.productsCreated} / 更新{' '}
+            {status.summary.productsUpdated}、在庫 作成{' '}
+            {status.summary.inventoryCreated} / 更新{' '}
+            {status.summary.inventoryUpdated} / ゼロ更新{' '}
+            {status.summary.inventoryZeroed}、削除{' '}
+            {status.summary.deletedProductCount} / 退役{' '}
+            {status.summary.retiredProductCount}、警告{' '}
+            {status.summary.warningsCount}
             （税設定保留 {status.summary.productsDeferred}、隔離{' '}
             {status.summary.productsQuarantined}、新規孤立在庫{' '}
             {status.summary.newOrphanCount}、既知孤立在庫{' '}
             {status.summary.knownOrphanCount}、負在庫{' '}
             {status.summary.negativeCount}）
           </p>
-          {status.syncLogId ? (
+          {canViewDiagnostics && status.syncLogId ? (
             <SmaregiSyncLogDetails syncLogId={status.syncLogId} />
           ) : null}
         </div>

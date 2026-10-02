@@ -4,7 +4,7 @@ import {
   createSuccessResponse,
 } from '@/lib/api-response';
 import { AppError } from '@/lib/errors';
-import { requireAdmin } from '@/services/admin-authorization.service';
+import { requireDeveloper } from '@/services/admin-authorization.service';
 import { OperationsHealthService } from '@/services/operations-health.service';
 
 export const dynamic = 'force-dynamic';
@@ -12,7 +12,7 @@ export const runtime = 'nodejs';
 
 export const GET = async () => {
   try {
-    await requireAdmin();
+    await requireDeveloper();
     return createSuccessResponse(
       await new OperationsHealthService().getHealth(),
     );

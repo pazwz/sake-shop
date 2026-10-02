@@ -15,7 +15,10 @@ session は共存可能だが、actor は各 route の認証だけで決定す�
 
 正式運用は一つの有効な LINXAS Admin を使用する。Admin は認証済み session、
 isActive=true、設定済み password の確認を必須とし、OWNER / MANAGER / STAFF による
-業務権限差を設けない。enum、過去の担当者・作者・管理者別既読は保持するが、担当者と role は UI に表示しない。
+日常運用の権限差を設けない。正式 role は ADMIN / DEVELOPER とし、DEVELOPER のみメールプレビュー、
+運用状態と技術診断 API にアクセスできる。旧 enum と歴史データは保持し、旧 role に開発権限を自動付与しない。
+Admin email は nullable unique、正式ログインは username/password、旧 email ログインは互換として保持する。
+過去の担当者・作者・管理者別既読は保持し、担当者と運用 role は UI に表示しない。
 無効化済みの歴史作者は「旧管理者」と表示する。状態保存中は操作を無効にし、成功・失敗を表示、失敗時は元の値へ戻す。
 返信中は重複操作を防ぎ、成功時だけ入力を消去する。
 
@@ -347,6 +350,8 @@ Neon 的 NewsletterSubscription 是 consent source of truth，Resend Contact 只
 新 token は内部 ID / email を公開せず、旧 signed link と互換。再購読は新たな明示 consent が必須。
 Neon の変更を先に commit し、Resend mirror は既存 Outbox で非同期処理する。mirror 障害は consent を rollback しない。
 統一 SharedEmailFooter は email-safe table と plain text を提供し、transactional は簡潔、Newsletter は明瞭な配信停止リンクを持つ。
+両 Footer はブランド、問い合わせ、電話・営業時間、Instagram、既存 Legal、送信専用、年齢表示、copyright のみとする。
+年齢表示は「20歳未満の方への酒類の販売はいたしません。」を一回だけ表示し、SHOP / SERVICE navigation は含めない。
 
 Admin の Newsletter Campaign は Neon の `NewsletterCampaign` を source of truth とし、
 `SCHEDULED` の campaign を既存 EmailOutbox worker が dispatch・配信する。配信対象は開始時点の

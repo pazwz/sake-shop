@@ -5,6 +5,8 @@ import { usePathname } from 'next/navigation';
 import { AdminUserStatus } from '@/components/admin/admin-user-status';
 import { InquiryNotifications } from '@/components/admin/inquiry-notifications';
 import { BrandLogo } from '@/components/brand-logo';
+import type { AdminRole } from '@prisma/client';
+import { isDeveloper } from '@/lib/admin-access';
 
 const links = [
   ['/admin', 'ダッシュボード'],
@@ -24,11 +26,15 @@ export function AdminWorkspace({
   admin,
   children,
 }: {
-  admin: { name: string };
+  admin: { name: string; role: AdminRole };
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const visible = links;
+  const visible = links.filter(
+    ([href]) =>
+      !['/admin/operations', '/admin/email-preview'].includes(href) ||
+      isDeveloper(admin.role),
+  );
   const current =
     [...visible]
       .reverse()
@@ -70,6 +76,9 @@ export function AdminWorkspace({
           <div className="flex flex-wrap items-center gap-4">
             <InquiryNotifications />
             <AdminUserStatus admin={admin} />
+            {isDeveloper(admin.role) ? (
+              <span className="text-xs text-stone-500">開発者</span>
+            ) : null}
           </div>
         </div>
         <div className="wrap hidden md:block">{nav}</div>
