@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/components/auth-provider';
 
 const readError = async (response: Response, fallback: string) => {
@@ -166,16 +166,68 @@ export function CustomerNewsletterPreference({
   initialSubscribed: boolean;
 }) {
   const [subscribed, setSubscribed] = useState(initialSubscribed);
+  const [consent, setConsent] = useState(false);
   const [status, setStatus] = useState('');
   const [working, setWorking] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const revision = useRef(0);
+  useEffect(() => {
+    let active = true;
+    let reading = false;
+    const controller = new AbortController();
+    const refreshPreference = async () => {
+      if (document.visibilityState !== 'visible' || reading || working) return;
+      reading = true;
+      setRefreshing(true);
+      const currentRevision = revision.current;
+      try {
+        const response = await fetch(
+          '/api/v1/customer/preferences/newsletter',
+          {
+            cache: 'no-store',
+            signal: controller.signal,
+          },
+        );
+        if (!response.ok) throw new Error('PREFERENCE_UNAVAILABLE');
+        const payload = await response.json();
+        if (typeof payload?.data?.subscribed !== 'boolean')
+          throw new Error('PREFERENCE_UNAVAILABLE');
+        if (active && currentRevision === revision.current) {
+          setSubscribed(payload.data.subscribed);
+          if (payload.data.subscribed) setConsent(false);
+        }
+      } catch {
+        if (active && currentRevision === revision.current) {
+          setStatus(
+            '最新のメール配信設定を取得できませんでした。時間をおいて再度ご確認ください。',
+          );
+        }
+      } finally {
+        reading = false;
+        if (active) setRefreshing(false);
+      }
+    };
+    window.addEventListener('focus', refreshPreference);
+    document.addEventListener('visibilitychange', refreshPreference);
+    return () => {
+      active = false;
+      controller.abort();
+      window.removeEventListener('focus', refreshPreference);
+      document.removeEventListener('visibilitychange', refreshPreference);
+    };
+  }, [working]);
   const update = async (next: boolean) => {
+    if (working || refreshing || (next && !consent)) return;
+    revision.current += 1;
     setWorking(true);
     setStatus('');
     try {
       const response = await fetch('/api/v1/customer/preferences/newsletter', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ subscribed: next }),
+        body: JSON.stringify(
+          next ? { subscribed: true, consent: true } : { subscribed: false },
+        ),
       });
       if (!response.ok) {
         setStatus(
@@ -183,7 +235,9 @@ export function CustomerNewsletterPreference({
         );
         return;
       }
-      setSubscribed(next);
+      const payload = await response.json();
+      setSubscribed(payload.data.subscribed);
+      setConsent(false);
       setStatus(
         next
           ? 'メールマガジンを購読しました。'
@@ -204,15 +258,29 @@ export function CustomerNewsletterPreference({
       <p className="mt-4 text-sm leading-7 text-stone-600">
         配信停止後も、本人確認・パスワード再設定・ご注文に関する重要なメールは届きます。
       </p>
+      {!subscribed ? (
+        <label className="mt-6 flex items-start gap-3 text-sm leading-7">
+          <input
+            type="checkbox"
+            className="mt-2"
+            checked={consent}
+            disabled={working || refreshing}
+            onChange={(event) => setConsent(event.target.checked)}
+          />
+          メールマガジンの配信に同意します。
+        </label>
+      ) : null}
       <button
         type="button"
         className="btn mt-6"
-        disabled={working}
+        disabled={working || refreshing || (!subscribed && !consent)}
         onClick={() => update(!subscribed)}
       >
         {working ? '更新中…' : subscribed ? '配信停止' : '購読する'}
       </button>
-      {status ? <p className="mt-4 text-sm leading-7">{status}</p> : null}
+      <p role="status" aria-live="polite" className="mt-4 text-sm leading-7">
+        {refreshing ? '最新の配信設定を確認中…' : status}
+      </p>
     </div>
   );
 }

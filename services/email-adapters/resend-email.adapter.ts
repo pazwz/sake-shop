@@ -26,6 +26,7 @@ export class ResendEmailAdapter implements EmailProviderAdapter {
         html: message.html,
         text: message.text,
         ...(replyTo ? { replyTo } : {}),
+        ...(message.headers ? { headers: message.headers } : {}),
       },
       { idempotencyKey: message.idempotencyKey },
     );

@@ -8,6 +8,7 @@ export type EmailMessage = {
   subject: string;
   html: string;
   text: string;
+  headers?: Record<string, string>;
   idempotencyKey: string;
 };
 
@@ -18,7 +19,7 @@ export interface EmailProviderAdapter {
 
 export type EmailTemplateResult = Pick<
   EmailMessage,
-  'subject' | 'html' | 'text'
+  'subject' | 'html' | 'text' | 'headers'
 >;
 
 export type EmailOutboxDraft = {

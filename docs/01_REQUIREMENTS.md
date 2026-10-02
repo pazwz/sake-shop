@@ -343,6 +343,10 @@ Newsletter
 Customer Account 与 NewsletterSubscription 必须独立；既存 Customer 不得自动加入。
 Neon 的 NewsletterSubscription 是 consent source of truth，Resend Contact 只作为投递镜像。
 退订必须使用 signed opaque token，不能只依赖 query email。
+正文退订リンクの GET は確認のみ、明示 POST で退订する。メールクライアント用 one-click は専用 POST。
+新 token は内部 ID / email を公開せず、旧 signed link と互換。再購読は新たな明示 consent が必須。
+Neon の変更を先に commit し、Resend mirror は既存 Outbox で非同期処理する。mirror 障害は consent を rollback しない。
+統一 SharedEmailFooter は email-safe table と plain text を提供し、transactional は簡潔、Newsletter は明瞭な配信停止リンクを持つ。
 
 Admin の Newsletter Campaign は Neon の `NewsletterCampaign` を source of truth とし、
 `SCHEDULED` の campaign を既存 EmailOutbox worker が dispatch・配信する。配信対象は開始時点の

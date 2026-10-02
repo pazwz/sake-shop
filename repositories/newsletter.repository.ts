@@ -17,6 +17,13 @@ export class NewsletterRepository {
     });
   }
 
+  getUnsubscribeStatus(unsubscribeTokenHash: string) {
+    return this.database.newsletterSubscription.findUnique({
+      where: { unsubscribeTokenHash },
+      select: { status: true },
+    });
+  }
+
   subscribe(input: {
     id: string;
     email: string;
@@ -72,17 +79,21 @@ export class NewsletterRepository {
       if (!subscription) return null;
       if (subscription.status === NewsletterStatus.UNSUBSCRIBED)
         return subscription;
-      const updated = await tx.newsletterSubscription.update({
-        where: { id: subscription.id },
+      const changed = await tx.newsletterSubscription.updateMany({
+        where: {
+          id: subscription.id,
+          status: { not: NewsletterStatus.UNSUBSCRIBED },
+        },
         data: { status: NewsletterStatus.UNSUBSCRIBED, unsubscribedAt: now },
       });
+      if (changed.count === 0) return subscription;
       await tx.emailOutbox.upsert({
         where: {
-          eventKey: `newsletter-contact:${subscription.id}:unsubscribe`,
+          eventKey: `newsletter-contact:${subscription.id}:unsubscribe:${now.toISOString()}`,
         },
         update: {},
         create: {
-          eventKey: `newsletter-contact:${subscription.id}:unsubscribe`,
+          eventKey: `newsletter-contact:${subscription.id}:unsubscribe:${now.toISOString()}`,
           type: 'NEWSLETTER_UNSUBSCRIBED',
           recipient: subscription.email,
           subject: 'Newsletter contact synchronization',
@@ -90,7 +101,7 @@ export class NewsletterRepository {
           payload: { unsubscribed: true },
         },
       });
-      return updated;
+      return subscription;
     });
   }
 
@@ -104,10 +115,14 @@ export class NewsletterRepository {
         subscription.status === NewsletterStatus.UNSUBSCRIBED
       )
         return { unsubscribed: true, changed: false };
-      await tx.newsletterSubscription.update({
-        where: { id: subscription.id },
+      const changed = await tx.newsletterSubscription.updateMany({
+        where: {
+          id: subscription.id,
+          status: { not: NewsletterStatus.UNSUBSCRIBED },
+        },
         data: { status: NewsletterStatus.UNSUBSCRIBED, unsubscribedAt: now },
       });
+      if (changed.count === 0) return { unsubscribed: true, changed: false };
       await tx.emailOutbox.create({
         data: {
           eventKey: `newsletter-contact:${subscription.id}:unsubscribe:${now.toISOString()}`,

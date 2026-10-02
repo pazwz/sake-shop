@@ -307,6 +307,8 @@ DELETE
 - `GET|POST /api/v1/customer/addresses`：Session Customer 自身の住所一覧・新增。
 - `GET|PATCH|DELETE /api/v1/customer/addresses/{id}`：customerId ownership scoped CRUD。
 - `GET|PATCH /api/v1/customer/preferences/newsletter`：Neon consent の取得・購読・配信停止。
+  PATCH 購読は `subscribed:true + consent:true` を必須とし、配信停止は `subscribed:false`。
+  consent 未指定・false の再購読は既存 ValidationError 契約に従って 422、状態を変更しない。
 
 注册、登录、logout、forgot/reset 与 verification mutation 验证 same-origin；注册、登录、
 forgot-password 带最小进程内 rate limit。该 rate limit 在 Vercel 多实例间不共享，正式
@@ -895,6 +897,12 @@ PATCH
   Resend Contact 同步 Outbox。
 - `POST /api/v1/newsletter/unsubscribe`：只接受 signed opaque token；幂等退订并排入
   Resend Contact 同步 Outbox。
+  正文 `/newsletter/unsubscribe?token=...` は確認画面のみ。GET は mutation せず、ユーザーの確認 POST で配信停止する。
+- `GET /api/v1/newsletter/unsubscribe?token=...`：read-only state `confirm|already|invalid`。DB 障害は 503；no-store/no-referrer。
+- `POST /api/v1/newsletter/unsubscribe/one-click?token=...`：RFC 8058 専用、form-urlencoded / multipart `List-Unsubscribe=One-Click`。
+  signed bearer で認証し、ログイン・Cookie・HTML interaction 不要。有効な繰り返し POST は 200；GET は未対応。
+  正式 Newsletter のみ List-Unsubscribe / List-Unsubscribe-Post を付与。transactional と Admin test mail は付与しない。
+  新しい token は内部 ID を暗号化し、旧 signed token / DB hash と互換。full token をアプリログに記録しない。
 - `POST /api/v1/webhooks/resend`：使用 `svix-id`、`svix-timestamp`、`svix-signature` 与
   `RESEND_WEBHOOK_SECRET` 进行官方 SDK 验签；无效签名 401，未配置 503。处理 delivery、
   bounce、complaint、suppression 与 contact unsubscribe 的必要状态，不记录 raw payload。

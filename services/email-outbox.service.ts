@@ -70,6 +70,7 @@ export class EmailOutboxService {
           if (
             !(await this.campaignDispatch.shouldSend(
               row.newsletterSubscriptionId,
+              payload.testMode === true,
             ))
           ) {
             await this.outbox.markSkipped(
@@ -85,10 +86,20 @@ export class EmailOutboxService {
         }
         if (row.template === EmailTemplate.NEWSLETTER_CONTACT_SYNC) {
           if (config.mode === 'resend') {
+            const current = await this.outbox.getNewsletterStatus(
+              row.recipient,
+            );
             const result = await this.marketing.sync({
               email: row.recipient,
-              unsubscribed: payload.unsubscribed === true,
+              unsubscribed: current?.status !== 'SUBSCRIBED',
             });
+            const latest = await this.outbox.getNewsletterStatus(row.recipient);
+            // Another worker may have completed a newer consent transition while this request was in flight.
+            if (
+              (latest?.status === 'SUBSCRIBED') !==
+              (current?.status === 'SUBSCRIBED')
+            )
+              throw new Error('NEWSLETTER_CONTACT_CONSENT_CHANGED');
             await this.outbox.markContactSynced(
               row.recipient,
               result.contactId,

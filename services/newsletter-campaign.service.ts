@@ -310,8 +310,11 @@ export class NewsletterCampaignDispatchService {
     return { dispatched, recipients };
   }
 
-  public async shouldSend(newsletterSubscriptionId: string | null) {
-    if (!newsletterSubscriptionId) return true;
+  public async shouldSend(
+    newsletterSubscriptionId: string | null,
+    testMode = false,
+  ) {
+    if (!newsletterSubscriptionId) return testMode;
     return Boolean(
       await this.campaigns.isRecipientSubscribed(newsletterSubscriptionId),
     );

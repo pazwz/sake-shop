@@ -162,6 +162,13 @@ export class EmailOutboxRepository {
     });
   }
 
+  public getNewsletterStatus(email: string) {
+    return this.database.newsletterSubscription.findUnique({
+      where: { email: email.toLowerCase() },
+      select: { status: true },
+    });
+  }
+
   public async recordWebhook(input: {
     providerEventId: string;
     type: string;

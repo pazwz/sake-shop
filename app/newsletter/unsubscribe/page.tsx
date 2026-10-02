@@ -1,52 +1,42 @@
-'use client';
+import type { Metadata } from 'next';
+import {
+  NewsletterUnsubscribeConfirmation,
+  type NewsletterUnsubscribeState,
+} from '@/components/newsletter-unsubscribe-confirmation';
+import { NewsletterService } from '@/services/newsletter.service';
 
-import { useSearchParams } from 'next/navigation';
-import { Suspense, useState } from 'react';
+export const dynamic = 'force-dynamic';
+export const metadata: Metadata = {
+  title: 'メールマガジンの配信停止',
+  robots: { index: false, follow: false },
+  referrer: 'no-referrer',
+};
 
-function Form() {
-  const token = useSearchParams().get('token') ?? '';
-  const [message, setMessage] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const submit = async () => {
-    setSubmitting(true);
+export default async function NewsletterUnsubscribePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ token?: string | string[] }>;
+}) {
+  const input = (await searchParams).token;
+  const token = typeof input === 'string' ? input : '';
+  let state: NewsletterUnsubscribeState = 'invalid';
+  if (token) {
     try {
-      const response = await fetch('/api/v1/newsletter/unsubscribe', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token }),
-      });
-      const payload = await response.json();
-      setMessage(
-        response.ok
-          ? 'メール配信を停止しました。'
-          : (payload.error?.detail ?? '配信停止に失敗しました。'),
-      );
+      state = await new NewsletterService().getUnsubscribeState(token);
     } catch {
-      setMessage('通信に失敗しました。もう一度お試しください。');
-    } finally {
-      setSubmitting(false);
+      state = 'unavailable';
     }
-  };
+  }
   return (
-    <main className="wrap max-w-xl py-20">
+    <main className="wrap max-w-xl py-14 md:py-20">
       <p className="eyebrow">Newsletter</p>
-      <h1 className="serif mt-4 text-4xl">メール配信停止</h1>
-      <button
-        className="btn mt-8"
-        disabled={!token || submitting}
-        onClick={submit}
-      >
-        {submitting ? '処理中…' : '配信を停止する'}
-      </button>
-      {message ? <p className="mt-5 text-sm">{message}</p> : null}
+      <h1 className="serif mt-4 text-3xl md:text-4xl">
+        メールマガジンの配信停止
+      </h1>
+      <NewsletterUnsubscribeConfirmation
+        initialState={state}
+        token={state === 'confirm' ? token : ''}
+      />
     </main>
-  );
-}
-
-export default function NewsletterUnsubscribePage() {
-  return (
-    <Suspense fallback={null}>
-      <Form />
-    </Suspense>
   );
 }

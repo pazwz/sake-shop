@@ -81,7 +81,11 @@ export const customerAddressValidator = z
   .strict();
 
 export const customerNewsletterPreferenceValidator = z
-  .object({ subscribed: z.boolean() })
-  .strict();
+  .object({ subscribed: z.boolean(), consent: z.literal(true).optional() })
+  .strict()
+  .refine((input) => !input.subscribed || input.consent === true, {
+    message: 'メールマガジンの配信への同意が必要です。',
+    path: ['consent'],
+  });
 
 export type CustomerAddressInput = z.infer<typeof customerAddressValidator>;

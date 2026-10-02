@@ -3,8 +3,8 @@ import { UnauthorizedError } from '@/lib/errors';
 import {
   createEmailActionToken,
   hashEmailActionToken,
-  isValidEmailActionToken,
 } from '@/lib/email-action-token';
+import { getNewsletterUnsubscribeTokenHash } from '@/lib/newsletter-unsubscribe-token';
 import { NewsletterRepository } from '@/repositories/newsletter.repository';
 import { EmailDispatchTriggerService } from '@/services/email-dispatch-trigger.service';
 
@@ -30,15 +30,28 @@ export class NewsletterService {
   }
 
   async unsubscribe(token: string) {
-    if (!isValidEmailActionToken(token, 'newsletter-unsubscribe'))
-      throw new UnauthorizedError('退会リンクが無効です。');
-    const result = await this.newsletters.unsubscribe(
-      hashEmailActionToken(token),
-      new Date(),
-    );
-    if (!result) throw new UnauthorizedError('退会リンクが無効です。');
+    const tokenHash = getNewsletterUnsubscribeTokenHash(token);
+    if (!tokenHash)
+      throw new UnauthorizedError(
+        'このリンクは無効、または有効期限が切れています',
+      );
+    const result = await this.newsletters.unsubscribe(tokenHash, new Date());
+    if (!result)
+      throw new UnauthorizedError(
+        'このリンクは無効、または有効期限が切れています',
+      );
     await this.trigger.trigger();
     return { unsubscribed: true };
+  }
+
+  async getUnsubscribeState(
+    token: string,
+  ): Promise<'confirm' | 'already' | 'invalid'> {
+    const hash = getNewsletterUnsubscribeTokenHash(token);
+    if (!hash) return 'invalid';
+    const subscription = await this.newsletters.getUnsubscribeStatus(hash);
+    if (!subscription) return 'invalid';
+    return subscription.status === 'UNSUBSCRIBED' ? 'already' : 'confirm';
   }
 
   async getCustomerPreference(email: string) {

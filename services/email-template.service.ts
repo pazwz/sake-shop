@@ -1,7 +1,9 @@
 import { EmailTemplate } from '@prisma/client';
-import { getPublicSiteUrl } from '@/config/email';
+import { EMAIL_SITE_URL, toEmailPublicUrl } from '@/config/email-brand-config';
 import { siteConfig } from '@/config/site';
 import { createEmailActionToken } from '@/lib/email-action-token';
+import { createNewsletterUnsubscribeToken } from '@/lib/newsletter-unsubscribe-token';
+import { SharedEmailFooter } from '@/services/shared-email-footer';
 import type { EmailTemplateResult } from '@/types/email';
 
 const escapeHtml = (value: unknown) =>
@@ -15,12 +17,19 @@ const frame = (
   title: string,
   body: string,
   text: string,
-  options: { includeDefaultFooter?: boolean } = {},
-): EmailTemplateResult => ({
-  subject: title,
-  html: `<!doctype html><html lang="ja"><body style="margin:0;background:#f6f3ee;color:#171412;font-family:-apple-system,BlinkMacSystemFont,'Hiragino Kaku Gothic ProN',sans-serif"><div style="max-width:620px;margin:0 auto;padding:48px 24px"><div style="background:#fff;padding:40px 32px"><p style="letter-spacing:.28em;color:#6f1831;font-size:12px">LINXAS</p><h1 style="font-family:serif;font-weight:400;font-size:28px">${escapeHtml(title)}</h1>${body}${options.includeDefaultFooter === false ? '' : `<hr style="border:0;border-top:1px solid #e7e1d8;margin:32px 0"><p style="font-size:12px;line-height:1.8;color:#777">${escapeHtml(siteConfig.storeName)}<br>20歳未満の者の飲酒は法律で禁止されています。</p>`}</div></div></body></html>`,
-  text: `${title}\n\n${text}${options.includeDefaultFooter === false ? '' : `\n\n${siteConfig.storeName}\n20歳未満の者の飲酒は法律で禁止されています。`}`,
-});
+  options: {
+    footer?: ReturnType<typeof SharedEmailFooter>;
+    headers?: Record<string, string>;
+  } = {},
+): EmailTemplateResult => {
+  const footer = options.footer ?? SharedEmailFooter();
+  return {
+    subject: title,
+    html: `<!doctype html><html lang="ja"><head><meta name="viewport" content="width=device-width, initial-scale=1"></head><body style="margin:0;background:#f6f3ee;color:#171412;font-family:-apple-system,BlinkMacSystemFont,'Hiragino Kaku Gothic ProN',sans-serif"><table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="width:100%"><tbody><tr><td align="center" style="padding:24px 12px"><table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="width:100%;max-width:620px;background:#fff"><tbody><tr><td style="padding:28px 20px"><p style="letter-spacing:.28em;color:#6f1831;font-size:12px">LINXAS</p><h1 style="font-family:serif;font-weight:400;font-size:28px">${escapeHtml(title)}</h1>${body}${footer.html}</td></tr></tbody></table></td></tr></tbody></table></body></html>`,
+    text: `${title}\n\n${text}\n\n${footer.text}`,
+    ...(options.headers ? { headers: options.headers } : {}),
+  };
+};
 
 const button = (label: string, url: string) =>
   `<p style="margin:28px 0"><a href="${escapeHtml(url)}" style="display:inline-block;background:#6f1831;color:#fff;text-decoration:none;padding:14px 24px">${escapeHtml(label)}</a></p>`;
@@ -49,7 +58,7 @@ const renderNewsletterSections = (value: unknown) => {
       const ctaUrl =
         typeof section.ctaUrl === 'string' &&
         isSafeNewsletterUrl(section.ctaUrl)
-          ? section.ctaUrl
+          ? toEmailPublicUrl(section.ctaUrl)
           : null;
       if (!imageUrl && !headline && !body && !(ctaLabel && ctaUrl)) return null;
       const html = `${imageUrl ? `<p><img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(imageAlt)}" style="display:block;width:100%;height:auto"></p>` : ''}${headline ? `<h2 style="font-family:serif;font-weight:400;font-size:24px">${escapeHtml(headline)}</h2>` : ''}${body ? `<p style="line-height:1.9">${escapeHtml(body).replaceAll('\n', '<br>')}</p>` : ''}${ctaLabel && ctaUrl ? button(ctaLabel, ctaUrl) : ''}`;
@@ -68,32 +77,9 @@ const renderNewsletterSections = (value: unknown) => {
   };
 };
 
-const newsletterFooter = (
-  siteUrl: string,
-  unsubscribeUrl: string | null,
-  testMode: boolean,
-) => {
-  const contactUrl = `${siteUrl}/contact`;
-  const privacyUrl = `${siteUrl}/privacy`;
-  const tokushoUrl = `${siteUrl}/legal/tokusho`;
-  const subscriptionNote = testMode
-    ? 'これはテストメールです。<br>ニュースレター配信内容の確認のために送信されています。<br>このテストメールには有効な配信停止リンクは含まれていません。'
-    : 'このメールは、LINXASのニュースレター配信にご登録いただいたお客さまへお送りしています。';
-  const subscriptionText = testMode
-    ? 'これはテストメールです。\nニュースレター配信内容の確認のために送信されています。\nこのテストメールには有効な配信停止リンクは含まれていません。'
-    : 'このメールは、LINXASのニュースレター配信にご登録いただいたお客さまへお送りしています。';
-  const unsubscribe = unsubscribeUrl
-    ? `<p style="margin:16px 0 0"><a href="${escapeHtml(unsubscribeUrl)}" style="color:#6f1831;text-decoration:underline">配信停止はこちら</a></p>`
-    : '';
-  return {
-    html: `<footer style="margin-top:48px;padding-top:24px;border-top:1px solid #d9d1c6;font-size:12px;line-height:1.85;color:#6d665f"><p style="margin:0;color:#171412;font-weight:600;letter-spacing:.08em">LINXAS / ${escapeHtml(siteConfig.storeName)}</p><p style="margin:8px 0 0"><a href="${escapeHtml(siteUrl)}" style="color:#6f1831;text-decoration:none">${escapeHtml(siteUrl)}</a><span style="color:#b8aea2"> ｜ </span><a href="${escapeHtml(contactUrl)}" style="color:#6f1831;text-decoration:none">お問い合わせ</a></p><p style="margin:20px 0 0">${subscriptionNote}</p>${unsubscribe}<p style="margin:20px 0 0"><a href="${escapeHtml(privacyUrl)}" style="color:#6f1831;text-decoration:none">プライバシーポリシー</a><span style="color:#b8aea2"> ｜ </span><a href="${escapeHtml(tokushoUrl)}" style="color:#6f1831;text-decoration:none">特定商取引法に基づく表記</a></p><p style="margin:20px 0 0;color:#4d4741">20歳未満の者の飲酒は法律で禁止されています。</p></footer>`,
-    text: `LINXAS / ${siteConfig.storeName}\n${siteUrl} ｜ お問い合わせ: ${contactUrl}\n\n${subscriptionText}${unsubscribeUrl ? `\n\n配信停止はこちら: ${unsubscribeUrl}` : ''}\n\nプライバシーポリシー: ${privacyUrl} ｜ 特定商取引法に基づく表記: ${tokushoUrl}\n\n20歳未満の者の飲酒は法律で禁止されています。`,
-  };
-};
-
 export class EmailTemplateService {
   public render(template: EmailTemplate, payload: Record<string, unknown>) {
-    const siteUrl = getPublicSiteUrl();
+    const siteUrl = EMAIL_SITE_URL;
     const name = escapeHtml(payload.customerName ?? 'お客様');
     if (template === EmailTemplate.EMAIL_VERIFICATION) {
       const token = createEmailActionToken(
@@ -187,29 +173,42 @@ export class EmailTemplateService {
         : null;
       const heroImageAlt = String(payload.heroImageAlt ?? '');
       const ctaLabel = payload.ctaLabel ? String(payload.ctaLabel) : null;
-      const ctaUrl = payload.ctaUrl ? String(payload.ctaUrl) : null;
+      const ctaUrl = payload.ctaUrl
+        ? toEmailPublicUrl(String(payload.ctaUrl))
+        : null;
       const testMode = payload.testMode === true;
       const subscriptionId = payload.newsletterSubscriptionId
         ? String(payload.newsletterSubscriptionId)
         : null;
-      const unsubscribeUrl =
+      const unsubscribeToken =
         !testMode && subscriptionId
-          ? `${siteUrl}/newsletter/unsubscribe?token=${encodeURIComponent(
-              createEmailActionToken(subscriptionId, 'newsletter-unsubscribe'),
-            )}`
+          ? encodeURIComponent(createNewsletterUnsubscribeToken(subscriptionId))
           : null;
+      const unsubscribeUrl = unsubscribeToken
+        ? `${siteUrl}/newsletter/unsubscribe?token=${unsubscribeToken}`
+        : null;
+      const headers = unsubscribeToken
+        ? {
+            'List-Unsubscribe': `<${siteUrl}/api/v1/newsletter/unsubscribe/one-click?token=${unsubscribeToken}>`,
+            'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+          }
+        : undefined;
       const escapedBody = escapeHtml(bodyText).replaceAll('\n', '<br>');
       const hero = heroImageUrl
         ? `<p><img src="${escapeHtml(heroImageUrl)}" alt="${escapeHtml(heroImageAlt)}" style="display:block;width:100%;height:auto"></p>`
         : '';
       const cta = ctaLabel && ctaUrl ? button(ctaLabel, ctaUrl) : '';
       const sections = renderNewsletterSections(payload.sections);
-      const footer = newsletterFooter(siteUrl, unsubscribeUrl, testMode);
+      const footer = SharedEmailFooter({
+        variant: 'newsletter',
+        unsubscribeUrl,
+        testMode,
+      });
       return frame(
         subject,
-        `${preheader ? `<p style="font-size:12px;color:#777">${escapeHtml(preheader)}</p>` : ''}${hero}<h2 style="font-family:serif;font-weight:400;font-size:24px">${escapeHtml(headline)}</h2><p style="line-height:1.9">${escapedBody}</p>${cta}${sections.html}${footer.html}`,
-        `${preheader ? `${preheader}\n\n` : ''}${headline}\n\n${bodyText}${ctaLabel && ctaUrl ? `\n\n${ctaLabel}: ${ctaUrl}` : ''}${sections.text ? `\n\n${sections.text}` : ''}\n\n${footer.text}`,
-        { includeDefaultFooter: false },
+        `${preheader ? `<p style="font-size:12px;color:#777">${escapeHtml(preheader)}</p>` : ''}${hero}<h2 style="font-family:serif;font-weight:400;font-size:24px">${escapeHtml(headline)}</h2><p style="line-height:1.9">${escapedBody}</p>${cta}${sections.html}`,
+        `${preheader ? `${preheader}\n\n` : ''}${headline}\n\n${bodyText}${ctaLabel && ctaUrl ? `\n\n${ctaLabel}: ${ctaUrl}` : ''}${sections.text ? `\n\n${sections.text}` : ''}`,
+        { footer, headers },
       );
     }
     const titles: Partial<Record<EmailTemplate, string>> = {

@@ -269,8 +269,10 @@ test('newsletter preference is authenticated, explicit, and idempotent', async (
     },
   } as never);
   assert.equal(
-    customerNewsletterPreferenceValidator.parse({ subscribed: true })
-      .subscribed,
+    customerNewsletterPreferenceValidator.parse({
+      subscribed: true,
+      consent: true,
+    }).subscribed,
     true,
   );
   await service.setCustomerPreference('buyer@example.com', true);
