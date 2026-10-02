@@ -17,17 +17,16 @@ test.describe('E2E-12: authenticated order support messages', () => {
     page,
   }) => {
     await loginQaCustomer(page);
-    await page.goto(
-      `/account/orders/${encodeURIComponent(process.env.E2E_QA_ORDER_NUMBER!)}`,
-    );
+    const orderPath = `/account/orders/${encodeURIComponent(process.env.E2E_QA_ORDER_NUMBER!)}`;
+    await page.goto(orderPath, { waitUntil: 'domcontentloaded' });
+    await expect(page).toHaveURL(new URL(orderPath, page.url()).href);
+    await expect(page.getByRole('heading', { name: '注文詳細', exact: true })).toBeVisible();
     await expect(page.getByRole('link', { name: '注文履歴へ戻る' })).toBeVisible();
-    await Promise.all([
-      page.waitForURL(/\/account\/orders\/[^/]+\/messages$/),
-      page
-        .getByRole('link', { name: /この注文について問い合わせる|メッセージを確認/ })
-        .click(),
-    ]);
+    await page.getByRole('link', { name: /この注文について問い合わせる|メッセージを確認/ }).click();
+    await expect(page).toHaveURL(new URL(`${orderPath}/messages`, page.url()).href);
+    await expect(page.getByRole('heading', { name: '注文についてのメッセージ', exact: true })).toBeVisible();
     await expect(page.getByRole('link', { name: '注文詳細へ戻る' })).toBeVisible();
+    await expect(page.getByLabel('メッセージ履歴')).toBeVisible();
     await expect(page.getByText('カスタマーセンター')).toBeVisible();
     await page.getByLabel('メッセージ入力').fill('E2E order support message.');
     const response = page.waitForResponse(

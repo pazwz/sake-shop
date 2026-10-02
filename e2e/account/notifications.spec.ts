@@ -15,12 +15,14 @@ test.describe('E2E-13: customer notifications', () => {
     await expect(page.getByText('× 1')).toBeVisible();
     await expect(page.getByRole('link', { name: 'MY PAGEへ戻る' })).toHaveAttribute('href', '/account');
     await expect(page.getByRole('link', { name: 'お知らせ' })).toBeVisible();
-    await Promise.all([
-      page.waitForURL(/\/account\/orders\/[^/]+\/messages$/),
-      page.locator(`a[href="/account/orders/${process.env.E2E_QA_ORDER_NUMBER!}/messages"]`).click(),
-    ]);
+    const messagesPath = `/account/orders/${process.env.E2E_QA_ORDER_NUMBER!}/messages`;
+    await page.locator(`a[href="${messagesPath}"]`).click();
+    // App Router navigation does not require the previous document's images to finish loading.
+    await expect(page).toHaveURL(new URL(messagesPath, page.url()).href);
+    await expect(page.getByRole('heading', { name: '注文についてのメッセージ', exact: true })).toBeVisible();
     await expect(page.getByRole('link', { name: '注文詳細へ戻る' })).toBeVisible();
     await expect(page.getByLabel('メッセージ履歴')).toBeVisible();
+    await expect(page.getByLabel('メッセージ履歴')).toContainText('E2E fixture admin reply.');
     await page.goto('/account/notifications?tab=personal', { waitUntil: 'domcontentloaded' });
     await expect(
       page.locator('a[aria-current="page"]', {

@@ -31,7 +31,9 @@ test.describe('E2E-08: customer order authorization', () => {
         process.env.E2E_QA_EMAIL!,
         process.env.E2E_QA_PASSWORD!,
       );
-      await ownerPage.goto(`/account/orders/${encodeURIComponent(orderNumber)}`);
+      const orderPath = `/account/orders/${encodeURIComponent(orderNumber)}`;
+      await ownerPage.goto(orderPath, { waitUntil: 'domcontentloaded' });
+      await expect(ownerPage).toHaveURL(new URL(orderPath, ownerPage.url()).href);
       await expect(ownerPage.getByRole('heading', { name: '注文詳細', exact: true })).toBeVisible();
       await expect(ownerPage.getByTestId('order-number')).toContainText(orderNumber);
 
@@ -42,8 +44,10 @@ test.describe('E2E-08: customer order authorization', () => {
         process.env.E2E_QA_SECONDARY_PASSWORD!,
       );
       const response = await otherPage.goto(
-        `/account/orders/${encodeURIComponent(orderNumber)}`,
+        orderPath,
+        { waitUntil: 'domcontentloaded' },
       );
+      await expect(otherPage).toHaveURL(new URL(orderPath, otherPage.url()).href);
       // App Router may stream a notFound() boundary after the outer layout has
       // committed its 200 response. Assert the rendered 404 boundary and the
       // absence of order data instead of treating that transport detail as an
