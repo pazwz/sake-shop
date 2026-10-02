@@ -36,13 +36,7 @@ test('every transactional email includes safe shared legal, support and age foot
     (value) => value !== EmailTemplate.NEWSLETTER_CAMPAIGN,
   )) {
     const rendered = templates.render(template, commonPayload);
-    for (const path of [
-      '/contact',
-      '/shipping-returns',
-      '/legal/tokusho',
-      '/privacy',
-      '/terms',
-    ]) {
+    for (const path of ['/contact', '/legal/tokusho', '/privacy', '/terms']) {
       assert.ok(
         rendered.html.includes(`${canonical}${path}`),
         `${template}: ${path}`,
@@ -53,12 +47,8 @@ test('every transactional email includes safe shared legal, support and age foot
       );
     }
     for (const content of [
-      'SERVICE',
-      'SUPPORT',
-      'FOLLOW',
       '送信専用',
-      '20歳未満の者の飲酒は法律で禁止されています。',
-      '20歳未満の者に対しては酒類を販売いたしません。',
+      '20歳未満の方への酒類の販売はいたしません。',
       '092-285-8022',
       '11:00-20:00',
       'Instagram',
@@ -71,6 +61,13 @@ test('every transactional email includes safe shared legal, support and age foot
       );
     }
     assert.match(rendered.html, /<table[^>]+role="presentation"/);
+    for (const content of [rendered.html, rendered.text]) {
+      assert.equal((content.match(/20歳未満/g) ?? []).length, 1);
+      assert.doesNotMatch(
+        content,
+        /SHOP|SERVICE|SUPPORT|FOLLOW|shipping-returns/,
+      );
+    }
     assert.doesNotMatch(
       rendered.html,
       /display:\s*(flex|grid)|<script|<style|<link|\/legal\/alcohol|\/faq|\/payment|youtube|twitter|line\.me/i,
@@ -122,7 +119,7 @@ test('public action URLs ignore deployment configuration and keep verification/r
   }
 });
 
-test('formal newsletter has canonical unsubscribe, one-click headers, real SHOP routes and absolute internal campaign CTAs', () => {
+test('formal newsletter retains unsubscribe and canonical campaign CTAs without a shop sitemap', () => {
   const rendered = templates.render(EmailTemplate.NEWSLETTER_CAMPAIGN, {
     subject: '秋のお知らせ',
     body: '<本文>',
@@ -134,17 +131,13 @@ test('formal newsletter has canonical unsubscribe, one-click headers, real SHOP 
       { ctaLabel: '外部', ctaUrl: 'https://campaign.example.com/autumn' },
     ],
   });
-  for (const group of [
-    'sake',
-    'whisky',
-    'wine-champagne',
-    'shochu',
-    'brandy-spirits',
-  ]) {
-    assert.ok(rendered.html.includes(`${canonical}/products?group=${group}`));
-    assert.ok(rendered.text.includes(`${canonical}/products?group=${group}`));
+  for (const content of [rendered.html, rendered.text]) {
+    assert.doesNotMatch(
+      content,
+      /SHOP|SERVICE|whisky|wine-champagne|shochu|brandy-spirits/,
+    );
+    assert.equal((content.match(/20歳未満/g) ?? []).length, 1);
   }
-  assert.ok(rendered.html.includes(`${canonical}/newsletter"`));
   assert.match(rendered.html, /メールマガジンの配信停止はこちら/);
   assert.match(rendered.text, /メールマガジンの配信停止はこちら/);
   const href = rendered.html.match(

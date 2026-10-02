@@ -81,7 +81,8 @@ test('test-send recipient accepts only a strict, validated email body', () => {
     true,
   );
   assert.equal(
-    newsletterCampaignTestValidator.safeParse({ email: 'not-an-email' }).success,
+    newsletterCampaignTestValidator.safeParse({ email: 'not-an-email' })
+      .success,
     false,
   );
   assert.equal(
@@ -292,18 +293,15 @@ test('newsletter footer includes compliant formal links but no unsubscribe link 
     testMode: true,
   });
 
-  assert.match(formal.html, /LINXAS \/ リンクサス福岡/);
+  assert.match(formal.html, /LINXAS/);
   assert.match(formal.html, /お問い合わせ/);
   assert.match(formal.html, /プライバシーポリシー/);
   assert.match(formal.html, /特定商取引法に基づく表記/);
   assert.match(formal.html, /newsletter\/unsubscribe\?token=/);
   assert.match(formal.html, /配信停止はこちら/);
-  assert.match(
-    formal.html,
-    /このメールは、LINXASのニュースレター配信にご登録いただいたお客さまへお送りしています。/,
-  );
+  assert.doesNotMatch(formal.html, /SHOP|SERVICE|SUPPORT|FOLLOW/);
   assert.equal(
-    formal.html.match(/20歳未満の者の飲酒は法律で禁止されています。/g)?.length,
+    formal.html.match(/20歳未満の方への酒類の販売はいたしません。/g)?.length,
     1,
   );
   assert.match(testMail.html, /これはテストメールです/);
@@ -312,7 +310,7 @@ test('newsletter footer includes compliant formal links but no unsubscribe link 
     /このテストメールには有効な配信停止リンクは含まれていません。/,
   );
   assert.equal(
-    testMail.html.match(/20歳未満の者の飲酒は法律で禁止されています。/g)?.length,
+    testMail.html.match(/20歳未満の方への酒類の販売はいたしません。/g)?.length,
     1,
   );
   assert.doesNotMatch(testMail.html, /newsletter\/unsubscribe\?token=/);
@@ -449,7 +447,9 @@ test('test send snapshots dynamic sections in their saved order', async () => {
       listSections: async () => sections,
       recordAudit: async () => undefined,
     } as never,
-    { enqueue: async (draft: Record<string, unknown>) => drafts.push(draft) } as never,
+    {
+      enqueue: async (draft: Record<string, unknown>) => drafts.push(draft),
+    } as never,
   );
 
   await service.queueTest(campaign.id, 'recipient@example.com', 'admin-1');
@@ -486,7 +486,9 @@ test('section rendering preserves order and omits empty markup', () => {
     ],
     testMode: true,
   });
-  assert.ok(rendered.html.indexOf('先頭') < rendered.html.indexOf('second.jpg'));
+  assert.ok(
+    rendered.html.indexOf('先頭') < rendered.html.indexOf('second.jpg'),
+  );
   assert.match(rendered.html, /本文A/);
   assert.doesNotMatch(rendered.html, /undefined/);
 });
@@ -512,7 +514,10 @@ test('formal dispatch implementation snapshots sorted sections before creating O
     `${process.cwd()}/repositories/newsletter-campaign.repository.ts`,
     'utf8',
   );
-  assert.match(repository, /const sections = await repository\.listSections\(campaign\.id\)/);
+  assert.match(
+    repository,
+    /const sections = await repository\.listSections\(campaign\.id\)/,
+  );
   assert.match(repository, /sections: sections\.map/);
 });
 
