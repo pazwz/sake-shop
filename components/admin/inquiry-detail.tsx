@@ -3,8 +3,9 @@
 import { AdminRole, ContactInquiryStatus } from '@prisma/client';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { CONTACT_INQUIRY_STATUS_LABELS } from '@/config/contact-inquiry';
+import { ADMIN_INQUIRY_READ_EVENT } from '@/lib/admin-inquiry-polling';
 
 type Inquiry = {
   id: string;
@@ -62,6 +63,38 @@ export function InquiryDetail({
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  useEffect(() => {
+    let active = true;
+    let started = false;
+    const displayed = inquiry.messages
+      .filter((message) => message.direction === 'CUSTOMER')
+      .map((message) => message.id);
+    const markDisplayed = async () => {
+      if (document.hidden || started || displayed.length === 0) return;
+      started = true;
+      try {
+        for (let offset = 0; offset < displayed.length; offset += 500) {
+          if (!active) return;
+          await call(`/api/v1/admin/inquiries/${inquiry.id}/read`, 'POST', {
+            messageIds: displayed.slice(offset, offset + 500),
+          });
+        }
+        if (active) window.dispatchEvent(new Event(ADMIN_INQUIRY_READ_EVENT));
+      } catch {
+        if (active)
+          setError(
+            '既読情報を保存できませんでした。ページを再読み込みしてください。',
+          );
+      }
+    };
+    const onVisibility = () => void markDisplayed();
+    void markDisplayed();
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      active = false;
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, [inquiry.id, inquiry.messages]);
   const run = async (operation: () => Promise<void>) => {
     setBusy(true);
     setError('');
@@ -89,13 +122,15 @@ export function InquiryDetail({
         </span>
       </div>
       {error ? <p className="mt-4 text-sm text-red-700">{error}</p> : null}
-      <section className="mt-8 grid gap-6 border line bg-white p-6 md:grid-cols-2">
+      <section className="mt-8 grid gap-6 border line bg-white p-6 lg:grid-cols-[1.5fr_1fr]">
         <div>
-          <h2 className="font-medium">基本情報</h2>
+          <h2 className="font-medium">問い合わせ情報</h2>
           <dl className="mt-3 space-y-2 text-sm">
             <div>
               種別：
-              {inquiry.order ? '注文サポート' : 'Legacy / General inquiry'}
+              {inquiry.order
+                ? '注文サポート'
+                : '一般のお問い合わせ（過去の受付）'}
             </div>
             <div>
               受付日時：
@@ -178,19 +213,33 @@ export function InquiryDetail({
           </div>
         </div>
       </section>
-      <section className="mt-6 border line bg-white p-6">
+      <section
+        className="mt-6 border line bg-white p-4 sm:p-6"
+        aria-label="管理者メッセージ履歴"
+      >
         <h2 className="font-medium">サイト内メッセージ</h2>
-        <div className="mt-4 space-y-4">
+        <div className="mt-6 space-y-6">
           {inquiry.messages.map((message) => (
             <article
               key={message.id}
-              className="border-l-2 border-[#6f1831] pl-4 text-sm"
+              data-message-direction={message.direction}
+              className={`w-[92%] max-w-3xl p-4 text-sm sm:w-[85%] ${message.direction === 'ADMIN' ? 'ml-auto border line bg-[var(--soft)]' : 'mr-auto border-l-2 border-[var(--accent)] bg-white'}`}
             >
               <p className="font-medium">
                 {message.direction === 'ADMIN' ? 'LINXASからの返信' : 'お客様'}{' '}
                 {message.authorAdmin ? `・ ${message.authorAdmin.name}` : ''}
               </p>
-              <p className="mt-2 whitespace-pre-wrap">{message.body}</p>
+              <p className="mt-3 whitespace-pre-wrap break-words leading-7">
+                {message.body}
+              </p>
+              <time
+                className="mt-3 block text-xs text-stone-500"
+                dateTime={new Date(message.createdAt).toISOString()}
+              >
+                {new Date(message.createdAt).toLocaleString('ja-JP', {
+                  timeZone: 'Asia/Tokyo',
+                })}
+              </time>
             </article>
           ))}
         </div>
@@ -206,6 +255,7 @@ export function InquiryDetail({
       <section className="mt-6 border line bg-white p-6">
         <h2 className="font-medium">返信</h2>
         <textarea
+          aria-label="お客様への返信"
           value={reply}
           onChange={(event) => setReply(event.target.value)}
           maxLength={5000}

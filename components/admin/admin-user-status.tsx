@@ -16,7 +16,7 @@ export function AdminUserStatus({
   return (
     <div className="flex items-center gap-3 text-xs">
       <span>
-        {admin.name} / {admin.role}
+        管理者としてログイン中：{admin.name} / {admin.role}
       </span>
       <button
         type="button"

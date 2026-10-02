@@ -6,9 +6,17 @@ import {
   type PrismaClient,
 } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
+import { ValidationError } from '@/lib/errors';
 import type { InquiryListInput } from '@/validators/contact-inquiry.validator';
 
 const pageSize = 25;
+
+const unreadInquirySql = (adminId: string) => Prisma.sql`EXISTS (
+  SELECT 1 FROM contact_inquiry_messages unread_message
+  WHERE unread_message.inquiry_id = i.id AND unread_message.direction = 'CUSTOMER'
+  AND NOT EXISTS (SELECT 1 FROM admin_inquiry_message_reads read_marker
+    WHERE read_marker.admin_id = ${adminId} AND read_marker.message_id = unread_message.id)
+)`;
 
 const inquirySelect = {
   id: true,
@@ -16,6 +24,7 @@ const inquirySelect = {
   status: true,
   topic: true,
   name: true,
+  message: true,
   email: true,
   orderNumber: true,
   assignedAdminId: true,
@@ -27,8 +36,8 @@ const inquirySelect = {
   customer: { select: { id: true, name: true } },
   messages: {
     take: 1,
-    orderBy: { createdAt: 'desc' },
-    select: { createdAt: true },
+    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    select: { createdAt: true, direction: true, body: true },
   },
 } satisfies Prisma.ContactInquirySelect;
 
@@ -43,7 +52,7 @@ const threadSelect = {
   updatedAt: true,
   customerLastReadAt: true,
   messages: {
-    orderBy: { createdAt: 'asc' },
+    orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
     select: {
       id: true,
       direction: true,
@@ -57,38 +66,66 @@ const threadSelect = {
 export class ContactInquiryRepository {
   public constructor(private readonly database: PrismaClient = prisma) {}
 
-  public async list(input: InquiryListInput) {
-    const where: Prisma.ContactInquiryWhereInput = {
-      ...(input.status ? { status: input.status } : {}),
-      ...(input.assignedAdminId
-        ? { assignedAdminId: input.assignedAdminId }
-        : {}),
-      ...(input.topic ? { topic: input.topic } : {}),
-      ...(input.q
-        ? {
-            OR: [
-              { publicId: { contains: input.q, mode: 'insensitive' } },
-              { email: { contains: input.q, mode: 'insensitive' } },
-              { orderNumber: { contains: input.q, mode: 'insensitive' } },
-            ],
-          }
-        : {}),
-    };
-    const [total, items] = await this.database.$transaction([
-      this.database.contactInquiry.count({ where }),
-      this.database.contactInquiry.findMany({
-        where,
-        select: inquirySelect,
-        orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }],
-        skip: (input.page - 1) * pageSize,
-        take: pageSize,
-      }),
+  public async list(input: InquiryListInput, adminId: string) {
+    const conditions = [Prisma.sql`TRUE`];
+    if (input.status)
+      conditions.push(Prisma.sql`i.status::text = ${input.status}`);
+    if (input.assignedAdminId)
+      conditions.push(
+        Prisma.sql`i.assigned_admin_id = ${input.assignedAdminId}`,
+      );
+    if (input.topic) conditions.push(Prisma.sql`i.topic = ${input.topic}`);
+    if (input.q) {
+      const search = `%${input.q.replace(/[\\%_]/g, '\\$&')}%`;
+      conditions.push(
+        Prisma.sql`(i.public_id ILIKE ${search} OR i.email ILIKE ${search} OR i.order_number ILIKE ${search})`,
+      );
+    }
+    const where = Prisma.join(conditions, ' AND ');
+    const unread = unreadInquirySql(adminId);
+    const [count, ranked] = await this.database.$transaction([
+      this.database.$queryRaw<Array<{ total: bigint }>>(
+        Prisma.sql`SELECT COUNT(*) AS total FROM contact_inquiries i WHERE ${where}`,
+      ),
+      this.database.$queryRaw<
+        Array<{ id: string; unread: boolean }>
+      >(Prisma.sql`
+        SELECT i.id, ${unread} AS unread FROM contact_inquiries i
+        LEFT JOIN LATERAL (SELECT direction, created_at FROM contact_inquiry_messages m
+          WHERE m.inquiry_id = i.id ORDER BY created_at DESC, id DESC LIMIT 1) latest ON TRUE
+        WHERE ${where}
+        ORDER BY CASE
+          WHEN i.status = 'CLOSED' THEN 3
+          WHEN ${unread} AND latest.direction = 'CUSTOMER' THEN 0
+          WHEN i.status IN ('NEW', 'IN_PROGRESS') AND latest.direction = 'CUSTOMER' THEN 1
+          ELSE 2 END,
+          COALESCE(latest.created_at, i.created_at) DESC, i.id
+        LIMIT ${pageSize} OFFSET ${(input.page - 1) * pageSize}`),
     ]);
+    const total = Number(count[0].total);
+    const items = ranked.length
+      ? await this.database.contactInquiry.findMany({
+          where: { id: { in: ranked.map((row) => row.id) } },
+          select: inquirySelect,
+        })
+      : [];
+    const byId = new Map(items.map((item) => [item.id, item]));
     return {
-      items: items.map(({ messages, ...inquiry }) => ({
-        ...inquiry,
-        lastMessageAt: messages[0]?.createdAt ?? inquiry.createdAt,
-      })),
+      // Hydrate only the DB-paginated IDs; priority/order is never computed in JS.
+      items: ranked.map((row) => {
+        const { messages, ...inquiry } = byId.get(row.id)!;
+        return {
+          ...inquiry,
+          unread: row.unread,
+          lastMessageAt: messages[0]?.createdAt ?? inquiry.createdAt,
+          lastDirection: messages[0]?.direction ?? null,
+          lastMessagePreview: (
+            messages[0]?.body ??
+            inquiry.message ??
+            ''
+          ).slice(0, 120),
+        };
+      }),
       pagination: {
         page: input.page,
         pageSize,
@@ -96,6 +133,58 @@ export class ContactInquiryRepository {
         totalPages: Math.max(1, Math.ceil(total / pageSize)),
       },
     };
+  }
+
+  public async unreadSummary(adminId: string) {
+    const unread = unreadInquirySql(adminId);
+    const [count, recent] = await this.database.$transaction([
+      this.database.$queryRaw<Array<{ total: bigint }>>(
+        Prisma.sql`SELECT COUNT(*) AS total FROM contact_inquiries i WHERE ${unread}`,
+      ),
+      this.database.$queryRaw<
+        Array<{
+          id: string;
+          publicId: string;
+          orderNumber: string | null;
+          customerName: string | null;
+          preview: string;
+          createdAt: Date;
+        }>
+      >(Prisma.sql`
+        SELECT i.id, i.public_id AS "publicId", i.order_number AS "orderNumber",
+          c.name AS "customerName", LEFT(latest.body, 120) AS preview, latest.created_at AS "createdAt"
+        FROM contact_inquiries i LEFT JOIN customers c ON c.id = i.customer_id
+        JOIN LATERAL (SELECT m.body, m.created_at FROM contact_inquiry_messages m
+          WHERE m.inquiry_id = i.id AND m.direction = 'CUSTOMER'
+          AND NOT EXISTS (SELECT 1 FROM admin_inquiry_message_reads r WHERE r.admin_id = ${adminId} AND r.message_id = m.id)
+          ORDER BY m.created_at DESC, m.id DESC LIMIT 1) latest ON TRUE
+        ORDER BY latest.created_at DESC, i.id LIMIT 5`),
+    ]);
+    return { unreadInquiryCount: Number(count[0].total), recent };
+  }
+
+  public async markAdminRead(
+    inquiryId: string,
+    messageIds: string[],
+    adminId: string,
+  ) {
+    const ids = [...new Set(messageIds)];
+    const displayed = await this.database.contactInquiryMessage.findMany({
+      where: {
+        id: { in: ids },
+        inquiryId,
+        direction: ContactInquiryMessageDirection.CUSTOMER,
+      },
+      select: { id: true },
+    });
+    if (displayed.length !== ids.length)
+      throw new ValidationError(
+        '表示されたお客様のメッセージのみ既読にできます。',
+      );
+    return this.database.adminInquiryMessageRead.createMany({
+      data: displayed.map(({ id }) => ({ adminId, messageId: id })),
+      skipDuplicates: true,
+    });
   }
 
   public get(id: string) {
@@ -144,7 +233,9 @@ export class ContactInquiryRepository {
     });
     if (!owned) return null;
     return this.database.contactInquiry.update({
-      where: { id: owned.id }, data: { customerLastReadAt: new Date() }, select: { id: true },
+      where: { id: owned.id },
+      data: { customerLastReadAt: new Date() },
+      select: { id: true },
     });
   }
 
@@ -210,6 +301,7 @@ export class ContactInquiryRepository {
         data: {
           inquiryId: inquiry.id,
           direction: ContactInquiryMessageDirection.CUSTOMER,
+          authorCustomerId: input.customerId,
           fromEmail: order.customer.email,
           toEmail: '',
           subject: `注文についてのお問い合わせ（${order.orderNumber}）`,

@@ -12,8 +12,14 @@ export class ContactInquiryService {
     private readonly trigger = new EmailDispatchTriggerService(),
   ) {}
 
-  public list(input: InquiryListInput) {
-    return this.inquiries.list(input);
+  public list(input: InquiryListInput, adminId: string) {
+    return this.inquiries.list(input, adminId);
+  }
+  public unreadSummary(adminId: string) {
+    return this.inquiries.unreadSummary(adminId);
+  }
+  public markAdminRead(id: string, messageIds: string[], adminId: string) {
+    return this.inquiries.markAdminRead(id, messageIds, adminId);
   }
   public activeAdmins() {
     return this.inquiries.activeAdmins();
@@ -69,7 +75,8 @@ export class ContactInquiryService {
 
   public async markCustomerRead(id: string, customerId: string) {
     const result = await this.inquiries.markCustomerRead(id, customerId);
-    if (!result) throw new ForbiddenError('このメッセージにはアクセスできません。');
+    if (!result)
+      throw new ForbiddenError('このメッセージにはアクセスできません。');
   }
 
   public async assign(

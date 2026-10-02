@@ -1,5 +1,6 @@
 import Image, { getImageProps } from 'next/image';
 import Link from 'next/link';
+import StorefrontLayout from '@/components/storefront-layout';
 import { HomeCategoryGrid } from '@/components/home-category-grid';
 import {
   HomeSeasonalSection,
@@ -108,7 +109,15 @@ function CollectionImage({
   );
 }
 
-export default async function Home() {
+export default function Home() {
+  return (
+    <StorefrontLayout>
+      <HomeContent />
+    </StorefrontLayout>
+  );
+}
+
+async function HomeContent() {
   const home = await collectionService.getHome();
   if (home.hero.length === 0) return <EmptyHome />;
 

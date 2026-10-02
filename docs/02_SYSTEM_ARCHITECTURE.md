@@ -35,6 +35,13 @@ Smaregi POS
 
 ## Contact Inquiry Management
 
+Admin inquiry notification は Customer notification と別 API/UI とする。Admin-only summary は
+Repository の indexed EXISTS / bounded latest metadata で未読 Inquiry 数と最大 5 件を取得する。
+一覧の priority と LIMIT/OFFSET は SQL 内で確定し、全件の client sort は行わない。
+Admin detail は client mount 後に表示済み Customer message ID を明示して read endpoint へ送る。
+Root layout は HTML のみ、公開 route の StorefrontLayout が customer providers/Header/Footer を保持し、
+Admin layout は Admin auth と独立 navigation を保持する。公開 URL は変更しない。
+
 `ContactInquiry` 是订单关联站内消息的 Source of Truth。公开 `/contact` 仅保留支持指南，历史 POST 固定返回 410，绝不写入。Customer route 先以 Session customerId 做 Order ownership lookup，再由 Service 在同一 transaction 内取得或创建该订单唯一 thread、写入 Customer message、更新 thread 状态并创建可选内部 `CONTACT_INQUIRY` Outbox。Admin 回复在同一 transaction 内写入 Admin message、设为 ANSWERED，并创建 `ORDER_MESSAGE_NOTIFICATION`；通知只含订单号与 My Page 链接，永远不含消息正文、内部备注、Reply-To 或 inbound mailbox。Resend 仍仅由既有 EmailOutbox worker 调用；立即 trigger 发生在 transaction commit 后且失败不回滚消息。legacy 非订单 Inquiry 和 `CONTACT_REPLY` 保留仅供既有记录的 Admin 查看。
 
 Next.js

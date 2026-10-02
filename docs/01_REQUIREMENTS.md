@@ -8,6 +8,11 @@ Last Update: 2026-08-08
 
 # 一、项目目标
 
+Admin は Customer storefront と独立した LINXAS ADMIN workspace を使用する。管理画面に
+MY PAGE / BAG / 商品カテゴリ navigation を表示しない。お問い合わせの未読は管理者ごとに
+独立して保存し、表示した Customer message ID のみ既読にする。同一 browser の Admin / Customer
+session は共存可能だが、actor は各 route の認証だけで決定する。
+
 Customer 注文詳細は注文時の商品名・単価・画像 URL と配送先 snapshot を表示する。
 画像 snapshot がない旧注文のみ現在の商品画像へ fallback し、画像がなければ placeholder
 を表示する。注文・支払・配送状態は顧客向け日本語へ変換し、実在する支払・配送情報と

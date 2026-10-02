@@ -10,6 +10,9 @@ import type { ProductListResult, ProductRecord } from '@/types/product';
 import type { ProductQuery } from '@/validators/product.validator';
 
 export class ProductService {
+  public countPublic() {
+    return this.productRepository.countPublic();
+  }
   public constructor(
     private readonly productRepository = new ProductRepository(),
     private readonly reservationRepository = new InventoryReservationRepository(),

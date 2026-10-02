@@ -8,6 +8,19 @@ Last Update: 2026-08-14
 
 # 一、API 设计原则
 
+## Admin inquiry unread
+
+- `GET /api/v1/admin/inquiries/unread-summary`: Admin auth only; returns
+  `{ unreadInquiryCount, recent }`, where recent has at most 5 records with id/publicId/orderNumber,
+  customerName, 120-character preview and createdAt. No full history, email or internal notes.
+- `POST /api/v1/admin/inquiries/{id}/read`: Admin auth and same-origin mutation check;
+  strict `{ messageIds: string[] }` (1–500 IDs per call). All IDs must belong to the requested
+  Inquiry and be CUSTOMER direction. Server supplies adminId; client adminId/sender role is rejected.
+  Repeated acknowledgement is idempotent. Returns `{ read: true }`; invalid fields/membership 422,
+  unauthenticated 401. No automatic read on listing, GET, prefetch or Admin reply.
+- Admin inbox uses SQL priority/pagination. NEW / IN_PROGRESS / ANSWERED / CLOSED enums unchanged.
+  30-second foreground-only polling; Browser Notification and new email notification are follow-ups.
+
 ## 1. RESTful API
 
 统一采用 RESTful 风格。

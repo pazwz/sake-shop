@@ -15,6 +15,10 @@ export const E2E_FIXTURES = {
     username: 'e2e-staff',
     password: 'E2E-Staff-123!',
   },
+  secondaryStaff: {
+    username: 'e2e-staff-secondary',
+    password: 'E2E-Staff-123!',
+  },
   orderNumber: 'E2E-ORDER-SUPPORT-001',
 } as const;
 

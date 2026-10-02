@@ -110,7 +110,8 @@ test('header navigation groups only categories that actually exist', async () =>
 
 test('authenticated header uses an accessible SVG bell rather than a unicode diamond', async () => {
   const header = await readFile(`${process.cwd()}/components/header.tsx`, 'utf8');
-  assert.match(header, /function BellIcon/);
+  assert.match(header, /import \{ BellIcon \} from '\.\/bell-icon'/);
+  assert.match(await readFile(`${process.cwd()}/components/bell-icon.tsx`, 'utf8'), /function BellIcon/);
   assert.match(header, /aria-label="お知らせ"/);
   assert.match(header, /<BellIcon className="h-4 w-4" \/>/);
   assert.doesNotMatch(header, /♢/);

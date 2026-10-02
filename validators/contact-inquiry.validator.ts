@@ -42,3 +42,9 @@ export const customerInquiryMessageValidator = z
   .strict();
 
 export type InquiryListInput = z.infer<typeof inquiryListValidator>;
+
+export const adminInquiryReadValidator = z
+  .object({
+    messageIds: z.array(z.string().min(1).max(64)).min(1).max(500),
+  })
+  .strict();

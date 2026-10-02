@@ -17,7 +17,7 @@ test.describe('E2E-13: customer notifications', () => {
     await expect(page.getByRole('link', { name: 'お知らせ' })).toBeVisible();
     await Promise.all([
       page.waitForURL(/\/account\/orders\/[^/]+\/messages$/),
-      page.getByRole('link', { name: /この注文について問い合わせる|メッセージを確認/ }).click(),
+      page.locator(`a[href="/account/orders/${process.env.E2E_QA_ORDER_NUMBER!}/messages"]`).click(),
     ]);
     await expect(page.getByRole('link', { name: '注文詳細へ戻る' })).toBeVisible();
     await expect(page.getByLabel('メッセージ履歴')).toBeVisible();

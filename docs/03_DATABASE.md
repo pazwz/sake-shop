@@ -8,6 +8,15 @@ Last Update: 2026-08-14
 
 # 一、设计原则
 
+## Admin inquiry read and author model
+
+`admin_inquiry_message_reads` は `(admin_id, message_id)` compound primary key と `read_at` を持つ。
+AdminUser / ContactInquiryMessage に foreign key を持ち、既読は管理者間で共有しない。
+`contact_inquiry_messages.author_customer_id` は nullable Customer foreign key。新しい Customer message
+だけに認証済み customerId を保存し、歴史 sender を推測回填しない。既存 direction / author_admin_id
+は維持する。Customer のみを未読対象とし、message direction / inquiry_id / created_at に index を置く。
+Legacy の message row がない Inquiry は引き続き閲覧できるが、合成 unread message は作らない。
+
 ## 主数据原则
 
 ### スマレジ负责

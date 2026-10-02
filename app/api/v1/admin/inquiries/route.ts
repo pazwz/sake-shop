@@ -13,12 +13,13 @@ const service = new ContactInquiryService();
 
 export const GET = async (request: Request) => {
   try {
-    await requireAdmin();
+    const admin = await requireAdmin();
     return createSuccessResponse(
       await service.list(
         inquiryListValidator.parse(
           Object.fromEntries(new URL(request.url).searchParams),
         ),
+        admin.id,
       ),
     );
   } catch (error) {

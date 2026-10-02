@@ -84,6 +84,11 @@ export const getCollectionProductCandidateWhere = (
 });
 
 export class ProductRepository {
+  public countPublic() {
+    return prisma.product.count({
+      where: { ...PUBLIC_PRODUCT_VISIBILITY, ...STANDALONE_EC_PRODUCT_WHERE },
+    });
+  }
   public async findCollectionProductCandidates(
     query: CollectionProductCandidateQuery,
   ) {
