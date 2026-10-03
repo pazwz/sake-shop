@@ -121,7 +121,7 @@ export default async function AdminProductsPage({
       <p className="eyebrow mt-5">PRODUCT MANAGEMENT</p>
       <h1 className="serif mt-3 text-5xl">商品管理</h1>
       <p className="mt-4 max-w-2xl text-sm leading-7 text-stone-600">
-        スマレジの商品情報と在庫を確認し、LINXAS EC
+        スマレジの商品情報と在庫を確認し、LINXAS FUKUOKA EC
         の掲載内容・画像・公開状態を管理します。
       </p>
 

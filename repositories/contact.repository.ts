@@ -97,7 +97,7 @@ export class ContactRepository {
       eventKey: `contact:${input.submissionId}:support`,
       type: 'CONTACT_INQUIRY',
       recipient: input.recipient,
-      subject: '[LINXAS EC] お問い合わせ',
+      subject: '[LINXAS FUKUOKA EC] お問い合わせ',
       template: EmailTemplate.CONTACT_INQUIRY,
       payload: {
         email: input.email,

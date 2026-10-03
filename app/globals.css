@@ -368,13 +368,15 @@ aside[aria-labelledby='newsletter-title'] {
   letter-spacing: 0.18em;
 }
 .brand-logo-header .brand-logo-name {
-  font-size: 1.75rem;
+  font-size: 1.5rem;
+  letter-spacing: 0.12em;
 }
 .brand-logo-footer {
   align-items: flex-start;
 }
 .brand-logo-footer .brand-logo-name {
-  font-size: 1.85rem;
+  font-size: clamp(1.1rem, 4vw, 1.85rem);
+  letter-spacing: 0.1em;
 }
 .brand-logo-loading {
   margin-top: 0.2rem;
@@ -457,7 +459,7 @@ aside[aria-labelledby='newsletter-title'] {
   }
   .brand-logo-header .brand-logo-name {
     font-size: 1.05rem;
-    letter-spacing: 0.13em;
+    letter-spacing: 0.1em;
   }
 }
 @media (prefers-reduced-motion: reduce) {

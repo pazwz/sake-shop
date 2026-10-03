@@ -46,7 +46,7 @@ export function ProductCard({ product }: { product: ProductCardItem }) {
       </div>
       <div className="product-card-info w-full min-w-0 max-w-full [overflow-wrap:anywhere]">
         <p className="product-card-meta mt-2 max-w-full text-[10px] tracking-[.15em] text-[#6d2227] md:mt-3">
-          {categoryName} / {product.producer ?? 'LINXAS'}
+          {categoryName} / {product.producer ?? 'LINXAS FUKUOKA'}
         </p>
         <h3 className="product-card-title mt-1.5 max-w-full text-[15px] font-normal md:mt-2">
           {product.name}

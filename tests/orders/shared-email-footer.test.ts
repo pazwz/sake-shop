@@ -52,6 +52,7 @@ test('every transactional email includes safe shared legal, support and age foot
       '092-285-8022',
       '11:00-20:00',
       'Instagram',
+      'LINXAS FUKUOKA',
       '©',
     ]) {
       assert.ok(rendered.html.includes(content), `${template}: ${content}`);
@@ -199,6 +200,9 @@ test('Resend forwards newsletter headers only when supplied without contacting t
     'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
   };
   await adapter.send({ ...message, headers });
+  await new ResendEmailAdapter('offline-key', 'LINXAS <no-reply@example.com>').send(message);
   assert.equal(requests[0].headers, undefined);
+  assert.equal(requests[0].from, 'LINXAS FUKUOKA <no-reply@example.com>');
+  assert.equal(requests[2].from, 'LINXAS FUKUOKA <no-reply@example.com>');
   assert.deepEqual(requests[1].headers, headers);
 });

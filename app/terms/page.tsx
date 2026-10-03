@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { LegalPolicyPage } from '@/components/legal-policy-page';
 
 export const metadata: Metadata = {
-  title: '利用規約 | LINXAS',
+  title: '利用規約 | LINXAS FUKUOKA',
 };
 
 export default function TermsPage() {
@@ -10,7 +10,7 @@ export default function TermsPage() {
     <LegalPolicyPage
       eyebrow="Terms"
       title="利用規約"
-      introduction="本規約は、LINXASオンラインサービスの利用条件を定めるものです。現在オンライン注文は準備中であり、販売開始時に確定版へ更新します。"
+      introduction="本規約は、LINXAS FUKUOKAオンラインサービスの利用条件を定めるものです。現在オンライン注文は準備中であり、販売開始時に確定版へ更新します。"
       sections={[
         {
           heading: 'サービスの利用',

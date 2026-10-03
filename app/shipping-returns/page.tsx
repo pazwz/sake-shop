@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { LegalPolicyPage } from '@/components/legal-policy-page';
 
 export const metadata: Metadata = {
-  title: '配送・返品について | LINXAS',
+  title: '配送・返品について | LINXAS FUKUOKA',
 };
 
 export default function ShippingReturnsPage() {

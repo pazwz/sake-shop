@@ -53,24 +53,24 @@ export function Header({
       onMouseLeave={() => setActive(null)}
       className="sticky top-0 z-40 bg-[#fffdf9]/95 backdrop-blur"
     >
-      <div className="wrap flex h-[66px] items-center justify-between border-b line">
+      <div className="wrap grid grid-cols-[auto_1fr] items-center gap-y-2 border-b line pb-3 pt-4 lg:flex lg:h-[66px] lg:justify-between lg:py-0">
         <button
           onClick={openSearch}
-          className="hidden text-xs font-semibold md:block"
+          className="row-start-2 hidden text-xs font-semibold md:block"
         >
           ⌕　検索する
         </button>
-        <button onClick={openSearch} className="text-sm md:hidden">
+        <button onClick={openSearch} className="row-start-2 text-sm md:hidden">
           ⌕
         </button>
         <Link
           href="/"
-          aria-label="LINXAS ホーム"
-          className="absolute left-1/2 -translate-x-1/2"
+          aria-label="LINXAS FUKUOKA ホーム"
+          className="col-span-2 row-start-1 justify-self-center whitespace-nowrap lg:absolute lg:left-1/2 lg:-translate-x-1/2"
         >
           <BrandLogo variant="header" />
         </Link>
-        <div className="ml-auto flex items-center gap-4 text-xs font-semibold">
+        <div className="row-start-2 ml-auto flex items-center gap-3 text-xs font-semibold md:gap-4">
           <select
             aria-label="Language"
             className="hidden bg-transparent text-[#6d2227] outline-none md:block"

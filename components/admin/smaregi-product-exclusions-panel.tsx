@@ -53,7 +53,7 @@ export function SmaregiProductExclusionsPanel({
       <p className="eyebrow">EC CHANNEL EXCLUSIONS</p>
       <h2 className="serif mt-2 text-2xl">EC販売対象外</h2>
       <p className="mt-2 text-sm text-stone-600">
-        スマレジには残し、LINXAS ECの同期対象から恒久的に除外した商品です。
+        スマレジには残し、LINXAS FUKUOKA ECの同期対象から恒久的に除外した商品です。
       </p>
       {message ? <p className="mt-3 text-xs text-stone-600">{message}</p> : null}
       <div className="mt-5 divide-y border-y line text-sm">

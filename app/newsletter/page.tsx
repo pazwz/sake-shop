@@ -4,7 +4,7 @@ import { NewsletterSubscriptionForm } from '@/components/newsletter-subscription
 
 export const metadata: Metadata = {
   title: 'メールマガジン登録',
-  description: 'LINXASの新入荷や季節のおすすめをメールでお届けします。',
+  description: 'LINXAS FUKUOKAの新入荷や季節のおすすめをメールでお届けします。',
 };
 
 export default function NewsletterPage() {
@@ -13,7 +13,7 @@ export default function NewsletterPage() {
       <p className="eyebrow">Newsletter</p>
       <h1 className="serif mt-4 text-3xl md:text-4xl">メールマガジン登録</h1>
       <p className="mt-6 text-sm leading-7 text-stone-600">
-        新入荷や季節のおすすめ、LINXASからのお知らせをお届けします。会員登録は不要です。
+        新入荷や季節のおすすめ、LINXAS FUKUOKAからのお知らせをお届けします。会員登録は不要です。
       </p>
       <NewsletterSubscriptionForm />
       <Link

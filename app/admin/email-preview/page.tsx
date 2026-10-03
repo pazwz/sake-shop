@@ -57,7 +57,7 @@ export default async function AdminEmailPreviewPage() {
       {
         subject: '【プレビュー】秋のおすすめ',
         headline: '季節のお酒を、暮らしに。',
-        body: 'LINXASの新着商品・おすすめのお酒をご紹介します。',
+        body: 'LINXAS FUKUOKAの新着商品・おすすめのお酒をご紹介します。',
         ctaLabel: '日本酒を見る',
         ctaUrl: '/products?group=sake',
         testMode: true,

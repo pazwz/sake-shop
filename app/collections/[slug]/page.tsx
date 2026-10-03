@@ -245,10 +245,10 @@ function CollectionDetail({ collection }: { collection: PublicCollection }) {
   const isEditorial = collection.type === 'EDITORIAL';
   const isStory = collection.type === 'STORY';
   const eyebrow = isEditorial
-    ? 'LINXAS EDITORIAL'
+    ? 'LINXAS FUKUOKA EDITORIAL'
     : isStory
-      ? 'LINXAS STORY'
-      : 'LINXAS COLLECTION';
+      ? 'LINXAS FUKUOKA STORY'
+      : 'LINXAS FUKUOKA COLLECTION';
   const selectionTitle = isStory
     ? '物語に寄り添うお酒'
     : isEditorial

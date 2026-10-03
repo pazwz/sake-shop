@@ -1,5 +1,5 @@
 export const siteConfig = {
-  brandName: 'LINXAS',
+  brandName: 'LINXAS FUKUOKA',
   storeName: 'リンクサス福岡',
   locationLabel: 'FUKUOKA',
   address: {

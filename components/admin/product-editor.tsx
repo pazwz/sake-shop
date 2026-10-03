@@ -165,7 +165,7 @@ export function ProductEditor({
     if (busyRef.current || excluding) return;
     if (
       !window.confirm(
-        'スマレジの商品は削除されません。\nLINXAS ECでは「EC販売対象外」となり、以降の同期でもEC販売商品として再作成されません。\n続行しますか？',
+        'スマレジの商品は削除されません。\nLINXAS FUKUOKA ECでは「EC販売対象外」となり、以降の同期でもEC販売商品として再作成されません。\n続行しますか？',
       )
     )
       return;
@@ -428,7 +428,7 @@ export function ProductEditor({
         </div>
         <p className="mt-4 text-xs text-stone-500">
           四店物理库存合計：{initialProduct.physicalTotalApproved}
-          。在庫はLINXASから変更できません。
+          。在庫はLINXAS FUKUOKAから変更できません。
         </p>
       </section>
 
@@ -514,7 +514,7 @@ export function ProductEditor({
           <p className="eyebrow">EC CHANNEL CONTROL</p>
           <h2 className="serif mt-3 text-2xl">EC販売対象から除外</h2>
           <p className="mt-3 text-sm leading-6 text-stone-600">
-            スマレジの商品は削除されません。LINXAS
+            スマレジの商品は削除されません。LINXAS FUKUOKA
             ECの同期対象から除外され、次回同期で再作成されません。
           </p>
           <button
@@ -529,10 +529,10 @@ export function ProductEditor({
       ) : null}
 
       <form action={submit} className="mt-8 border line p-6 md:p-8">
-        <p className="eyebrow">LINXAS EC SETTINGS</p>
+        <p className="eyebrow">LINXAS FUKUOKA EC SETTINGS</p>
         <h2 className="serif mt-3 text-2xl">EC掲載設定</h2>
         <p className="mt-3 text-sm text-stone-600">
-          LINXAS EC上で表示する内容を編集できます。
+          LINXAS FUKUOKA EC上で表示する内容を編集できます。
         </p>
         <ProductMetadataCompletenessNotice
           completeness={metadataCompleteness}

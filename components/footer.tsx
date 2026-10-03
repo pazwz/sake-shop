@@ -241,7 +241,7 @@ function NewsletterDrawer({
           </div>
         ) : (
           <>
-            <p className="eyebrow">LINXAS NEWSLETTER</p>
+            <p className="eyebrow">LINXAS FUKUOKA NEWSLETTER</p>
             <h2 id="newsletter-title" className="serif mt-5 text-4xl">
               ニュースレター
             </h2>

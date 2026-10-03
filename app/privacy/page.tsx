@@ -5,7 +5,7 @@ import {
 } from '@/components/legal-policy-page';
 
 export const metadata: Metadata = {
-  title: 'プライバシーポリシー | LINXAS',
+  title: 'プライバシーポリシー | LINXAS FUKUOKA',
 };
 
 export default function PrivacyPage() {
@@ -13,7 +13,7 @@ export default function PrivacyPage() {
     <LegalPolicyPage
       eyebrow="Privacy"
       title="プライバシーポリシー"
-      introduction="LINXASのオンラインサービスにおける個人情報の取扱方針です。正式な販売事業者情報と保存期間は、オンライン販売開始前に確定します。"
+      introduction="LINXAS FUKUOKAのオンラインサービスにおける個人情報の取扱方針です。正式な販売事業者情報と保存期間は、オンライン販売開始前に確定します。"
       sections={[
         {
           heading: '取得する情報',

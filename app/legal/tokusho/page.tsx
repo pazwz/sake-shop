@@ -6,7 +6,7 @@ import {
 import { siteConfig } from '@/config/site';
 
 export const metadata: Metadata = {
-  title: '特定商取引法に基づく表記 | LINXAS',
+  title: '特定商取引法に基づく表記 | LINXAS FUKUOKA',
 };
 
 export default function TokushoPage() {

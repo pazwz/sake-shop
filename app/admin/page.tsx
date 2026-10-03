@@ -22,7 +22,7 @@ export default async function AdminPage() {
   );
   return (
     <main className="wrap py-20">
-      <p className="eyebrow">LINXAS ADMIN</p>
+      <p className="eyebrow">LINXAS FUKUOKA ADMIN</p>
       <h1 className="serif mt-4 text-5xl">ダッシュボード</h1>
       <div className="mt-8 grid gap-4 sm:grid-cols-2">
         <Link

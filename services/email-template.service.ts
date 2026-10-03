@@ -25,7 +25,7 @@ const frame = (
   const footer = options.footer ?? SharedEmailFooter();
   return {
     subject: title,
-    html: `<!doctype html><html lang="ja"><head><meta name="viewport" content="width=device-width, initial-scale=1"></head><body style="margin:0;background:#f6f3ee;color:#171412;font-family:-apple-system,BlinkMacSystemFont,'Hiragino Kaku Gothic ProN',sans-serif"><table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="width:100%"><tbody><tr><td align="center" style="padding:24px 12px"><table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="width:100%;max-width:620px;background:#fff"><tbody><tr><td style="padding:28px 20px"><p style="letter-spacing:.28em;color:#6f1831;font-size:12px">LINXAS</p><h1 style="font-family:serif;font-weight:400;font-size:28px">${escapeHtml(title)}</h1>${body}${footer.html}</td></tr></tbody></table></td></tr></tbody></table></body></html>`,
+    html: `<!doctype html><html lang="ja"><head><meta name="viewport" content="width=device-width, initial-scale=1"></head><body style="margin:0;background:#f6f3ee;color:#171412;font-family:-apple-system,BlinkMacSystemFont,'Hiragino Kaku Gothic ProN',sans-serif"><table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="width:100%"><tbody><tr><td align="center" style="padding:24px 12px"><table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="width:100%;max-width:620px;background:#fff"><tbody><tr><td style="padding:28px 20px"><p style="letter-spacing:.28em;color:#6f1831;font-size:12px">LINXAS FUKUOKA</p><h1 style="font-family:serif;font-weight:400;font-size:28px">${escapeHtml(title)}</h1>${body}${footer.html}</td></tr></tbody></table></td></tr></tbody></table></body></html>`,
     text: `${title}\n\n${text}\n\n${footer.text}`,
     ...(options.headers ? { headers: options.headers } : {}),
   };
@@ -138,7 +138,7 @@ export class EmailTemplateService {
     }
     if (template === EmailTemplate.CONTACT_INQUIRY) {
       return frame(
-        '[LINXAS EC] 新しいお問い合わせがあります',
+        '[LINXAS FUKUOKA EC] 新しいお問い合わせがあります',
         `<p>サイト内に新しいお問い合わせがあります。</p><p>注文番号：${escapeHtml(payload.orderNumber)}</p><p>管理画面より内容をご確認ください。</p><p>※このメールは送信専用です。メールへの返信は受け付けていません。</p>`,
         `サイト内に新しいお問い合わせがあります。\n注文番号: ${payload.orderNumber}\n管理画面より内容をご確認ください。\n\nこのメールは送信専用です。メールへの返信は受け付けていません。`,
       );
@@ -147,7 +147,7 @@ export class EmailTemplateService {
       const orderNumber = String(payload.orderNumber ?? '');
       const url = `${siteUrl}/account/orders/${encodeURIComponent(orderNumber)}/messages`;
       return frame(
-        '【LINXAS】新しいメッセージがあります',
+        '【LINXAS FUKUOKA】新しいメッセージがあります',
         `<p>${name} 様</p><p>ご注文に関する新しいメッセージがあります。</p><p>注文番号：${escapeHtml(orderNumber)}</p>${button('メッセージを確認する', url)}<p>※このメールは送信専用です。メールに直接返信いただいても回答できません。</p>`,
         `${payload.customerName ?? 'お客様'} 様\n\nご注文に関する新しいメッセージがあります。\n注文番号: ${orderNumber}\n\nMY PAGEより内容をご確認ください。\n${url}\n\nこのメールは送信専用です。メールに直接返信いただいても回答できません。`,
       );
@@ -157,14 +157,14 @@ export class EmailTemplateService {
       const replyBody = escapeHtml(payload.body).replaceAll('\n', '<br>');
       return frame(
         String(
-          payload.subject ?? `[LINXAS] お問い合わせについて（${publicId}）`,
+          payload.subject ?? `[LINXAS FUKUOKA] お問い合わせについて（${publicId}）`,
         ),
-        `<p>${name} 様</p><p>お問い合わせいただきありがとうございます。</p><p>${replyBody}</p><p>お問い合わせ番号：${publicId}</p><p>----------------<br>LINXAS / ${escapeHtml(siteConfig.storeName)}<br>お問い合わせ窓口<br>${escapeHtml(siteUrl)}</p>`,
-        `${payload.customerName ?? 'お客様'} 様\n\nお問い合わせいただきありがとうございます。\n\n${payload.body ?? ''}\n\nお問い合わせ番号：${payload.publicId ?? ''}\n\n----------------\nLINXAS / ${siteConfig.storeName}\nお問い合わせ窓口\n${siteUrl}`,
+        `<p>${name} 様</p><p>お問い合わせいただきありがとうございます。</p><p>${replyBody}</p><p>お問い合わせ番号：${publicId}</p><p>----------------<br>LINXAS FUKUOKA / ${escapeHtml(siteConfig.storeName)}<br>お問い合わせ窓口<br>${escapeHtml(siteUrl)}</p>`,
+        `${payload.customerName ?? 'お客様'} 様\n\nお問い合わせいただきありがとうございます。\n\n${payload.body ?? ''}\n\nお問い合わせ番号：${payload.publicId ?? ''}\n\n----------------\nLINXAS FUKUOKA / ${siteConfig.storeName}\nお問い合わせ窓口\n${siteUrl}`,
       );
     }
     if (template === EmailTemplate.NEWSLETTER_CAMPAIGN) {
-      const subject = String(payload.subject ?? 'LINXASからのお知らせ');
+      const subject = String(payload.subject ?? 'LINXAS FUKUOKAからのお知らせ');
       const preheader = String(payload.preheader ?? '');
       const headline = String(payload.headline ?? subject);
       const bodyText = String(payload.body ?? '');
@@ -215,9 +215,9 @@ export class EmailTemplateService {
       PAYMENT_SUCCEEDED: 'お支払いを確認しました',
       PAYMENT_FAILED: 'お支払いを確認できませんでした',
       ORDER_CANCELLED: 'ご注文をキャンセルしました',
-      CONTACT_INQUIRY: '[LINXAS EC] お問い合わせ',
+      CONTACT_INQUIRY: '[LINXAS FUKUOKA EC] お問い合わせ',
     };
-    const title = titles[template] ?? 'LINXASからのお知らせ';
+    const title = titles[template] ?? 'LINXAS FUKUOKAからのお知らせ';
     return frame(
       title,
       `<p>注文番号：${escapeHtml(payload.orderNumber)}</p><p>合計：¥${escapeHtml(payload.totalAmount)}</p>`,

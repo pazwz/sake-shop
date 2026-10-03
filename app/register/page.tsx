@@ -123,7 +123,7 @@ function RegisterForm() {
       <p className="eyebrow">Become a member</p>
       <h1 className="serif mt-4 text-5xl">会員登録</h1>
       <p className="mt-6 text-sm leading-7 text-stone-600">
-        LINXASの会員になると、ご注文履歴と配送状況をいつでもご確認いただけます。
+        LINXAS FUKUOKAの会員になると、ご注文履歴と配送状況をいつでもご確認いただけます。
       </p>
       <form
         ref={formRef}

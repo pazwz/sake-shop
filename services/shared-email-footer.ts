@@ -45,9 +45,9 @@ export function SharedEmailFooter({
   const row = (content: string) =>
     `<tr><td style="padding:12px 0">${content}</td></tr>`;
   return {
-    html: `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="width:100%;margin-top:40px;border-top:1px solid #e7e1d8;background:#faf8f4;font-size:13px;line-height:1.9;color:#171412"><tbody><tr><td style="padding:24px 16px"><table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="width:100%"><tbody>${row('<p style="margin:0;font-family:Georgia,serif;font-size:22px;letter-spacing:.12em">LINXAS</p>')}${row(`${link(contact)}<br>${link(phone)}<br>営業時間：${escapeHtml(emailBrandConfig.businessHours)}`)}${row(link(instagram))}${row(emailBrandConfig.legalLinks.map(link).join('<br>'))}${unsubscribe ? row(link(unsubscribe)) : ''}${testNotice ? row(escapeHtml(testNotice)) : ''}${row(escapeHtml(emailBrandConfig.sentOnlyNotice).replaceAll('\n', '<br>'))}${row(escapeHtml(emailBrandConfig.ageNotice))}${row(escapeHtml(copyright))}</tbody></table></td></tr></tbody></table>`,
+    html: `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="width:100%;margin-top:40px;border-top:1px solid #e7e1d8;background:#faf8f4;font-size:13px;line-height:1.9;color:#171412"><tbody><tr><td style="padding:24px 16px"><table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="width:100%"><tbody>${row('<p style="margin:0;font-family:Georgia,serif;font-size:22px;letter-spacing:.12em">LINXAS FUKUOKA</p>')}${row(`${link(contact)}<br>${link(phone)}<br>営業時間：${escapeHtml(emailBrandConfig.businessHours)}`)}${row(link(instagram))}${row(emailBrandConfig.legalLinks.map(link).join('<br>'))}${unsubscribe ? row(link(unsubscribe)) : ''}${testNotice ? row(escapeHtml(testNotice)) : ''}${row(escapeHtml(emailBrandConfig.sentOnlyNotice).replaceAll('\n', '<br>'))}${row(escapeHtml(emailBrandConfig.ageNotice))}${row(escapeHtml(copyright))}</tbody></table></td></tr></tbody></table>`,
     text: [
-      'LINXAS',
+      'LINXAS FUKUOKA',
       `${linkText(contact)}\n${linkText(phone)}\n営業時間：${emailBrandConfig.businessHours}`,
       linkText(instagram),
       emailBrandConfig.legalLinks.map(linkText).join('\n'),

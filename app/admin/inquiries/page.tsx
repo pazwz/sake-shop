@@ -103,7 +103,7 @@ export default async function InquiriesPage({
                   </p>
                   <p className="mt-2 text-xs text-stone-500">
                     {inquiry.lastDirection === 'ADMIN'
-                      ? 'LINXASからの返信'
+                      ? 'LINXAS FUKUOKAからの返信'
                       : 'お客様から'}
                   </p>
                   <time className="mt-1 block text-xs text-stone-500">

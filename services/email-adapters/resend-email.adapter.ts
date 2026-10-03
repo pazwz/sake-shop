@@ -1,4 +1,5 @@
 import { Resend } from 'resend';
+import { siteConfig } from '@/config/site';
 import type { EmailMessage, EmailProviderAdapter } from '@/types/email';
 
 export class ResendEmailAdapter implements EmailProviderAdapter {
@@ -20,7 +21,7 @@ export class ResendEmailAdapter implements EmailProviderAdapter {
       : (message.replyTo ?? this.replyTo);
     const result = await this.resend.emails.send(
       {
-        from: this.from!,
+        from: `${siteConfig.brandName} <${this.from!.trim().match(/<([^<>]+)>$/)?.[1] ?? this.from!.trim()}>`,
         to: message.to,
         subject: message.subject,
         html: message.html,

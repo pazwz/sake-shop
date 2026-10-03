@@ -331,7 +331,7 @@ export class ContactInquiryRepository {
           eventKey: `order-support:${order.id}:customer-message:${message.id}`,
           type: 'CONTACT_INQUIRY',
           recipient: input.adminNotificationRecipient,
-          subject: '[LINXAS EC] 新しいお問い合わせがあります',
+          subject: '[LINXAS FUKUOKA EC] 新しいお問い合わせがあります',
           template: EmailTemplate.CONTACT_INQUIRY,
           payload: {
             publicId: inquiry.publicId,
@@ -485,9 +485,9 @@ export class ContactInquiryRepository {
       if (existing) return { outboxId: existing.id, duplicate: true };
       const orderLinked = Boolean(inquiry.orderId && inquiry.orderNumber);
       const subject = orderLinked
-        ? '【LINXAS】新しいメッセージがあります'
+        ? '【LINXAS FUKUOKA】新しいメッセージがあります'
         : (input.subject ??
-          `Re: [LINXAS] お問い合わせについて（${inquiry.publicId}）`);
+          `Re: [LINXAS FUKUOKA] お問い合わせについて（${inquiry.publicId}）`);
       const template = orderLinked
         ? EmailTemplate.ORDER_MESSAGE_NOTIFICATION
         : EmailTemplate.CONTACT_REPLY;

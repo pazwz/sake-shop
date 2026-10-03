@@ -17,7 +17,7 @@ export function BrandLogo({
       <span className="brand-logo-name" aria-hidden="true">
         {siteConfig.brandName}
       </span>
-      {showLocation ? (
+      {showLocation && !siteConfig.brandName.includes(siteConfig.locationLabel) ? (
         <span className="brand-logo-location" aria-hidden="true">
           {siteConfig.locationLabel}
         </span>

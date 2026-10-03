@@ -44,7 +44,7 @@ async function main() {
         totalAmount: 10000,
         subject: '季節の便り',
         headline: '新しい一本との出会い',
-        body: 'LINXASから季節の便りをお届けします。',
+        body: 'LINXAS FUKUOKAから季節の便りをお届けします。',
         newsletterSubscriptionId: 'offline-preview-only',
       });
       await writeFile(join(directory, `${name}.html`), rendered.html);

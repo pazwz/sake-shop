@@ -277,7 +277,7 @@ export function InquiryDetail({ inquiry }: { inquiry: Inquiry }) {
               className={`w-[92%] max-w-3xl p-4 text-sm sm:w-[85%] ${message.direction === 'ADMIN' ? 'ml-auto border line bg-[var(--soft)]' : 'mr-auto border-l-2 border-[var(--accent)] bg-white'}`}
             >
               <p className="font-medium">
-                {message.direction === 'ADMIN' ? 'LINXASからの返信' : 'お客様'}{' '}
+                {message.direction === 'ADMIN' ? 'LINXAS FUKUOKAからの返信' : 'お客様'}{' '}
                 {message.authorAdmin
                   ? `・ ${getAdminDisplayName(message.authorAdmin)}`
                   : ''}

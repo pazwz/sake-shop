@@ -13,10 +13,10 @@ const subjects: Record<EmailTemplate, string> = {
   ORDER_CANCELLED: 'ご注文をキャンセルしました',
   SHIPMENT_SENT: '商品を発送しました',
   NEWSLETTER_CONTACT_SYNC: 'Newsletter contact synchronization',
-  NEWSLETTER_CAMPAIGN: 'LINXASからのお知らせ',
-  CONTACT_INQUIRY: '[LINXAS EC] お問い合わせ',
-  CONTACT_REPLY: '[LINXAS] お問い合わせについて',
-  ORDER_MESSAGE_NOTIFICATION: '【LINXAS】新しいメッセージがあります',
+  NEWSLETTER_CAMPAIGN: 'LINXAS FUKUOKAからのお知らせ',
+  CONTACT_INQUIRY: '[LINXAS FUKUOKA EC] お問い合わせ',
+  CONTACT_REPLY: '[LINXAS FUKUOKA] お問い合わせについて',
+  ORDER_MESSAGE_NOTIFICATION: '【LINXAS FUKUOKA】新しいメッセージがあります',
 };
 
 export class EmailNotificationService {
