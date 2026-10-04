@@ -5,6 +5,7 @@ import {
   createSuccessResponse,
 } from '@/lib/api-response';
 import { AppError, ValidationError } from '@/lib/errors';
+import { logAdminImageError } from '@/lib/admin-image-error-logger';
 import { AdminProductService } from '@/services/admin-product.service';
 import {
   cmsAdminRoles,
@@ -29,6 +30,7 @@ export const POST = async (
       return createAppErrorResponse(
         new ValidationError(error.issues[0]?.message),
       );
+    logAdminImageError('save', error);
     return createErrorResponse(
       'PRODUCT_IMAGE_CREATE_FAILED',
       '商品画像を登録できませんでした。',

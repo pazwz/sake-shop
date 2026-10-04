@@ -7,7 +7,9 @@ type PresignedUpload = {
 };
 
 const UPLOAD_FAILED_MESSAGE =
-  '画像のアップロードに失敗しました。もう一度お試しください。';
+  '画像のアップロードに失敗しました。通信環境を確認して、もう一度お試しください。';
+const PREPARATION_FAILED_MESSAGE =
+  '画像のアップロードを準備できませんでした。しばらくしてからもう一度お試しください。';
 const INVALID_RESPONSE_MESSAGE = 'アップロード結果を読み取れませんでした。';
 
 const isPresignedUpload = (value: unknown): value is PresignedUpload => {
@@ -46,9 +48,17 @@ export const uploadAdminImage = async (
         signal: controller.signal,
       });
     } catch {
-      throw new Error(UPLOAD_FAILED_MESSAGE);
+      throw new Error(PREPARATION_FAILED_MESSAGE);
     }
 
+    if (!presignResponse.ok) {
+      if (presignResponse.status === 401 || presignResponse.status === 403) {
+        throw new Error(
+          'ログイン状態と画像のアップロード権限を確認してください。',
+        );
+      }
+      throw new Error(PREPARATION_FAILED_MESSAGE);
+    }
     let payload: unknown;
     try {
       payload = await presignResponse.json();
@@ -56,7 +66,6 @@ export const uploadAdminImage = async (
       throw new Error(INVALID_RESPONSE_MESSAGE);
     }
 
-    if (!presignResponse.ok) throw new Error(UPLOAD_FAILED_MESSAGE);
     const upload =
       payload && typeof payload === 'object'
         ? (payload as { data?: unknown }).data

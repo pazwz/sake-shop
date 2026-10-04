@@ -5,6 +5,7 @@ import {
   createSuccessResponse,
 } from '@/lib/api-response';
 import { AppError, ValidationError } from '@/lib/errors';
+import { logAdminImageError } from '@/lib/admin-image-error-logger';
 import {
   cmsAdminRoles,
   requireAdmin,
@@ -38,6 +39,7 @@ export const POST = async (request: Request) => {
         new ValidationError(error.issues[0]?.message),
       );
     }
+    logAdminImageError('presign', error);
     return createErrorResponse(
       'MEDIA_PRESIGN_FAILED',
       'Unable to prepare media upload.',
