@@ -406,6 +406,7 @@ export function NewsletterCampaignForm({
               alt={campaign.heroImageAlt ?? ''}
               width={1200}
               height={600}
+              sizes="(max-width: 767px) calc(100vw - 90px), (max-width: 1079px) calc(100vw - 122px), 958px"
               className="mt-4 max-h-64 w-full object-contain"
             />
           ) : (
@@ -525,6 +526,7 @@ export function NewsletterCampaignForm({
                     alt={section.imageAlt ?? ''}
                     width={1200}
                     height={600}
+                    sizes="(max-width: 767px) calc(100vw - 124px), (max-width: 1079px) calc(100vw - 164px), 916px"
                     className="mt-4 max-h-64 w-full object-contain"
                   />
                 ) : (

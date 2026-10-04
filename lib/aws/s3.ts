@@ -1,4 +1,5 @@
 import 'server-only';
+import { IMMUTABLE_IMAGE_CACHE_CONTROL } from '@/config/media';
 
 import {
   DeleteObjectCommand,
@@ -100,9 +101,11 @@ export const createPresignedUpload = async (
     Bucket: configuration.bucket,
     Key: normalizedKey,
     ContentType: contentType,
+    CacheControl: IMMUTABLE_IMAGE_CACHE_CONTROL,
   });
   const uploadUrl = await getSignedUrl(getS3Client(configuration), command, {
     expiresIn: PRESIGNED_UPLOAD_EXPIRES_IN_SECONDS,
+    signableHeaders: new Set(['cache-control']),
   });
 
   return {

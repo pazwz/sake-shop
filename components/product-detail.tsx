@@ -1,6 +1,10 @@
 'use client';
 
 import Image from 'next/image';
+import {
+  HOME_GIFT_IMAGE_SIZES,
+  PRODUCT_DETAIL_IMAGE_SIZES,
+} from '@/config/image-sizes';
 import Link from 'next/link';
 import { useState } from 'react';
 import { AgeNotice } from '@/components/age-notice';
@@ -60,7 +64,7 @@ export function ProductDetail({
             {imageUrl ? (
               <Image
                 fill
-                sizes="(max-width: 767px) 100vw, 50vw"
+                sizes={PRODUCT_DETAIL_IMAGE_SIZES}
                 loading="eager"
                 className="object-contain p-5 md:p-10"
                 src={imageUrl}
@@ -203,7 +207,11 @@ export function ProductDetail({
             <h2 className="serif mt-4 text-3xl">同じカテゴリーの商品</h2>
             <div className="mt-8 grid gap-5 sm:grid-cols-3">
               {related.map((item) => (
-                <ProductCard key={item.id} product={item} />
+                <ProductCard
+                  key={item.id}
+                  product={item}
+                  sizes={HOME_GIFT_IMAGE_SIZES}
+                />
               ))}
             </div>
           </section>

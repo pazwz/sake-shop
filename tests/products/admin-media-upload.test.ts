@@ -55,7 +55,10 @@ for (const type of ['image/png', 'image/jpeg']) {
           }
           assert.equal(url, upload.uploadUrl);
           assert.equal(init.method, 'PUT');
-          assert.deepEqual(init.headers, { 'Content-Type': type });
+          assert.deepEqual(init.headers, {
+            'Content-Type': type,
+            'Cache-Control': 'public, max-age=31536000, immutable',
+          });
           assert.equal(init.body, file);
           return new Response(null, { status: 200 });
         },

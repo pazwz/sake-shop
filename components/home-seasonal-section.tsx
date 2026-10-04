@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { ProductCard } from '@/components/product-card';
+import { HOME_SEASONAL_IMAGE_SIZES } from '@/config/image-sizes';
 import { SEASON_COLLECTION_SLUGS } from '@/config/collections';
 
 export type SeasonKey = 'SPRING' | 'SUMMER' | 'AUTUMN' | 'WINTER';
@@ -66,7 +67,11 @@ export function HomeSeasonalSection({
         <>
           <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {seasonal.products.map(({ product }) => (
-              <ProductCard key={product.id} product={product} />
+              <ProductCard
+                key={product.id}
+                product={product}
+                sizes={HOME_SEASONAL_IMAGE_SIZES}
+              />
             ))}
           </div>
           <Link

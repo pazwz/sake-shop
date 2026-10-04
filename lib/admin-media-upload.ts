@@ -1,4 +1,7 @@
-import { ADMIN_MEDIA_UPLOAD_TIMEOUT_MS } from '@/config/media';
+import {
+  ADMIN_MEDIA_UPLOAD_TIMEOUT_MS,
+  IMMUTABLE_IMAGE_CACHE_CONTROL,
+} from '@/config/media';
 
 type PresignedUpload = {
   uploadUrl: string;
@@ -78,7 +81,10 @@ export const uploadAdminImage = async (
     try {
       uploadResponse = await fetch(upload.uploadUrl, {
         method: 'PUT',
-        headers: { 'Content-Type': file.type },
+        headers: {
+          'Content-Type': file.type,
+          'Cache-Control': IMMUTABLE_IMAGE_CACHE_CONTROL,
+        },
         body: file,
         signal: controller.signal,
       });

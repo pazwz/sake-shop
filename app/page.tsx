@@ -9,6 +9,10 @@ import {
   type SeasonalCollection,
 } from '@/components/home-seasonal-section';
 import { ProductCard } from '@/components/product-card';
+import {
+  HOME_GIFT_IMAGE_SIZES,
+  HOME_SHOPKEEPER_IMAGE_SIZES,
+} from '@/config/image-sizes';
 import { COLLECTION_PATHS } from '@/config/collections';
 import { serializeForJson } from '@/lib/serialization';
 import { FeaturedCollectionService } from '@/services/collection.service';
@@ -88,14 +92,18 @@ function CollectionImage({
         src: mobileUrl,
         alt,
         fill: true,
-        sizes: '100vw',
+        sizes,
       }).props.srcSet
     : null;
 
   return (
     <picture className="absolute inset-0">
       {mobileSource ? (
-        <source media="(max-width: 767px)" srcSet={mobileSource} />
+        <source
+          media="(max-width: 767px)"
+          srcSet={mobileSource}
+          sizes={sizes}
+        />
       ) : null}
       <Image
         fill
@@ -191,7 +199,11 @@ async function HomeContent() {
           </div>
           <div className="grid grid-cols-1 gap-x-8 gap-y-14 min-[480px]:grid-cols-2 md:grid-cols-3 xl:gap-x-10">
             {shopkeeperProducts.map((product) => (
-              <ProductCard key={product.id} product={product} />
+              <ProductCard
+                key={product.id}
+                product={product}
+                sizes={HOME_SHOPKEEPER_IMAGE_SIZES}
+              />
             ))}
           </div>
         </div>
@@ -222,9 +234,15 @@ async function HomeContent() {
                         desktopUrl={editorial.desktopImageUrl}
                         mobileUrl={editorial.mobileImageUrl}
                         sizes={
-                          index === 0
-                            ? '(max-width: 767px) 100vw, 66vw'
-                            : '(max-width: 767px) 100vw, 34vw'
+                          editorials.length === 1
+                            ? '(max-width: 767px) calc(100vw - 40px), (max-width: 1279px) calc(100vw - 56px), 1224px'
+                            : index === 0
+                              ? editorials.length === 2
+                                ? '(max-width: 767px) calc(100vw - 40px), (max-width: 1279px) calc(62.5vw - 52.5px), 747.5px'
+                                : '(max-width: 767px) calc(100vw - 40px), (max-width: 1279px) calc(65vw - 54.6px), 777.4px'
+                              : editorials.length === 2
+                                ? '(max-width: 767px) calc(100vw - 40px), (max-width: 1279px) calc(37.5vw - 31.5px), 448.5px'
+                                : '(max-width: 767px) calc(100vw - 40px), (max-width: 1279px) calc(35vw - 29.4px), 418.6px'
                         }
                         alt={editorial.title}
                       />
@@ -265,7 +283,11 @@ async function HomeContent() {
         </div>
         <div className="mt-10 grid gap-5 sm:grid-cols-3">
           {giftProducts.map((product) => (
-            <ProductCard key={product.id} product={product} />
+            <ProductCard
+              key={product.id}
+              product={product}
+              sizes={HOME_GIFT_IMAGE_SIZES}
+            />
           ))}
         </div>
       </section>
@@ -284,7 +306,7 @@ async function HomeContent() {
                   <CollectionImage
                     desktopUrl={story.desktopImageUrl}
                     mobileUrl={story.mobileImageUrl}
-                    sizes="(max-width: 639px) 100vw, (max-width: 767px) 50vw, 25vw"
+                    sizes="(max-width: 639px) calc(100vw - 40px), (max-width: 767px) calc(50vw - 32px), (max-width: 1279px) calc(25vw - 34px), 286px"
                     alt={story.title}
                   />
                 </div>

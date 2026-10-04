@@ -38,14 +38,18 @@ function CollectionImage({
         src: collection.mobileImageUrl,
         alt: collection.title,
         fill: true,
-        sizes: '100vw',
+        sizes,
       }).props.srcSet
     : null;
 
   return (
     <picture className="absolute inset-0">
       {mobileSource ? (
-        <source media="(max-width: 767px)" srcSet={mobileSource} />
+        <source
+          media="(max-width: 767px)"
+          srcSet={mobileSource}
+          sizes={sizes}
+        />
       ) : null}
       <Image
         fill
@@ -108,7 +112,7 @@ function EditorialArticle({
                       fill
                       src={section.imageUrl}
                       alt={section.title}
-                      sizes="(max-width: 767px) 100vw, 58vw"
+                      sizes="(max-width: 767px) calc(100vw - 40px), (max-width: 1279px) calc(58.333vw - 56px), 691px"
                       className="object-cover"
                     />
                   </div>
@@ -209,7 +213,7 @@ async function SeasonalIndex() {
                 <div className="relative aspect-[16/10] overflow-hidden bg-[#f3f0ea]">
                   <CollectionImage
                     collection={collection}
-                    sizes="(max-width: 767px) 100vw, 50vw"
+                    sizes="(max-width: 767px) calc(100vw - 40px), (max-width: 1279px) calc(50vw - 44px), 596px"
                     className="object-cover transition duration-700 group-hover:scale-[1.02]"
                   />
                 </div>

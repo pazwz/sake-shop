@@ -1,6 +1,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { formatPrice } from '@/lib/products';
+import { PRODUCT_LIST_IMAGE_SIZES } from '@/config/image-sizes';
 
 export interface ProductCardItem {
   id: string | number;
@@ -14,7 +15,13 @@ export interface ProductCardItem {
   recommendationTags?: string[];
 }
 
-export function ProductCard({ product }: { product: ProductCardItem }) {
+export function ProductCard({
+  product,
+  sizes = PRODUCT_LIST_IMAGE_SIZES,
+}: {
+  product: ProductCardItem;
+  sizes?: string;
+}) {
   const imageUrl = product.images?.[0]?.imageUrl ?? product.image;
   const categoryName =
     typeof product.category === 'string'
@@ -32,7 +39,7 @@ export function ProductCard({ product }: { product: ProductCardItem }) {
         {imageUrl ? (
           <Image
             fill
-            sizes="(max-width: 639px) 100vw, (max-width: 1023px) 50vw, 33vw"
+            sizes={sizes}
             className="object-contain object-center px-0 py-4 sm:py-5"
             src={imageUrl}
             alt={product.name}
