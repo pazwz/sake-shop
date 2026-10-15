@@ -1,0 +1,145 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: LINXAS email events - definition only, NOT deployed
+Parameters:
+  NamePrefix:
+    Type: String
+    Default: sake-shop-dev
+    AllowedPattern: '[a-z0-9-]{1,32}'
+  WorkerArchiveBucket:
+    Type: String
+  WorkerArchiveKey:
+    Type: String
+  ProcessEndpoint:
+    Type: String
+    AllowedPattern: 'https://.+/api/v1/internal/email/process'
+  ExistingSecretParameterName:
+    Type: String
+  ExistingSecretParameterArn:
+    Type: String
+    AllowedPattern: 'arn:aws:ssm:[a-z0-9-]+:[0-9]{12}:parameter/.+'
+Resources:
+  DeadLetterQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: { Fn::Sub: '${NamePrefix}-email-events-dlq' }
+      SqsManagedSseEnabled: true
+      MessageRetentionPeriod: 1209600
+  Queue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: { Fn::Sub: '${NamePrefix}-email-events' }
+      SqsManagedSseEnabled: true
+      VisibilityTimeout: 360
+      MessageRetentionPeriod: 1209600
+      RedrivePolicy:
+        deadLetterTargetArn: { Fn::GetAtt: [DeadLetterQueue, Arn] }
+        maxReceiveCount: 12
+  ScheduleGroup:
+    Type: AWS::Scheduler::ScheduleGroup
+    Properties:
+      Name: { Fn::Sub: '${NamePrefix}-email-once' }
+  SchedulerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: { Service: scheduler.amazonaws.com }
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals: { 'aws:SourceAccount': { Ref: 'AWS::AccountId' } }
+              ArnEquals:
+                'aws:SourceArn': { Fn::GetAtt: [ScheduleGroup, Arn] }
+      Policies:
+        - PolicyName: send-email-events-only
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: sqs:SendMessage
+                Resource: { Fn::GetAtt: [Queue, Arn] }
+              - Effect: Allow
+                Action: sqs:SendMessage
+                Resource: { Fn::GetAtt: [DeadLetterQueue, Arn] }
+  WorkerLogs:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: { Fn::Sub: '/aws/lambda/${NamePrefix}-email-event-worker' }
+      RetentionInDays: 14
+  WorkerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: { Service: lambda.amazonaws.com }
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: email-event-consumer
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: [sqs:ReceiveMessage, sqs:DeleteMessage, sqs:GetQueueAttributes]
+                Resource: { Fn::GetAtt: [Queue, Arn] }
+              - Effect: Allow
+                Action: ssm:GetParameter
+                Resource: { Ref: ExistingSecretParameterArn }
+              - Effect: Allow
+                Action: [logs:CreateLogStream, logs:PutLogEvents]
+                Resource: { Fn::GetAtt: [WorkerLogs, Arn] }
+  Worker:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: { Fn::Sub: '${NamePrefix}-email-event-worker' }
+      Runtime: nodejs24.x
+      Handler: index.handler
+      Timeout: 60
+      MemorySize: 128
+      Role: { Fn::GetAtt: [WorkerRole, Arn] }
+      Code:
+        S3Bucket: { Ref: WorkerArchiveBucket }
+        S3Key: { Ref: WorkerArchiveKey }
+      Environment:
+        Variables:
+          EMAIL_PROCESS_ENDPOINT_URL: { Ref: ProcessEndpoint }
+          CRON_SECRET_PARAMETER: { Ref: ExistingSecretParameterName }
+  EventSource:
+    Type: AWS::Lambda::EventSourceMapping
+    Properties:
+      EventSourceArn: { Fn::GetAtt: [Queue, Arn] }
+      FunctionName: { Ref: Worker }
+      BatchSize: 1
+      FunctionResponseTypes: [ReportBatchItemFailures]
+      Enabled: false
+  ApplicationPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      Description: Attach to approved application identity only after separate authorization
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action: sqs:SendMessage
+            Resource: { Fn::GetAtt: [Queue, Arn] }
+          - Effect: Allow
+            Action: [scheduler:CreateSchedule, scheduler:DeleteSchedule]
+            Resource: { Fn::Sub: 'arn:${AWS::Partition}:scheduler:${AWS::Region}:${AWS::AccountId}:schedule/${ScheduleGroup}/email-*' }
+          - Effect: Allow
+            Action: iam:PassRole
+            Resource: { Fn::GetAtt: [SchedulerRole, Arn] }
+            Condition:
+              StringEquals: { 'iam:PassedToService': scheduler.amazonaws.com }
+Outputs:
+  QueueUrl:
+    Value: { Ref: Queue }
+  QueueArn:
+    Value: { Fn::GetAtt: [Queue, Arn] }
+  DeadLetterQueueArn:
+    Value: { Fn::GetAtt: [DeadLetterQueue, Arn] }
+  ScheduleGroupName:
+    Value: { Ref: ScheduleGroup }
+  ScheduleRoleArn:
+    Value: { Fn::GetAtt: [SchedulerRole, Arn] }

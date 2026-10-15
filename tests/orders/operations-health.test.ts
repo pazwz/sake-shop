@@ -64,7 +64,7 @@ test('Smaregi warning, stale, and fatal states are separated', async () => {
   assert.equal(warning.smaregiSync.status, 'WARNING');
 
   const stale = await serviceFor(
-    snapshot({ smaregiRuns: [run(SyncStatus.SUCCESS, 50)] }),
+    snapshot({ smaregiRuns: [run(SyncStatus.SUCCESS, 27 * 60)] }),
   ).getHealth(now);
   assert.equal(stale.smaregiSync.status, 'WARNING');
 
@@ -78,7 +78,7 @@ test('Smaregi warning, stale, and fatal states are separated', async () => {
 
 test('reservation worker stale and expired active backlog are visible', async () => {
   const stale = await serviceFor(
-    snapshot({ reservationRuns: [run(SyncStatus.SUCCESS, 20)] }),
+    snapshot({ reservationRuns: [run(SyncStatus.SUCCESS, 27 * 60)], expiredReservations: 1 }),
   ).getHealth(now);
   assert.equal(stale.reservationExpiration.status, 'WARNING');
 
@@ -90,6 +90,13 @@ test('reservation worker stale and expired active backlog are visible', async ()
   ).getHealth(now);
   assert.equal(backlog.reservationExpiration.status, 'CRITICAL');
   assert.equal(backlog.reservationExpiration.backlogCount, 10);
+});
+
+test('quiet event-driven email and empty cleanup queues are healthy without a worker heartbeat', async () => {
+  const health = await serviceFor(snapshot()).getHealth(now);
+  assert.equal(health.emailOutbox.status, 'HEALTHY');
+  assert.equal(health.emailOutbox.stale, false);
+  assert.equal(health.reservationExpiration.status, 'HEALTHY');
 });
 
 test('email queue differentiates terminal transactional failures from newsletter sync failures', async () => {

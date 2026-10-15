@@ -25,6 +25,10 @@ export function ProductDetail({
   const [quantity, setQuantity] = useState(1);
   const [withBox, setWithBox] = useState(false);
   const inventory = product.availableQuantity;
+  const oldestInventorySync = product.inventory.reduce<number | null>((oldest, row) => {
+    const time = Date.parse(row.lastSyncedAt);
+    return Number.isFinite(time) && (oldest === null || time < oldest) ? time : oldest;
+  }, null);
   const boxCanFulfill = Boolean(
     product.boxOption?.isAvailable &&
       product.boxOption.availableQuantity >= quantity,
@@ -85,6 +89,10 @@ export function ProductDetail({
               {inventory > 0
                 ? `在庫あり — 通常2〜4日で発送（残り ${inventory} 点）`
                 : '現在完売しています'}
+            </p>
+            <p className="mt-3 text-xs leading-6 text-stone-500">
+              在庫情報の最終更新：{oldestInventorySync === null ? '未取得' : new Date(oldestInventorySync).toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' })}
+              <br />実店舗での販売により、実際の在庫が変わる場合があります。
             </p>
             {inventory > 0 ? (
               <>

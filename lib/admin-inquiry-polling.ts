@@ -1,50 +1,46 @@
 export const ADMIN_INQUIRY_READ_EVENT = 'linxas-admin-inquiry-read';
+export const ADMIN_IDLE_MS = 15 * 60_000;
+export const ADMIN_ACTIVITY_EVENTS = ['pointerdown', 'pointermove', 'keydown', 'touchstart', 'focus'] as const;
 
+/** Historical export name retained; there is deliberately no polling interval. */
 export function startAdminInquiryPolling(
   refresh: () => Promise<void>,
-  visibility: Pick<
-    Document,
-    'hidden' | 'addEventListener' | 'removeEventListener'
-  >,
+  visibility: Pick<Document, 'hidden' | 'addEventListener' | 'removeEventListener'>,
   events: Pick<Window, 'addEventListener' | 'removeEventListener'>,
 ) {
   let disposed = false;
   let inFlight = false;
-  let queued = false;
-  let timer: ReturnType<typeof setInterval> | undefined;
-  const update = async () => {
-    if (disposed || visibility.hidden) return;
-    if (inFlight) {
-      queued = true;
-      return;
-    }
+  let queuedRead = false;
+  let lastActivity = Date.now();
+  let lastRefresh = -Infinity;
+  const update = async (localRead = false) => {
+    if (disposed || visibility.hidden || Date.now() - lastActivity >= ADMIN_IDLE_MS) return;
+    if (inFlight) { if (localRead) queuedRead = true; return; }
+    if (!localRead && Date.now() - lastRefresh < 250) return;
     inFlight = true;
-    try {
-      await refresh();
-    } finally {
+    lastRefresh = Date.now();
+    try { await refresh(); }
+    finally {
       inFlight = false;
-      if (queued) {
-        queued = false;
-        void update();
-      }
+      if (queuedRead) { queuedRead = false; void update(true); }
     }
   };
-  const onRead = () => void update();
-  const onVisibility = () => {
-    if (timer) clearInterval(timer);
-    timer = undefined;
-    if (!visibility.hidden) {
-      void update();
-      timer = setInterval(() => void update(), 30_000);
-    }
+  const onRead = () => void update(true);
+  const onVisibility = () => { if (!visibility.hidden) void update(); };
+  const onActivity = (event: Event) => {
+    if (visibility.hidden) return;
+    const idle = Date.now() - lastActivity >= ADMIN_IDLE_MS;
+    lastActivity = Date.now();
+    if (idle || event.type === 'focus') void update();
   };
-  onVisibility();
+  void update();
   visibility.addEventListener('visibilitychange', onVisibility);
   events.addEventListener(ADMIN_INQUIRY_READ_EVENT, onRead);
+  for (const name of ADMIN_ACTIVITY_EVENTS) events.addEventListener(name, onActivity);
   return () => {
     disposed = true;
-    if (timer) clearInterval(timer);
     visibility.removeEventListener('visibilitychange', onVisibility);
     events.removeEventListener(ADMIN_INQUIRY_READ_EVENT, onRead);
+    for (const name of ADMIN_ACTIVITY_EVENTS) events.removeEventListener(name, onActivity);
   };
 }

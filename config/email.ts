@@ -4,12 +4,12 @@ export const emailModeSchema = z.enum(['console', 'resend', 'disabled']);
 export type EmailMode = z.infer<typeof emailModeSchema>;
 
 export const EMAIL_PROCESS_BATCH_SIZE = 20;
-export const EMAIL_MAX_ATTEMPTS = 5;
+export const EMAIL_MAX_ATTEMPTS = 4;
 export const EMAIL_LOCK_TIMEOUT_MS = 10 * 60 * 1000;
 export const EMAIL_RETRY_DELAYS_MS = [
-  60_000, 300_000, 1_800_000, 7_200_000,
+  60_000, 300_000, 1_800_000,
 ] as const;
-export const EMAIL_RECOVERY_SCHEDULER_RATE_MINUTES = 10;
+// Historical resource retained DISABLED; new delivery has no recurring recovery cadence.
 export const EMAIL_DISPATCH_TRIGGER_TIMEOUT_MS = 10_000;
 /**
  * Post-commit internal worker wake-up attempts. These are deliberately

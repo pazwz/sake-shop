@@ -62,7 +62,7 @@ export class OperationsHealthRepository {
       prisma.inventoryReservation.count({
         where: {
           status: InventoryReservationStatus.ACTIVE,
-          expiresAt: { lt: now },
+          expiresAt: { not: null, lte: now },
         },
       }),
       prisma.payment.aggregate({
@@ -101,6 +101,12 @@ export class OperationsHealthRepository {
             template: EmailTemplate.NEWSLETTER_CAMPAIGN,
           },
         }),
+        prisma.emailOutbox.count({
+          where: { OR: [
+            { status: EmailOutboxStatus.PENDING, createdAt: { lte: new Date(now.getTime() - 15 * 60_000) } },
+            { status: EmailOutboxStatus.FAILED, nextAttemptAt: { lte: new Date(now.getTime() - 15 * 60_000) } },
+          ] },
+        }),
       ]),
     ]);
 
@@ -117,6 +123,7 @@ export class OperationsHealthRepository {
         terminalTransactionalFailed: email[2],
         terminalNewsletterFailed: email[3],
         terminalNewsletterCampaignFailed: email[4],
+        overdue: email[5],
       },
     };
   }

@@ -137,10 +137,21 @@ export class EmailTemplateService {
       );
     }
     if (template === EmailTemplate.CONTACT_INQUIRY) {
+      const fields = [
+        ['お名前', String(payload.customerName ?? '').slice(0, 160)],
+        ['メールアドレス', String(payload.customerEmail ?? '').slice(0, 254)],
+        ['件名', String(payload.subject ?? '').slice(0, 200)],
+        ['区分', String(payload.category ?? '').slice(0, 100)],
+        ['受付日時', String(payload.createdAt ?? '').slice(0, 40)],
+        ['内容の概要', String(payload.summary ?? '').slice(0, 500)],
+      ].filter(([, value]) => value);
+      const url = payload.inquiryId
+        ? `${siteUrl}/admin/inquiries/${encodeURIComponent(String(payload.inquiryId))}`
+        : `${siteUrl}/admin/inquiries`;
       return frame(
         '[LINXAS EC] 新しいお問い合わせがあります',
-        `<p>サイト内に新しいお問い合わせがあります。</p><p>注文番号：${escapeHtml(payload.orderNumber)}</p><p>管理画面より内容をご確認ください。</p><p>※このメールは送信専用です。メールへの返信は受け付けていません。</p>`,
-        `サイト内に新しいお問い合わせがあります。\n注文番号: ${payload.orderNumber}\n管理画面より内容をご確認ください。\n\nこのメールは送信専用です。メールへの返信は受け付けていません。`,
+        `<p>サイト内に新しいお問い合わせがあります。</p><p>注文番号：${escapeHtml(payload.orderNumber)}</p>${fields.map(([label, value]) => `<p>${escapeHtml(label)}：${escapeHtml(value).replaceAll('\n', '<br>')}</p>`).join('')}${button('管理画面で確認する', url)}`,
+        `サイト内に新しいお問い合わせがあります。\n注文番号: ${payload.orderNumber}\n${fields.map(([label, value]) => `${label}: ${value}`).join('\n')}\n\n管理画面で確認する: ${url}`,
       );
     }
     if (template === EmailTemplate.ORDER_MESSAGE_NOTIFICATION) {

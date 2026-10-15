@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { AdminUserStatus } from '@/components/admin/admin-user-status';
 import { InquiryNotifications } from '@/components/admin/inquiry-notifications';
+import { AdminActivity } from '@/components/admin/activity';
 import { BrandLogo } from '@/components/brand-logo';
 import type { AdminRole } from '@prisma/client';
 import { isDeveloper } from '@/lib/admin-access';
@@ -65,6 +66,7 @@ export function AdminWorkspace({
       className="min-h-screen bg-[var(--paper)]"
       data-testid="admin-workspace"
     >
+      <AdminActivity />
       <header className="border-b line bg-white">
         <div className="wrap flex flex-wrap items-center justify-between gap-4 py-5">
           <Link href="/admin" className="flex items-center gap-3">

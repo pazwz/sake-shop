@@ -28,7 +28,7 @@ const defaultLogger: EmailDispatchTriggerLogger = (event) =>
 /**
  * Wakes the authenticated EmailOutbox worker only after the caller's database
  * transaction has completed. Trigger failure is intentionally non-fatal: the
- * durable PENDING outbox row remains available to recovery processing.
+ * durable PENDING row remains available for explicit reconciliation if handoff fails.
  */
 export class EmailDispatchTriggerService {
   public constructor(
@@ -65,7 +65,7 @@ export class EmailDispatchTriggerService {
         failureCode = `EMAIL_WORKER_HTTP_${response.status}`;
       } catch {
         // Do not log raw transport errors: they can contain sensitive URLs or
-        // implementation details. The durable outbox will be recovered later.
+        // implementation details. Failed initial handoffs require explicit reconciliation.
         failureCode = 'EMAIL_WORKER_TRIGGER_REQUEST_FAILED';
       }
     }

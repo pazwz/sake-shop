@@ -266,12 +266,12 @@ export class NewsletterCampaignRepository {
     return this.findById(id);
   }
 
-  public async claimDue(id: string, now: Date) {
+  public async claimDue(id: string, now: Date, expectedScheduledAt?: Date) {
     const claimed = await this.database.newsletterCampaign.updateMany({
       where: {
         id,
         status: NewsletterCampaignStatus.SCHEDULED,
-        scheduledAt: { lte: now },
+        scheduledAt: { lte: now, ...(expectedScheduledAt ? { equals: expectedScheduledAt } : {}) },
         startedAt: null,
       },
       data: {
@@ -300,10 +300,10 @@ export class NewsletterCampaignRepository {
    * transaction. A process crash can therefore never leave a campaign marked
    * SENDING without its corresponding outbox rows.
    */
-  public async dispatchDueCampaign(id: string, now: Date) {
+  public async dispatchDueCampaign(id: string, now: Date, expectedScheduledAt?: Date) {
     return prisma.$transaction(async (tx) => {
       const repository = new NewsletterCampaignRepository(tx);
-      const campaign = await repository.claimDue(id, now);
+      const campaign = await repository.claimDue(id, now, expectedScheduledAt);
       if (!campaign) return { state: 'NOT_CLAIMED' as const, recipients: 0 };
 
       const recipients = await repository.findSubscribedRecipients();

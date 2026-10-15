@@ -177,7 +177,7 @@ test('outbox send success marks SENT with a stable idempotency key', async () =>
     failed: 0,
   });
   assert.deepEqual(sentKeys, ['email-outbox:outbox-1']);
-  assert.deepEqual(marked[0], ['outbox-1', 'test', 'message-1']);
+  assert.deepEqual(marked[0], ['outbox-1', 'test', 'message-1', null]);
 });
 
 test('outbox failure schedules a bounded retry and never fails business data', async () => {
@@ -411,8 +411,8 @@ test('expired verification and reset emails are skipped without calling the prov
   assert.equal(result.sent, 0);
   assert.equal(sends, 0);
   assert.deepEqual(skipped, [
-    ['outbox-1', 'EXPIRED_ACTION'],
-    ['outbox-2', 'EXPIRED_ACTION'],
+    ['outbox-1', 'EXPIRED_ACTION', null],
+    ['outbox-2', 'EXPIRED_ACTION', null],
   ]);
 });
 

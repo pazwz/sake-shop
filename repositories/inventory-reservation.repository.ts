@@ -4,6 +4,7 @@ import {
   type PrismaClient,
 } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
+import { effectiveReservationWhere } from '@/repositories/effective-reservation';
 
 const productInclude = {
   category: true,
@@ -91,7 +92,7 @@ class PrismaLockedInventoryReservationTransaction
       by: ['productId'],
       where: {
         productId: { in: productIds },
-        status: InventoryReservationStatus.ACTIVE,
+        ...effectiveReservationWhere(),
       },
       _sum: { quantity: true },
     });
@@ -204,7 +205,7 @@ export class InventoryReservationRepository {
       by: ['productId'],
       where: {
         productId: { in: [...new Set(productIds)] },
-        status: InventoryReservationStatus.ACTIVE,
+        ...effectiveReservationWhere(),
       },
       _sum: { quantity: true },
     });
@@ -227,7 +228,7 @@ export class InventoryReservationRepository {
 
   public holdForOrder(orderId: string) {
     return this.database.inventoryReservation.updateMany({
-      where: { orderId, status: InventoryReservationStatus.ACTIVE },
+      where: { orderId, ...effectiveReservationWhere() },
       data: { expiresAt: null },
     });
   }
@@ -236,7 +237,7 @@ export class InventoryReservationRepository {
     return this.database.inventoryReservation.updateMany({
       where: {
         status: InventoryReservationStatus.ACTIVE,
-        expiresAt: { not: null, lt: now },
+        expiresAt: { not: null, lte: now },
       },
       data: { status: InventoryReservationStatus.EXPIRED },
     });

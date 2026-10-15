@@ -11,6 +11,7 @@ import {
   type PrismaClient,
 } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
+import { effectiveReservationWhere } from '@/repositories/effective-reservation';
 import type {
   PaymentCurrency,
   ProviderPaymentOutcome,
@@ -127,6 +128,18 @@ export class PaymentRepository {
           ) {
             throw new PaymentRefundNotAllowedError();
           }
+          if (input.nextStatus === PaymentStatus.SUCCEEDED) {
+            const products = await tx.inventoryReservation.findMany({
+              where: { orderId: currentPayment.orderId },
+              select: { productId: true },
+              orderBy: { productId: 'asc' },
+            });
+            // Same lock order as checkout: no new order can consume elapsed stock
+            // between validity checking and conversion to a confirmed paid hold.
+            for (const productId of [...new Set(products.map((row) => row.productId))])
+              await tx.$queryRaw(Prisma.sql`SELECT "id" FROM "products" WHERE "id" = ${productId} FOR UPDATE`);
+          }
+          const reservationNow = new Date();
           const reservationCount = await tx.inventoryReservation.count({
             where: { orderId: currentPayment.orderId },
           });
@@ -135,7 +148,7 @@ export class PaymentRepository {
             (await tx.inventoryReservation.count({
               where: {
                 orderId: currentPayment.orderId,
-                status: { not: InventoryReservationStatus.ACTIVE },
+                NOT: effectiveReservationWhere(reservationNow),
               },
             })) > 0;
           // A late provider success must never revive expired or released stock.

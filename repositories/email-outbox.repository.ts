@@ -7,6 +7,7 @@ import {
 } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import type { EmailOutboxDraft } from '@/types/email';
+import { EMAIL_LOCK_TIMEOUT_MS, EMAIL_PROCESS_BATCH_SIZE } from '@/config/email';
 
 type EmailDatabase = PrismaClient | Prisma.TransactionClient;
 
@@ -59,7 +60,7 @@ export class EmailOutboxRepository {
         },
         data: { status: EmailOutboxStatus.SENDING, lockedAt: now },
       });
-      if (result.count === 1) claimed.push(candidate);
+      if (result.count === 1) claimed.push({ ...candidate, lockedAt: now });
     }
     return claimed;
   }
@@ -74,6 +75,7 @@ export class EmailOutboxRepository {
             status: EmailOutboxStatus.FAILED,
             nextAttemptAt: { lte: now },
           },
+          { status: EmailOutboxStatus.SENDING, lockedAt: { lte: new Date(now.getTime() - EMAIL_LOCK_TIMEOUT_MS) } },
         ],
       },
     });
@@ -82,13 +84,36 @@ export class EmailOutboxRepository {
       where: {
         id: candidate.id,
         status: candidate.status,
-        ...(candidate.status === EmailOutboxStatus.PENDING
+        ...(candidate.status === EmailOutboxStatus.SENDING
+          ? { lockedAt: candidate.lockedAt }
+          : candidate.status === EmailOutboxStatus.PENDING
           ? {}
           : { nextAttemptAt: candidate.nextAttemptAt }),
       },
       data: { status: EmailOutboxStatus.SENDING, lockedAt: now },
     });
-    return claimed.count === 1 ? candidate : null;
+    return claimed.count === 1 ? { ...candidate, lockedAt: now } : null;
+  }
+
+  public findEventState(id: string) {
+    return this.database.emailOutbox.findUnique({
+      where: { id }, select: { status: true, nextAttemptAt: true, lockedAt: true, newsletterCampaignId: true },
+    });
+  }
+
+  public findEventCandidates(campaignId?: string, afterId?: string, now = new Date()) {
+    return this.database.emailOutbox.findMany({
+      where: {
+        ...(campaignId ? { newsletterCampaignId: campaignId } : {}),
+        ...(afterId ? { id: { gt: afterId } } : {}),
+        OR: [
+          { status: EmailOutboxStatus.PENDING },
+          { status: EmailOutboxStatus.FAILED, nextAttemptAt: { lte: now } },
+          { status: EmailOutboxStatus.SENDING, lockedAt: { lte: new Date(now.getTime() - EMAIL_LOCK_TIMEOUT_MS) } },
+        ],
+      },
+      select: { id: true }, orderBy: { id: 'asc' }, take: EMAIL_PROCESS_BATCH_SIZE,
+    });
   }
 
   public async isActionCurrent(
@@ -114,9 +139,9 @@ export class EmailOutboxRepository {
     return true;
   }
 
-  public markSent(id: string, provider: string, providerMessageId: string) {
-    return this.database.emailOutbox.update({
-      where: { id },
+  public markSent(id: string, provider: string, providerMessageId: string, lease?: Date | null) {
+    return this.database.emailOutbox.updateMany({
+      where: { id, status: EmailOutboxStatus.SENDING, ...(lease ? { lockedAt: lease } : {}) },
       data: {
         status: EmailOutboxStatus.SENT,
         provider,
@@ -130,9 +155,9 @@ export class EmailOutboxRepository {
     });
   }
 
-  public markFailed(id: string, lastError: string, nextAttemptAt: Date | null) {
-    return this.database.emailOutbox.update({
-      where: { id },
+  public markFailed(id: string, lastError: string, nextAttemptAt: Date | null, lease?: Date | null) {
+    return this.database.emailOutbox.updateMany({
+      where: { id, status: EmailOutboxStatus.SENDING, ...(lease ? { lockedAt: lease } : {}) },
       data: {
         status: EmailOutboxStatus.FAILED,
         lastError: lastError.slice(0, 250),
@@ -143,9 +168,9 @@ export class EmailOutboxRepository {
     });
   }
 
-  public markSkipped(id: string, reason: string) {
-    return this.database.emailOutbox.update({
-      where: { id },
+  public markSkipped(id: string, reason: string, lease?: Date | null) {
+    return this.database.emailOutbox.updateMany({
+      where: { id, status: EmailOutboxStatus.SENDING, ...(lease ? { lockedAt: lease } : {}) },
       data: {
         status: EmailOutboxStatus.SKIPPED,
         nextAttemptAt: null,
