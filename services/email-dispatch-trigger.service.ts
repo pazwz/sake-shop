@@ -25,6 +25,12 @@ const wait: Wait = (milliseconds) =>
 const defaultLogger: EmailDispatchTriggerLogger = (event) =>
   console.error(JSON.stringify(event));
 
+// Read only the current platform-injected request identity; never refresh via a local login.
+const readPreviewRequestToken = async () => {
+  const { headers } = await import('next/headers');
+  return (await headers()).get('x-vercel-oidc-token') ?? undefined;
+};
+
 /**
  * Wakes the authenticated EmailOutbox worker only after the caller's database
  * transaction has completed. Trigger failure is intentionally non-fatal: the
@@ -36,10 +42,19 @@ export class EmailDispatchTriggerService {
     private readonly environment: EmailEnvironment = process.env,
     private readonly logger: EmailDispatchTriggerLogger = defaultLogger,
     private readonly waitForRetry: Wait = wait,
+    private readonly previewRequestToken: () => string | undefined | Promise<string | undefined> = readPreviewRequestToken,
   ) {}
 
   public async trigger(outboxId?: string) {
-    const config = getEmailDispatchTriggerConfig(this.environment);
+    let environment = this.environment;
+    if (environment.VERCEL_ENV === 'preview' && !environment.VERCEL_OIDC_TOKEN) {
+      try {
+        environment = { ...environment, VERCEL_OIDC_TOKEN: await this.previewRequestToken() };
+      } catch {
+        // An absent request context is unavailable auth, not permission to use another identity.
+      }
+    }
+    const config = getEmailDispatchTriggerConfig(environment);
     if (!config.available || !config.secret) {
       if (this.environment.VERCEL_ENV === 'preview') this.logger({
         event: 'email_dispatch_trigger', outcome: 'FAILED',

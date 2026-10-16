@@ -11,7 +11,8 @@ the current deployment; an explicit `EMAIL_PROCESS_ENDPOINT_URL` must match that
 the internal email route exactly. Missing current deployment metadata fails closed instead of
 falling back to `NEXT_PUBLIC_SITE_URL`. Production endpoint behavior is unchanged.
 
-Preview application self-dispatch uses its platform-provided `VERCEL_OIDC_TOKEN` with the existing
+Preview application self-dispatch uses its platform-provided OIDC request token (`x-vercel-oidc-token`,
+read through the current Next.js request context; `VERCEL_OIDC_TOKEN` if provided) with the existing
 application Bearer. It never uses a local login token. The token must be an unexpired Preview identity,
 and `PREVIEW_EMAIL_DISPATCH_EXPIRES_AT` must still be in the authorized test window. Redirects and
 HTML login responses are not queue acknowledgments. No Production protection settings are changed.

@@ -141,3 +141,18 @@ test('Preview unavailable configuration reports only a safe reason', async () =>
   assert.deepEqual(logs, [{ event: 'email_dispatch_trigger', outcome: 'FAILED',
     code: 'PREVIEW_PROTECTION_TOKEN_MISSING', attempts: 0 }]);
 });
+
+test('Preview dispatch reads the platform request identity when the token is not an environment variable', async () => {
+  const env = { ...environment(), VERCEL_OIDC_TOKEN: undefined };
+  const identity = token();
+  let reads = 0;
+  const result = await new EmailDispatchTriggerService(
+    async (_url, init) => {
+      assert.equal((init?.headers as Record<string, string>)['x-vercel-trusted-oidc-idp-token'], identity);
+      return Response.json({ success: true, data: { outcome: 'QUEUED' } });
+    }, env, () => undefined, async () => undefined,
+    () => { reads++; return identity; },
+  ).trigger('test-row');
+  assert.equal(result.triggered, true);
+  assert.equal(reads, 1);
+});
