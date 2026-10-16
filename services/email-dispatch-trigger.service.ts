@@ -56,12 +56,28 @@ export class EmailDispatchTriggerService {
           headers: {
             Authorization: `Bearer ${config.secret}`,
             'Content-Type': 'application/json',
+            ...(config.protectionToken
+              ? { 'x-vercel-trusted-oidc-idp-token': config.protectionToken }
+              : {}),
           },
+          ...(this.environment.VERCEL_ENV === 'preview'
+            ? { redirect: 'error' as const }
+            : {}),
           body: JSON.stringify(outboxId ? { outboxId } : {}),
           signal: AbortSignal.timeout(EMAIL_DISPATCH_TRIGGER_TIMEOUT_MS),
         });
-        if (response.ok)
-          return { triggered: true as const, reason: null, attempts: index + 1 };
+        if (response.ok) {
+          if (this.environment.VERCEL_ENV === 'preview') {
+            const result = await response.json();
+            if (result.success !== true || result.data?.outcome !== 'QUEUED')
+              throw new Error('EMAIL_WORKER_RESPONSE_INVALID');
+          }
+          return {
+            triggered: true as const,
+            reason: null,
+            attempts: index + 1,
+          };
+        }
         failureCode = `EMAIL_WORKER_HTTP_${response.status}`;
       } catch {
         // Do not log raw transport errors: they can contain sensitive URLs or

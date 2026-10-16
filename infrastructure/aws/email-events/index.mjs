@@ -3,15 +3,32 @@ export const createHandler = ({ readSecret, request = fetch, environment = proce
   const endpoint = environment.EMAIL_PROCESS_ENDPOINT_URL;
   if (!endpoint?.startsWith('https://') || !environment.CRON_SECRET_PARAMETER)
     throw new Error('EMAIL_EVENT_WORKER_NOT_CONFIGURED');
-  const secret = await readSecret(environment.CRON_SECRET_PARAMETER);
-  if (!secret) throw new Error('EMAIL_EVENT_AUTH_UNAVAILABLE');
+  const stored = await readSecret(environment.CRON_SECRET_PARAMETER);
+  if (!stored) throw new Error('EMAIL_EVENT_AUTH_UNAVAILABLE');
+  if (environment.EMAIL_DEPLOYMENT_ENV === 'preview' && !stored.startsWith('{'))
+    throw new Error('EMAIL_EVENT_PREVIEW_AUTH_INVALID');
+  let secret = stored;
+  const headers = { 'Content-Type': 'application/json' };
+  if (stored.startsWith('{')) {
+    let auth;
+    try { auth = JSON.parse(stored); } catch { throw new Error('EMAIL_EVENT_PREVIEW_AUTH_INVALID'); }
+    if (environment.EMAIL_DEPLOYMENT_ENV !== 'preview' || auth.kind !== 'preview' || auth.endpoint !== endpoint ||
+        typeof auth.secret !== 'string' || !auth.secret ||
+        typeof auth.protectionCookie !== 'string' || !/^_vercel_jwt=[A-Za-z0-9_.-]+$/.test(auth.protectionCookie) ||
+        !(new Date(auth.expiresAt).getTime() > Date.now()))
+      throw new Error('EMAIL_EVENT_PREVIEW_AUTH_INVALID');
+    secret = auth.secret;
+    headers.Cookie = auth.protectionCookie;
+  }
+  headers.Authorization = `Bearer ${secret}`;
   for (const record of event.Records ?? []) {
     try {
       const payload = JSON.parse(record.body);
       // The application strictly validates the identifier-only event again.
       const response = await request(endpoint, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${secret}`, 'Content-Type': 'application/json' },
+        headers,
+        redirect: 'error',
         body: JSON.stringify({ event: payload }),
         signal: AbortSignal.timeout(45_000),
       });

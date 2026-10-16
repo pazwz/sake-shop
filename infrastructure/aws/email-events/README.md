@@ -1,5 +1,32 @@
 # Email events — NOT provisioned / NOT deployed
 
+## Isolated Preview callback authentication
+
+The authorized Preview environment has its own database, Queue, DLQ, Scheduler group and Worker.
+Do not use Production resources or credentials. `PREVIEW_EMAIL_ALLOWED_RECIPIENT` is required for
+Preview Resend delivery; a mismatch is rejected, never rewritten.
+
+Public URL selection remains separate from internal dispatch. In Preview, `VERCEL_URL` identifies
+the current deployment; an explicit `EMAIL_PROCESS_ENDPOINT_URL` must match that deployment and
+the internal email route exactly. Missing current deployment metadata fails closed instead of
+falling back to `NEXT_PUBLIC_SITE_URL`. Production endpoint behavior is unchanged.
+
+Preview application self-dispatch uses its platform-provided `VERCEL_OIDC_TOKEN` with the existing
+application Bearer. It never uses a local login token. The token must be an unexpired Preview identity,
+and `PREVIEW_EMAIL_DISPATCH_EXPIRES_AT` must still be in the authorized test window. Redirects and
+HTML login responses are not queue acknowledgments. No Production protection settings are changed.
+
+The Preview Worker requires `EMAIL_DEPLOYMENT_ENV=preview` to use a JSON SSM authentication bundle
+containing `kind`, exact `endpoint`, application `secret`, `protectionCookie`, and `expiresAt`.
+The deployment-scoped share grant and Cookie must expire within four hours. A different target,
+missing auth layer or elapsed deadline fails closed; redirects are not followed. Production Workers
+continue to use their existing plain application secret and are not deployed by Preview validation.
+
+The local cloud test driver uses explicit `fromIni({ profile: 'default' })` only for Preview parameter
+reads. It preserves media credentials and never configures the operations profile in Vercel.
+Require an explicit `PREVIEW_E2E_ORIGIN` matching the current granted deployment. Cloud acceptance
+status is recorded separately in `docs/PREVIEW_EMAIL_E2E_STATUS.md`.
+
 This directory is a reviewed definition, not evidence of working Production infrastructure.
 Do not apply it or change Production variables without a separate authorization.
 The event source mapping is disabled by default. Never re-enable the legacy email recovery schedule.

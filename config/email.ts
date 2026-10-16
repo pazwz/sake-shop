@@ -6,9 +6,7 @@ export type EmailMode = z.infer<typeof emailModeSchema>;
 export const EMAIL_PROCESS_BATCH_SIZE = 20;
 export const EMAIL_MAX_ATTEMPTS = 4;
 export const EMAIL_LOCK_TIMEOUT_MS = 10 * 60 * 1000;
-export const EMAIL_RETRY_DELAYS_MS = [
-  60_000, 300_000, 1_800_000,
-] as const;
+export const EMAIL_RETRY_DELAYS_MS = [60_000, 300_000, 1_800_000] as const;
 // Historical resource retained DISABLED; new delivery has no recurring recovery cadence.
 export const EMAIL_DISPATCH_TRIGGER_TIMEOUT_MS = 10_000;
 /**
@@ -31,6 +29,9 @@ export type EmailEnvironment = {
   NEXT_PUBLIC_SITE_URL?: string;
   CRON_SECRET?: string;
   EMAIL_PROCESS_ENDPOINT_URL?: string;
+  VERCEL_URL?: string;
+  VERCEL_OIDC_TOKEN?: string;
+  PREVIEW_EMAIL_DISPATCH_EXPIRES_AT?: string;
 };
 
 export const getEmailRuntimeConfig = (
@@ -72,13 +73,72 @@ export const getPublicSiteUrl = (environment: EmailEnvironment = process.env) =>
 export const getEmailDispatchTriggerConfig = (
   environment: EmailEnvironment = process.env,
 ) => {
+  const secret = environment.CRON_SECRET;
+  if (environment.VERCEL_ENV === 'preview') {
+    let endpoint = '';
+    const protectionToken = environment.VERCEL_OIDC_TOKEN;
+    try {
+      if (!environment.VERCEL_URL)
+        throw new Error('PREVIEW_DEPLOYMENT_MISSING');
+      const deployment = new URL(`https://${environment.VERCEL_URL}`);
+      const target = new URL(
+        environment.EMAIL_PROCESS_ENDPOINT_URL ??
+          '/api/v1/internal/email/process',
+        deployment,
+      );
+      endpoint = target.href;
+      if (
+        deployment.hostname !== environment.VERCEL_URL ||
+        !deployment.hostname.endsWith('.vercel.app') ||
+        target.origin !== deployment.origin ||
+        target.pathname !== '/api/v1/internal/email/process' ||
+        target.search ||
+        target.hash ||
+        target.username ||
+        target.password
+      )
+        throw new Error('PREVIEW_ENDPOINT_INVALID');
+      const claims = JSON.parse(
+        Buffer.from(
+          protectionToken?.split('.')[1] ?? '',
+          'base64url',
+        ).toString(),
+      );
+      if (
+        typeof claims.sub !== 'string' ||
+        !claims.sub.endsWith(':environment:preview') ||
+        typeof claims.exp !== 'number' ||
+        !Number.isFinite(claims.exp) ||
+        claims.exp * 1000 <= Date.now() ||
+        !(
+          new Date(
+            environment.PREVIEW_EMAIL_DISPATCH_EXPIRES_AT ?? '',
+          ).getTime() > Date.now()
+        )
+      )
+        throw new Error('PREVIEW_PROTECTION_UNAVAILABLE');
+      return {
+        available: Boolean(secret && protectionToken),
+        endpoint,
+        secret: secret ?? null,
+        protectionToken: protectionToken ?? null,
+      };
+    } catch {
+      return {
+        available: false,
+        endpoint,
+        secret: null,
+        protectionToken: null,
+      };
+    }
+  }
   const endpoint =
     environment.EMAIL_PROCESS_ENDPOINT_URL ??
     `${getPublicSiteUrl(environment).replace(/\/$/, '')}/api/v1/internal/email/process`;
-  const secret = environment.CRON_SECRET;
   return {
     available: Boolean(secret && endpoint.startsWith('https://')),
     endpoint,
     secret: secret ?? null,
+    protectionToken: null,
   } as const;
 };
