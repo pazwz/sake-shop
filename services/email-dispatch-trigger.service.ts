@@ -40,12 +40,17 @@ export class EmailDispatchTriggerService {
 
   public async trigger(outboxId?: string) {
     const config = getEmailDispatchTriggerConfig(this.environment);
-    if (!config.available || !config.secret)
+    if (!config.available || !config.secret) {
+      if (this.environment.VERCEL_ENV === 'preview') this.logger({
+        event: 'email_dispatch_trigger', outcome: 'FAILED',
+        code: ('reason' in config && config.reason) || 'TRIGGER_UNAVAILABLE', attempts: 0,
+      });
       return {
         triggered: false as const,
         reason: 'TRIGGER_UNAVAILABLE',
         attempts: 0,
       };
+    }
 
     let failureCode = 'EMAIL_WORKER_TRIGGER_REQUEST_FAILED';
     for (const [index, delay] of EMAIL_DISPATCH_TRIGGER_DELAYS_MS.entries()) {

@@ -80,6 +80,7 @@ export const getEmailDispatchTriggerConfig = (
     try {
       if (!environment.VERCEL_URL)
         throw new Error('PREVIEW_DEPLOYMENT_MISSING');
+      if (!protectionToken) throw new Error('PREVIEW_PROTECTION_TOKEN_MISSING');
       const deployment = new URL(`https://${environment.VERCEL_URL}`);
       const target = new URL(
         environment.EMAIL_PROCESS_ENDPOINT_URL ??
@@ -104,12 +105,11 @@ export const getEmailDispatchTriggerConfig = (
           'base64url',
         ).toString(),
       );
+      if (typeof claims.sub !== 'string' || !claims.sub.endsWith(':environment:preview'))
+        throw new Error('PREVIEW_PROTECTION_IDENTITY_INVALID');
+      if (typeof claims.exp !== 'number' || !Number.isFinite(claims.exp) || claims.exp * 1000 <= Date.now())
+        throw new Error('PREVIEW_PROTECTION_TOKEN_EXPIRED');
       if (
-        typeof claims.sub !== 'string' ||
-        !claims.sub.endsWith(':environment:preview') ||
-        typeof claims.exp !== 'number' ||
-        !Number.isFinite(claims.exp) ||
-        claims.exp * 1000 <= Date.now() ||
         !(
           new Date(
             environment.PREVIEW_EMAIL_DISPATCH_EXPIRES_AT ?? '',
@@ -123,12 +123,17 @@ export const getEmailDispatchTriggerConfig = (
         secret: secret ?? null,
         protectionToken: protectionToken ?? null,
       };
-    } catch {
+    } catch (error) {
+      const safeReasons = ['PREVIEW_DEPLOYMENT_MISSING', 'PREVIEW_PROTECTION_TOKEN_MISSING',
+        'PREVIEW_ENDPOINT_INVALID', 'PREVIEW_PROTECTION_IDENTITY_INVALID',
+        'PREVIEW_PROTECTION_TOKEN_EXPIRED', 'PREVIEW_PROTECTION_UNAVAILABLE'];
       return {
         available: false,
         endpoint,
         secret: null,
         protectionToken: null,
+        reason: error instanceof Error && safeReasons.includes(error.message)
+          ? error.message : 'PREVIEW_CONFIGURATION_INVALID',
       };
     }
   }

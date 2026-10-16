@@ -129,3 +129,15 @@ test('Production retains its endpoint behavior and does not read Preview credent
   ).trigger('test-row');
   assert.equal(result.triggered, true);
 });
+
+test('Preview unavailable configuration reports only a safe reason', async () => {
+  const env = environment();
+  env.VERCEL_OIDC_TOKEN = '';
+  const logs: unknown[] = [];
+  await new EmailDispatchTriggerService(
+    async () => { throw new Error('must not request'); }, env,
+    (event) => { logs.push(event); },
+  ).trigger('test-row');
+  assert.deepEqual(logs, [{ event: 'email_dispatch_trigger', outcome: 'FAILED',
+    code: 'PREVIEW_PROTECTION_TOKEN_MISSING', attempts: 0 }]);
+});
