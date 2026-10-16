@@ -156,3 +156,16 @@ test('Preview dispatch reads the platform request identity when the token is not
   assert.equal(result.triggered, true);
   assert.equal(reads, 1);
 });
+
+test('Preview stops when its authorization window expires between handoff attempts', async (context) => {
+  let now = Date.now();
+  context.mock.method(Date, 'now', () => now);
+  const env = { ...environment(), PREVIEW_EMAIL_DISPATCH_EXPIRES_AT: new Date(now + 1000).toISOString() };
+  let calls = 0;
+  const result = await new EmailDispatchTriggerService(
+    async () => { calls++; return new Response('', { status: 503 }); },
+    env, () => undefined, async () => { now += 2000; },
+  ).trigger('test-row');
+  assert.equal(result.triggered, false);
+  assert.equal(calls, 1);
+});

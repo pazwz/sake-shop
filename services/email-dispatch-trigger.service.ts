@@ -70,6 +70,11 @@ export class EmailDispatchTriggerService {
     let failureCode = 'EMAIL_WORKER_TRIGGER_REQUEST_FAILED';
     for (const [index, delay] of EMAIL_DISPATCH_TRIGGER_DELAYS_MS.entries()) {
       if (delay > 0) await this.waitForRetry(delay);
+      if (environment.VERCEL_ENV === 'preview' && !getEmailDispatchTriggerConfig(environment).available) {
+        this.logger({ event: 'email_dispatch_trigger', outcome: 'FAILED',
+          code: 'PREVIEW_AUTH_EXPIRED_DURING_RETRY', attempts: index });
+        return { triggered: false as const, reason: 'TRIGGER_UNAVAILABLE', attempts: index };
+      }
       try {
         const response = await this.fetcher(config.endpoint, {
           method: 'POST',
