@@ -2,7 +2,19 @@
 
 Version: 1.0
 
-Last Update: 2026-08-14
+## Approved low-cost operations API behavior (2026-10-15)
+
+Admin refresh occurs on initial open, focus, hidden-to-visible, explicit refresh and local read events,
+not a 30-second interval. Hidden or 15-minute idle pages start no automatic background reads.
+POST /api/v1/admin/auth/activity is same-origin, authenticated and renews only a still-valid signed
+Admin idle deadline, retaining the eight-hour absolute ceiling. API/page auth rejects at 1h inactivity.
+Customer sessions and Payment API contracts are unchanged.
+Internal email event processing accepts strict identifier-only outbox/campaign events with existing
+internal authentication. Legacy batch processing is a manual reconciliation tool, not a periodic job.
+Reservation expiration is idempotent cleanup only (recommended daily 03:00 JST); all three existing
+AWS schedules remain DISABLED. Smaregi formal default is 24h plus existing manual operation.
+
+Last Update: 2026-10-15
 
 ---
 
@@ -19,7 +31,7 @@ Last Update: 2026-08-14
   Repeated acknowledgement is idempotent. Returns `{ read: true }`; invalid fields/membership 422,
   unauthenticated 401. No automatic read on listing, GET, prefetch or Admin reply.
 - Admin inbox uses SQL priority/pagination. NEW / IN_PROGRESS / ANSWERED / CLOSED enums unchanged.
-  30-second foreground-only polling; Browser Notification and new email notification are follow-ups.
+  Event-driven refresh on first visible load, focus/visibility, manual refresh and local events; no interval polling.
 
 ## 1. RESTful API
 
@@ -857,7 +869,7 @@ PATCH
 转为 RELEASED；Order COMPLETED 令 ACTIVE 转为 CONSUMED。重复事件只处理 ACTIVE，保持幂等。
 
 `POST /api/v1/internal/reservations/expire` 仅接受正确的 `Authorization: Bearer <CRON_SECRET>`，
-将 `expiresAt < now` 的 ACTIVE reservation 转为 EXPIRED。建议外部 scheduler 每 5 分钟调用。
+将非 NULL expiresAt <= server now 的 ACTIVE reservation 转为 EXPIRED。建议上线后每日 03:00 JST 清理；开发期调度保持 DISABLED。
 
 成功响应：
 
@@ -874,7 +886,7 @@ PATCH
 ```
 
 调用不接受 request body。缺少或错误 Bearer credential 返回 401。重复调用只转换仍为 ACTIVE
-且已到期的记录，因此幂等。Production 由独立 AWS Scheduler 以 `rate(5 minutes)` 调用，
+且非 NULL expiry <= server now 的记录，因此幂等。现有 Scheduler 保持 DISABLED；上线建议每日 03:00 JST，
 retry 1 次、maximum event age 300 秒。
 
 ---
@@ -915,14 +927,11 @@ PATCH
 
 ### Email worker
 
-`POST /api/v1/internal/email/process` 仅接受 `Authorization: Bearer <CRON_SECRET>`。body 为严格
-对象，可选且仅可包含 `{ outboxId }`：传入时以 atomic claim 处理该单条 PENDING / due-RETRY
-Outbox；省略时最多 claim 20 条到期 Outbox，供 retry/recovery 使用。它不接受 recipient、template
-或 payload。Production Email disabled 时返回成功的 `DISABLED` 结果且不 claim、不发送。Provider
-错误按 bounded backoff 标记 FAILED，不回滚 Customer、Order、Payment 或 Shipment；已经过期或已使用的
-verification / password-reset action 标记 `SKIPPED`，不会调用 provider。
-
-### Admin email preview
+`POST /api/v1/internal/email/process` 仅接受已有 CRON bearer authentication。
+strict body 可为 `{outboxId}`（发布该 ID）、`{}`（人工 republish due work）或 `{event}`
+（队列 worker 执行 strict outbox/campaign event），不能同时提交 outboxId 与 event。
+无 recipient/template/body。新事件路径配置缺失或处理失败返回 5xx；worker 不确认该队列记录。
+provider 失败仍写 FAILED + nextAttemptAt；调度失败通过队列 redelivery 修复。
 
 `/admin/email-preview` 仅有效 DEVELOPER 可访问，只渲染 Verification、Password Reset、Order
 Received、Shipment Sent 模板，不提供任意收件人发送功能。
@@ -1184,7 +1193,7 @@ SyncLog summary 额外包含 `sourceProductCount`、`sourceIdentityCount`、
 `s3DeleteFailureCount`。默认 `report` 只报告且不执行 missing mutation；明确配置 `apply`
 后，无业务引用商品 hard delete，有历史/CMS/box 引用商品 retire。任何 Product 分页失败、
 timeout、异常空快照或 identity set 不完整都会在 reconciliation 前 fail closed。
-逻辑。未来由 AWS EventBridge Scheduler + Lambda 每 15 分钟调用该 endpoint；AWS 资源与
+逻辑。未来由 AWS EventBridge Scheduler + Lambda 每 24 小时调用该 endpoint（现有调度保持 DISABLED）；AWS 资源与
 production `CRON_SECRET` 另行配置。Secret 未配置时请求仍拒绝，不会跳过认证。
 
 ---

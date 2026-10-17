@@ -3,6 +3,7 @@ import { EmailTemplate, NewsletterCampaignStatus } from '@prisma/client';
 import { ConflictError, NotFoundError, ValidationError } from '@/lib/errors';
 import { EmailOutboxRepository } from '@/repositories/email-outbox.repository';
 import { EmailDispatchTriggerService } from '@/services/email-dispatch-trigger.service';
+import { EmailEventTransport } from '@/services/email-event-transport.service';
 import {
   NewsletterCampaignRepository,
   NewsletterCampaignSectionOwnershipError,
@@ -72,6 +73,7 @@ export class NewsletterCampaignService {
     private readonly campaigns = new NewsletterCampaignRepository(),
     private readonly outbox = new EmailOutboxRepository(),
     private readonly trigger = new EmailDispatchTriggerService(),
+    private readonly events = new EmailEventTransport(),
   ) {}
 
   public async list() {
@@ -184,7 +186,11 @@ export class NewsletterCampaignService {
       ...(existing ? { beforeData: auditSnapshot(existing) } : {}),
       afterData: auditSnapshot(campaign),
     });
-    await this.trigger.trigger();
+    const event = { kind: 'campaign' as const, campaignId: id, scheduledAt: scheduledAt.toISOString() };
+    if (scheduledAt <= new Date()) await this.events.publish(event);
+    else await this.events.schedule(event, scheduledAt);
+    if (existing?.scheduledAt && existing.scheduledAt.getTime() !== scheduledAt.getTime())
+      await this.events.cancel({ kind: 'campaign', campaignId: id, scheduledAt: existing.scheduledAt.toISOString() }, existing.scheduledAt);
     return toDto(this.campaigns, campaign);
   }
 
@@ -202,6 +208,8 @@ export class NewsletterCampaignService {
       ...(existing ? { beforeData: auditSnapshot(existing) } : {}),
       afterData: auditSnapshot(campaign),
     });
+    if (existing?.scheduledAt)
+      await this.events.cancel({ kind: 'campaign', campaignId: id, scheduledAt: existing.scheduledAt.toISOString() }, existing.scheduledAt);
     return toDto(this.campaigns, campaign);
   }
 

@@ -191,6 +191,8 @@ test('send now schedules through the worker and never calls a provider inline', 
       recordAudit: async () => undefined,
     } as never,
     {} as never,
+    {} as never,
+    { publish: async () => undefined } as never,
   );
   const result = await service.sendNow(campaign.id, 'admin-1');
   assert.equal(result.status, NewsletterCampaignStatus.SCHEDULED);

@@ -94,7 +94,7 @@ export function InquiryDetail({ inquiry }: { inquiry: Inquiry }) {
       started = true;
       try {
         for (let offset = 0; offset < displayed.length; offset += 500) {
-          if (!active) return;
+          if (!active || document.hidden) { started = false; return; }
           await call(`/api/v1/admin/inquiries/${inquiry.id}/read`, 'POST', {
             messageIds: displayed.slice(offset, offset + 500),
           });

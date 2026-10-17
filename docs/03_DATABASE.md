@@ -2,7 +2,17 @@
 
 Version: 1.0
 
-Last Update: 2026-08-14
+## Low-cost mode invariants (2026-10-15)
+
+No schema migration is planned. Existing nullable reservation expiry and Outbox state are reused.
+Effective reservation: status=ACTIVE AND (expires_at IS NULL OR expires_at > server now).
+ACTIVE records with non-NULL expires_at <= now do not occupy stock even before cleanup.
+Cleanup conditionally marks only those records EXPIRED. Paid NULL-expiry holds remain valid.
+Payment confirmation checks the same predicate and never restores elapsed holds.
+Existing Outbox attempt_count, next_attempt_at and locked_at support conditional event handling.
+Admin idle expiry is a server-verified signed-token claim, not AdminUser.lastLoginAt.
+
+Last Update: 2026-10-15
 
 ---
 
@@ -411,7 +421,7 @@ created_at
 
 updated_at
 
-同一 OrderItem 最多一条 reservation。只有 ACTIVE 状态参与可售库存汇总；其他状态
+同一 OrderItem 最多一条 reservation。只有 ACTIVE 且（expires_at IS NULL 或 expires_at > server now）参与可售库存汇总；其他状态
 保留历史但不再占用库存。未支付 ACTIVE 有 expires_at；支付确认后的 ACTIVE 将其清空，
 直到 RELEASED 或 CONSUMED。Product、Order、OrderItem 均使用 Restrict 外键。
 

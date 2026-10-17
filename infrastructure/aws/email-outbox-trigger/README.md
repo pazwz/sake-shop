@@ -1,17 +1,16 @@
-# Email outbox trigger
+# Legacy email outbox trigger — DISABLED
 
-`sake-shop-email-outbox-trigger` is currently invoked by the
-`sake-shop-email-outbox-2m` EventBridge Scheduler. It reads the existing
-`CRON_SECRET` SSM SecureString and calls
-`POST /api/v1/internal/email/process` every two minutes.
+The existing sake-shop-email-outbox-2m Scheduler remains DISABLED.
+The name is historical; do not re-enable it or restore 2-minute/10-minute recovery polling.
+No Lambda, role, SSM parameter or Scheduler is deleted.
 
-The application now performs normal delivery through a post-commit immediate
-trigger. The Scheduler is retained only as retry/recovery protection: after
-production approval, change its rate to `rate(10 minutes)` while keeping its
-existing authenticated Lambda path, one retry, and 300-second maximum event
-age. This repository change does not modify AWS resources.
+Normal delivery is post-commit identifier publication to the new durable event path.
+One-time schedules handle provider retry and future Newsletter campaigns.
+See ../email-events/README.md for definitions, minimum IAM and rollout prerequisites.
+Those resources are NOT provisioned and the application is NOT deployed in this phase.
 
-The Lambda logs only HTTP status and aggregate processing counts. It never logs
-the Authorization header, recipient, token, API key, or message body. The
-Scheduler uses a dedicated least-privilege role, retries once, and discards
-events older than 300 seconds.
+The existing Lambda may be invoked manually after the event infrastructure is configured
+and the target is approved. It authenticates with the existing SSM CRON secret and
+republishes due Outbox IDs through POST /api/v1/internal/email/process.
+Manual invocation is not a harmless read: it can send messages.
+Never print the decrypted secret, full event or recipient into logs.

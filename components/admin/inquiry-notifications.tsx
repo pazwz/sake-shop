@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { startAdminInquiryPolling } from '@/lib/admin-inquiry-polling';
+import { ADMIN_INQUIRY_READ_EVENT, startAdminInquiryPolling } from '@/lib/admin-inquiry-polling';
 import { BellIcon } from '@/components/bell-icon';
 
 type Summary = {
@@ -22,8 +22,9 @@ export function InquiryNotifications() {
   const [unavailable, setUnavailable] = useState(false);
   useEffect(() => {
     let active = true;
-    const controller = new AbortController();
+    let controller: AbortController | undefined;
     const refresh = async () => {
+      controller = new AbortController();
       try {
         const response = await fetch('/api/v1/admin/inquiries/unread-summary', {
           cache: 'no-store',
@@ -36,13 +37,16 @@ export function InquiryNotifications() {
           setUnavailable(false);
         }
       } catch {
-        if (active) setUnavailable(true);
+        if (active && !controller?.signal.aborted) setUnavailable(true);
       }
     };
+    const onHidden = () => { if (document.hidden) controller?.abort(); };
+    document.addEventListener('visibilitychange', onHidden);
     const stop = startAdminInquiryPolling(refresh, document, window);
     return () => {
       active = false;
-      controller.abort();
+      controller?.abort();
+      document.removeEventListener('visibilitychange', onHidden);
       stop();
     };
   }, []);
@@ -62,6 +66,7 @@ export function InquiryNotifications() {
         ) : null}
       </summary>
       <div className="absolute right-0 z-50 mt-2 w-[min(22rem,calc(100vw-3.5rem))] border line bg-white p-5 shadow-sm">
+        <button type="button" className="text-xs underline" onClick={() => window.dispatchEvent(new Event(ADMIN_INQUIRY_READ_EVENT))}>更新</button>
         <p className="eyebrow">ADMIN NOTIFICATIONS</p>
         {unavailable ? (
           <p className="mt-3 text-sm">

@@ -2,7 +2,20 @@
 
 Version: 1.0
 
-Last Update: 2026-08-08
+## Approved low-cost operations mode (2026-10-15)
+
+Development keeps Reservation, Email recovery and Smaregi AWS schedules DISABLED.
+Formal Smaregi default is once per 24 hours plus existing Admin manual sync.
+Effective occupancy is ACTIVE AND (expiresAt IS NULL OR expiresAt > server now).
+Cleanup only materializes EXPIRED for non-NULL expiry <= now; it is not needed for stock correctness.
+Late payment with an elapsed ACTIVE reservation uses existing REQUIRES_REVIEW without re-holding.
+Emails use immediate durable events, retries after 1/5/30 minutes then terminal failure, and one-time
+future campaign dispatch. No recurring email polling is required by the new event path.
+Admin refresh is event-driven, pauses after 15 minutes idle, and server authentication expires after
+one hour without accepted user activity (existing eight-hour absolute ceiling remains).
+This implementation is NOT approved for Production deployment or AWS provisioning.
+
+Last Update: 2026-10-15
 
 ---
 
@@ -433,7 +446,7 @@ stera EC（待确认）
 
 价格同步
 
-Production 商品・Category・四店库存必须支持每 15 分钟的增量同步及有效 Admin
+Production 商品・Category・四店库存默认每 24 小时增量同步及有效 Admin
 手动立即同步。两个入口共用同一全局锁、异常分类、原子写入与 SyncLog；Smaregi
 始终只读。单商品税/负库存异常隔离，source identity、Store 集合、全局税率或 plan
 不一致时整批停止。新增商品默认 `isEcAvailable=false`，既有 LINXAS-owned 字段不得覆盖。

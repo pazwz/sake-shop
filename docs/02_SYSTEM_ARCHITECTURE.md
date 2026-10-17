@@ -2,7 +2,21 @@
 
 Version: 1.0
 
-Last Update: 2026-08-08
+## Approved low-cost architecture (2026-10-15)
+
+Business transaction -> PostgreSQL Outbox -> post-commit identifier-only SQS event -> worker -> Resend.
+Failures use one-time Scheduler events at 1/5/30 minutes; future Newsletter campaigns also use
+one-time events. Outbox conditional claims, stale-lock recovery and provider idempotency remain.
+Queue publication/schedule failure retains database work and exposes manual reconciliation;
+database commit and AWS publication are not atomic. No exactly-once guarantee is claimed.
+No resource is provisioned or Production env changed in this phase; infrastructure remains definitions.
+All legacy schedules remain DISABLED. Formal Smaregi cadence is 24h; reservation cleanup is
+recommended daily at 03:00 JST, never necessary for occupancy correctness.
+Effective reservations include NULL paid holds and only non-NULL expiry strictly after server now.
+Server-signed Admin idle deadlines enforce 1h inactivity without adding a session table; activity
+renewal is same-origin and interaction-triggered, not a background heartbeat.
+
+Last Update: 2026-10-15
 
 ---
 
@@ -487,7 +501,7 @@ EC 查询层按以下规则计算：
 
 ```text
 physicalTotalApproved = sum(approved store physical quantity)
-activeReservedQuantity = sum(ACTIVE product-level InventoryReservation)
+activeReservedQuantity = sum(ACTIVE AND (expiresAt IS NULL OR expiresAt > serverNow))
 availableQuantity = max(0, physicalTotalApproved - activeReservedQuantity)
 ```
 
@@ -510,7 +524,7 @@ reservation、校验整单并创建 Order / OrderItem / InventoryReservation。�
 不足时整个 transaction 回滚，不允许部分 reservation。InventoryReservation 不绑定 Store；
 最终仓库选择继续由工作人员人工决定。
 
-Reservation 生命周期为 ACTIVE → RELEASED / CONSUMED / EXPIRED。只有 ACTIVE 计入
+Reservation 生命周期为 ACTIVE → RELEASED / CONSUMED / EXPIRED。只有有效 ACTIVE（NULL expiry 或 expiry > server now）计入
 可售库存；release、consume 与 expire 只更新 ACTIVE 行，因此重复调用幂等。订单创建时
 设置集中配置的 30 分钟 expiresAt；支付成功后 ACTIVE 继续表示 confirmed hold，并将
 expiresAt 清空。支付失败/取消/退款与 Order CANCELLED 释放，Order COMPLETED 消费。
@@ -549,12 +563,16 @@ message，不记录密码、token、hash、email、数据库 URL 或邮件 Provi
 
 ## Email outbox and Newsletter
 
+内部 CONTACT_INQUIRY 通知可包含有界的顧客名、email、件名、区分、500字以内摘要、
+受付日時与已认证 Admin detail 链接。此为仅限内部 staff 通知的明确例外；
+Customer 通知仍不得包含正文或内部备注，queue/schedule/log 不包含这些个人信息。
+
 ```text
 Business transaction
         ↓
 EmailNotification / EmailOutbox (same DB transaction)
         ↓ commit
-AWS Scheduler → Lambda → POST /api/v1/internal/email/process
+Post-commit handoff → SQS / one-time Scheduler → Lambda → POST /api/v1/internal/email/process
         ↓
 EmailOutboxService (bounded claim/retry)
         ↓
@@ -562,8 +580,7 @@ EmailProviderAdapter → Resend
 ```
 
 外部 Resend 调用永远在业务 transaction 之外。每条 outbox 使用 unique eventKey 和稳定的
-`email-outbox:{id}` provider idempotency key；每批最多 20 条，重试为 1m / 5m / 30m /
-2h，最多 5 次。SENDING lock 超时后允许以相同 idempotency key 安全恢复。Production
+`email-outbox:{id}` provider idempotency key；每批最多 20 条，重试为 1m / 5m / 30m，最多 4 次尝试。SENDING lock 超时后允许以相同 idempotency key 安全恢复。Production
 缺少明确 `EMAIL_MODE=resend`、API key 或 From 时 fail closed 为 disabled，不把 console
 adapter 的结果标记成真实发送。
 
@@ -599,15 +616,14 @@ Admin reply → ContactInquiryMessage + EmailOutbox(ORDER_MESSAGE_NOTIFICATION)
 EmailOutbox 采用 transactional outbox：业务事务先完成 Customer / Order / Inquiry 与对应 Outbox
 持久化，随后由统一 `EmailDispatchTriggerService` 以已有 CRON bearer authentication 唤醒 internal
 email worker。trigger 只接受 Outbox ID，绝不接收收件人、template 或 payload；其网络失败不会回滚已
-提交的业务事务，PENDING Outbox 留给 recovery。post-commit trigger 仅对 Next.js application → internal
+提交的业务事务，PENDING Outbox 保留供显式人工 reconciliation。post-commit trigger 仅对 Next.js application → internal
 email worker 的网络唤醒做最多三次快速尝试（立即、约 1 秒、约 3 秒）；这不是 Resend provider retry，
-不会改变 Outbox 的 1m、5m、30m、2h earliest retry eligibility。验证与密码重置邮件发送前会重新核对
-token 未使用且未过期，失效时标记 `SKIPPED / EXPIRED_ACTION`，不调用 provider。EventBridge email worker
-以目标 `rate(10 minutes)` 作为 due RETRY、stranded-PENDING、stale-SENDING 的低频 recovery，而不是正常
-发送路径；因此 `EMAIL_RETRY_DELAYS_MS` 只表示最早允许重试的时间，在 10 分钟 recovery cadence 下不保证
-恰好在该延迟时刻执行。
-Email worker health 的 stale threshold 为 25 / 45 分钟，以容纳目标 10 分钟 recovery interval 的
-正常调度抖动；即时 trigger 失败本身只记录安全 failure signal，不会把已经提交的业务请求变成 500。
+不会改变 Outbox 的 1m、5m、30m earliest retry eligibility。验证与密码重置邮件发送前会重新核对
+token 未使用且未过期，失效时标记 `SKIPPED / EXPIRED_ACTION`，不调用 provider。
+新事件路径使用持久 SQS、一次性 Scheduler retry 与未来 Newsletter dispatch；旧 recovery schedule 保持 DISABLED。
+初始 publication 失败保留 Outbox，记录安全 failure signal，需要人工 reconciliation。
+没有邮件时不以缺少 heartbeat 判定 unhealthy；监控积压、过期 lease、terminal failure 和逾期 retry。
+本轮只准备资源定义，不部署、不添加 Production env；上线另行验收。
 
 ## Browser E2E boundary
 
@@ -715,14 +731,14 @@ atomic plan invariant 失败。此时不写 Product/Inventory，并将 SyncLog �
 Admin 冲突返回 409，internal endpoint 记录 `SKIPPED_ALREADY_RUNNING` 后结束。每次结果复用
 SyncLog 的 JSON payload，记录 trigger、source/count summary、warning、error code；
 其中 orphan 分为 `knownOrphanCount` 与 `newOrphanCount`，不记录 credentials。
-定时入口预留给 AWS EventBridge Scheduler + Lambda 每 15 分钟 GET 调用，并使用
+正式默认入口为 AWS EventBridge Scheduler + Lambda 每 24 小时 GET 调用，并使用
 `Authorization: Bearer <CRON_SECRET>`。Vercel Hobby 不配置 Cron；AWS Scheduler / Lambda
 资源及 production `CRON_SECRET` 配置属于后续独立实施范围。Secret 未配置时 internal
 endpoint 必须 fail closed。
 
 ## Reservation expiration scheduler
 
-预约过期通过独立 AWS EventBridge Scheduler 每 5 分钟触发 Node.js Lambda，再由 Lambda
+现有 Scheduler 保持 DISABLED。上线后建议每天 03:00 JST 触发 Node.js Lambda，再由 Lambda
 以 POST 调用 `/api/v1/internal/reservations/expire`。Lambda 每次从既有 SSM SecureString
 读取 `CRON_SECRET`，日志只记录 HTTP status、过期件数与耗时。非 2xx 必须令 Lambda
 失败。Scheduler 使用独立 least-privilege invoke role，maximum event age 为 300 秒，

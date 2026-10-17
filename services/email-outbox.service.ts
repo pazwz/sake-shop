@@ -63,7 +63,7 @@ export class EmailOutboxService {
             row.template === EmailTemplate.PASSWORD_RESET) &&
           !(await this.outbox.isActionCurrent(row.template, payload.tokenId))
         ) {
-          await this.outbox.markSkipped(row.id, 'EXPIRED_ACTION');
+          await this.outbox.markSkipped(row.id, 'EXPIRED_ACTION', row.lockedAt);
           continue;
         }
         if (row.template === EmailTemplate.NEWSLETTER_CAMPAIGN) {
@@ -76,6 +76,7 @@ export class EmailOutboxService {
             await this.outbox.markSkipped(
               row.id,
               'NEWSLETTER_SUBSCRIPTION_NOT_ELIGIBLE',
+              row.lockedAt,
             );
             if (row.newsletterCampaignId)
               completedCampaigns.add(row.newsletterCampaignId);
@@ -108,12 +109,14 @@ export class EmailOutboxService {
               row.id,
               'resend-contacts',
               `contact-${row.id}`,
+              row.lockedAt,
             );
           } else {
             await this.outbox.markSent(
               row.id,
               adapter.provider,
               `contact-${row.id}`,
+              row.lockedAt,
             );
           }
         } else {
@@ -135,21 +138,24 @@ export class EmailOutboxService {
             row.id,
             adapter.provider,
             result.messageId,
+            row.lockedAt,
           );
         }
         sent += 1;
         if (row.newsletterCampaignId)
           completedCampaigns.add(row.newsletterCampaignId);
-      } catch (error) {
+      } catch {
         failed += 1;
         const nextAttempt = row.attemptCount + 1;
         const delay = EMAIL_RETRY_DELAYS_MS[nextAttempt - 1];
         await this.outbox.markFailed(
           row.id,
-          error instanceof Error ? error.message : 'EMAIL_DELIVERY_FAILED',
+          // Provider errors can contain recipients, URLs or credentials.
+          'EMAIL_DELIVERY_FAILED',
           nextAttempt >= EMAIL_MAX_ATTEMPTS || delay === undefined
             ? null
             : new Date(Date.now() + delay),
+          row.lockedAt,
         );
         if (row.newsletterCampaignId)
           completedCampaigns.add(row.newsletterCampaignId);

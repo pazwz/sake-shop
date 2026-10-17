@@ -25,10 +25,16 @@ const wait: Wait = (milliseconds) =>
 const defaultLogger: EmailDispatchTriggerLogger = (event) =>
   console.error(JSON.stringify(event));
 
+// Read only the current platform-injected request identity; never refresh via a local login.
+const readPreviewRequestToken = async () => {
+  const { headers } = await import('next/headers');
+  return (await headers()).get('x-vercel-oidc-token') ?? undefined;
+};
+
 /**
  * Wakes the authenticated EmailOutbox worker only after the caller's database
  * transaction has completed. Trigger failure is intentionally non-fatal: the
- * durable PENDING outbox row remains available to recovery processing.
+ * durable PENDING row remains available for explicit reconciliation if handoff fails.
  */
 export class EmailDispatchTriggerService {
   public constructor(
@@ -36,36 +42,71 @@ export class EmailDispatchTriggerService {
     private readonly environment: EmailEnvironment = process.env,
     private readonly logger: EmailDispatchTriggerLogger = defaultLogger,
     private readonly waitForRetry: Wait = wait,
+    private readonly previewRequestToken: () => string | undefined | Promise<string | undefined> = readPreviewRequestToken,
   ) {}
 
   public async trigger(outboxId?: string) {
-    const config = getEmailDispatchTriggerConfig(this.environment);
-    if (!config.available || !config.secret)
+    let environment = this.environment;
+    if (environment.VERCEL_ENV === 'preview' && !environment.VERCEL_OIDC_TOKEN) {
+      try {
+        environment = { ...environment, VERCEL_OIDC_TOKEN: await this.previewRequestToken() };
+      } catch {
+        // An absent request context is unavailable auth, not permission to use another identity.
+      }
+    }
+    const config = getEmailDispatchTriggerConfig(environment);
+    if (!config.available || !config.secret) {
+      if (this.environment.VERCEL_ENV === 'preview') this.logger({
+        event: 'email_dispatch_trigger', outcome: 'FAILED',
+        code: ('reason' in config && config.reason) || 'TRIGGER_UNAVAILABLE', attempts: 0,
+      });
       return {
         triggered: false as const,
         reason: 'TRIGGER_UNAVAILABLE',
         attempts: 0,
       };
+    }
 
     let failureCode = 'EMAIL_WORKER_TRIGGER_REQUEST_FAILED';
     for (const [index, delay] of EMAIL_DISPATCH_TRIGGER_DELAYS_MS.entries()) {
       if (delay > 0) await this.waitForRetry(delay);
+      if (environment.VERCEL_ENV === 'preview' && !getEmailDispatchTriggerConfig(environment).available) {
+        this.logger({ event: 'email_dispatch_trigger', outcome: 'FAILED',
+          code: 'PREVIEW_AUTH_EXPIRED_DURING_RETRY', attempts: index });
+        return { triggered: false as const, reason: 'TRIGGER_UNAVAILABLE', attempts: index };
+      }
       try {
         const response = await this.fetcher(config.endpoint, {
           method: 'POST',
           headers: {
             Authorization: `Bearer ${config.secret}`,
             'Content-Type': 'application/json',
+            ...(config.protectionToken
+              ? { 'x-vercel-trusted-oidc-idp-token': config.protectionToken }
+              : {}),
           },
+          ...(this.environment.VERCEL_ENV === 'preview'
+            ? { redirect: 'error' as const }
+            : {}),
           body: JSON.stringify(outboxId ? { outboxId } : {}),
           signal: AbortSignal.timeout(EMAIL_DISPATCH_TRIGGER_TIMEOUT_MS),
         });
-        if (response.ok)
-          return { triggered: true as const, reason: null, attempts: index + 1 };
+        if (response.ok) {
+          if (this.environment.VERCEL_ENV === 'preview') {
+            const result = await response.json();
+            if (result.success !== true || result.data?.outcome !== 'QUEUED')
+              throw new Error('EMAIL_WORKER_RESPONSE_INVALID');
+          }
+          return {
+            triggered: true as const,
+            reason: null,
+            attempts: index + 1,
+          };
+        }
         failureCode = `EMAIL_WORKER_HTTP_${response.status}`;
       } catch {
         // Do not log raw transport errors: they can contain sensitive URLs or
-        // implementation details. The durable outbox will be recovered later.
+        // implementation details. Failed initial handoffs require explicit reconciliation.
         failureCode = 'EMAIL_WORKER_TRIGGER_REQUEST_FAILED';
       }
     }

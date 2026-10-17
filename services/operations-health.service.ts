@@ -111,6 +111,8 @@ export class OperationsHealthService {
       snapshot.expiredReservations,
       '期限切れ ACTIVE reservation と期限処理 worker を監視しています。',
     );
+    if (!snapshot.expiredReservations)
+      return { ...item, status: 'HEALTHY', stale: false, summary: '期限切れ記録はありません。日次清理の停止は有効在庫計算に影響しません。' };
     if (
       snapshot.expiredReservations >=
       OPERATIONS_HEALTH_THRESHOLDS.reservationExpiredBacklog.critical
@@ -137,13 +139,16 @@ export class OperationsHealthService {
       snapshot.email.pending +
       snapshot.email.stuckSending +
       snapshot.email.terminalTransactionalFailed;
-    const item = workerHealth(
+    const history = workerHealth(
       snapshot.emailRuns,
       now,
       OPERATIONS_HEALTH_THRESHOLDS.emailWorker,
       backlogCount,
       'EmailOutbox worker と transactional delivery queue を監視しています。',
     );
+    // Event-driven workers have no heartbeat; silence is healthy if no actionable work exists.
+    const item: OperationsHealthItem = { ...history, status: 'HEALTHY', stale: false,
+      summary: 'メールはイベントで処理します。定期的な実行は不要です。' };
     if (
       snapshot.email.terminalTransactionalFailed > 0 ||
       snapshot.email.stuckSending > 0
@@ -155,6 +160,7 @@ export class OperationsHealthService {
           'transactional email の送信失敗または stuck SENDING を確認してください。',
       };
     if (
+      snapshot.email.overdue > 0 ||
       snapshot.email.pending >=
       OPERATIONS_HEALTH_THRESHOLDS.emailPendingBacklog.critical
     )

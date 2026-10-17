@@ -6,6 +6,8 @@ import {
 } from '@/config/env';
 
 export const SMAREGI_SYSTEM = 'SMAREGI';
+// Formal launch default; development Scheduler remains DISABLED.
+export const SMAREGI_DEFAULT_SYNC_HOURS = 24;
 export const SMAREGI_CONTRACT_EVENT = 'AppSubscription';
 export const SMAREGI_CONTRACT_ENTITY_TYPE = 'APP_SUBSCRIPTION';
 export const SMAREGI_CONTRACT_ACTIONS = [
