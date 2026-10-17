@@ -105,24 +105,21 @@ test('Preview dispatch supplies both auth layers and accepts only an application
 });
 
 test('Production retains its endpoint behavior and does not read Preview credentials', async () => {
-  const env = { ...environment(), VERCEL_ENV: 'production' };
+  const env = { ...environment(), VERCEL_ENV: 'production', EMAIL_PROCESS_ENDPOINT_URL: 'https://linxas-fukuoka.com/api/v1/internal/email/process' };
   assert.equal(
     getEmailDispatchTriggerConfig({
       ...env,
       EMAIL_PROCESS_ENDPOINT_URL:
-        'https://internal.example.test/api/v1/internal/email/process',
+        'https://linxas-fukuoka.com/api/v1/internal/email/process',
     }).endpoint,
-    'https://internal.example.test/api/v1/internal/email/process',
+    'https://linxas-fukuoka.com/api/v1/internal/email/process',
   );
   Object.defineProperty(env, 'VERCEL_OIDC_TOKEN', {
     get: () => {
       throw new Error('Production read Preview protection');
     },
   });
-  assert.equal(
-    getEmailDispatchTriggerConfig(env).endpoint,
-    'https://old-preview.vercel.app/api/v1/internal/email/process',
-  );
+  assert.equal(getEmailDispatchTriggerConfig(env).available, true);
   const result = await new EmailDispatchTriggerService(
     async () => new Response('', { status: 200 }),
     env,

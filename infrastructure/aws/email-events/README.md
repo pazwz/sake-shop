@@ -1,5 +1,18 @@
 # Email events — NOT provisioned / NOT deployed
 
+## Production Phase 2A callback preparation (2026-10-17)
+
+Production application and Worker both require the explicit stable endpoint
+`https://linxas-fukuoka.com/api/v1/internal/email/process`. No public-site/deployment fallback
+is permitted in Production. Existing Production application Bearer is reused; it is distinct
+from Preview auth. Production does not use Preview protection cookies or local Vercel credentials.
+The no-store `GET /api/v1/internal/email/health` returns 204 only for the correct Bearer,
+401 for missing/wrong auth, without DB, queue or provider work. Direct Worker invocation
+`{"kind":"auth-probe"}` uses the same SSM credential and calls health only, failing on any
+response other than 204. Never use a process `{}` request as a probe: it republishes pending work.
+Malformed JSON is rejected before operations logging. Consumer activation is separately gated;
+Phase 2A leaves Production/Preview consumers and all legacy schedules disabled.
+
 ## Isolated Preview callback authentication
 
 The authorized Preview environment has its own database, Queue, DLQ, Scheduler group and Worker.

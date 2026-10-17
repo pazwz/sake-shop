@@ -38,7 +38,7 @@ test('queue worker acknowledges success only; transport, auth and malformed resp
   const requests: RequestInit[] = [];
   let status = 503;
   const worker = createHandler({
-    environment: { EMAIL_PROCESS_ENDPOINT_URL: 'https://example.test/api/v1/internal/email/process', CRON_SECRET_PARAMETER: '/test/secret' },
+    environment: { EMAIL_PROCESS_ENDPOINT_URL: 'https://linxas-fukuoka.com/api/v1/internal/email/process', CRON_SECRET_PARAMETER: '/test/secret' },
     readSecret: async () => 'test-only-secret',
     request: async (_url: string, init: RequestInit) => {
       requests.push(init);

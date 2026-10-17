@@ -927,10 +927,16 @@ PATCH
 
 ### Email worker
 
+`GET /api/v1/internal/email/health` is an authenticated, no-store auth probe: the existing
+CRON Bearer is required (missing/wrong: 401; correct: 204). It does not access the database,
+Outbox, provider or queue. It is never a delivery/recovery trigger.
+
 `POST /api/v1/internal/email/process` 仅接受已有 CRON bearer authentication。
 strict body 可为 `{outboxId}`（发布该 ID）、`{}`（人工 republish due work）或 `{event}`
 （队列 worker 执行 strict outbox/campaign event），不能同时提交 outboxId 与 event。
 无 recipient/template/body。新事件路径配置缺失或处理失败返回 5xx；worker 不确认该队列记录。
+Malformed/absent JSON returns 422 before operations logging or database work; it never defaults
+to `{}`. Explicit `{}` remains a manual due-work republish, NOT a health probe.
 provider 失败仍写 FAILED + nextAttemptAt；调度失败通过队列 redelivery 修复。
 
 `/admin/email-preview` 仅有效 DEVELOPER 可访问，只渲染 Verification、Password Reset、Order

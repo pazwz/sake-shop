@@ -23,7 +23,9 @@ const requestValidator = z
 export const POST = async (request: Request) => {
   try {
     assertCronAuthorization(request.headers.get('authorization'));
-    const body = await request.json().catch(() => ({}));
+    const body = await request.json().catch(() => {
+      throw new ValidationError('リクエストが不正です。');
+    });
     const input = requestValidator.parse(body);
     return createSuccessResponse(
       await new OperationsRunService().run(EMAIL_OUTBOX_OPERATION, async () => {

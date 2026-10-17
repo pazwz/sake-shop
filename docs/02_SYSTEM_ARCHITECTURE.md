@@ -573,6 +573,14 @@ Business transaction
 EmailNotification / EmailOutbox (same DB transaction)
         ↓ commit
 Post-commit handoff → SQS / one-time Scheduler → Lambda → POST /api/v1/internal/email/process
+
+Production internal dispatch requires explicit `EMAIL_PROCESS_ENDPOINT_URL` equal to
+`https://linxas-fukuoka.com/api/v1/internal/email/process`; missing/other targets fail closed.
+It does not fall back to the public canonical/site URL. Production service authentication uses
+the existing application Bearer, separately from Preview deployment protection.
+`GET /api/v1/internal/email/health` verifies only this Bearer without DB/queue/provider access.
+The Worker accepts a direct `{kind:"auth-probe"}` invocation to call that health route only;
+it does not publish, consume or process email events during this probe.
         ↓
 EmailOutboxService (bounded claim/retry)
         ↓

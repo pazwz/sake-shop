@@ -137,6 +137,17 @@ export const getEmailDispatchTriggerConfig = (
       };
     }
   }
+  const production = environment.VERCEL_ENV === 'production' ||
+    (environment.NODE_ENV === 'production' && !environment.VERCEL_ENV);
+  if (production) {
+    const endpoint = environment.EMAIL_PROCESS_ENDPOINT_URL ?? '';
+    return {
+      available: Boolean(secret && endpoint === 'https://linxas-fukuoka.com/api/v1/internal/email/process'),
+      endpoint,
+      secret: secret ?? null,
+      protectionToken: null,
+    } as const;
+  }
   const endpoint =
     environment.EMAIL_PROCESS_ENDPOINT_URL ??
     `${getPublicSiteUrl(environment).replace(/\/$/, '')}/api/v1/internal/email/process`;

@@ -20,7 +20,17 @@ export const createHandler = ({ readSecret, request = fetch, environment = proce
     secret = auth.secret;
     headers.Cookie = auth.protectionCookie;
   }
+  if (environment.EMAIL_DEPLOYMENT_ENV !== 'preview' &&
+      endpoint !== 'https://linxas-fukuoka.com/api/v1/internal/email/process')
+    throw new Error('EMAIL_EVENT_WORKER_NOT_CONFIGURED');
   headers.Authorization = `Bearer ${secret}`;
+  if (event?.kind === 'auth-probe' && Object.keys(event).length === 1) {
+    const response = await request(new URL('/api/v1/internal/email/health', endpoint).href, {
+      method: 'GET', headers, redirect: 'error', signal: AbortSignal.timeout(45_000),
+    });
+    if (response.status !== 204) throw new Error('EMAIL_EVENT_AUTH_PROBE_REJECTED');
+    return { outcome: 'AUTHENTICATED' };
+  }
   for (const record of event.Records ?? []) {
     try {
       const payload = JSON.parse(record.body);
