@@ -1,12 +1,13 @@
 import { SQSClient, SendMessageCommand } from '@aws-sdk/client-sqs';
 import { SchedulerClient, CreateScheduleCommand, DeleteScheduleCommand } from '@aws-sdk/client-scheduler';
 import type { EmailEvent, EmailEventAdapter } from '@/services/email-event-transport.service';
+import { getEmailAwsClientConfig } from '@/lib/aws/email-event-client';
 
 /** Configuration is deliberately not provisioned or written into Production by this change. */
 export class AwsEmailEventAdapter implements EmailEventAdapter {
   constructor(
-    private readonly sqs = new SQSClient({}),
-    private readonly scheduler = new SchedulerClient({}),
+    private readonly sqs = new SQSClient(getEmailAwsClientConfig()),
+    private readonly scheduler = new SchedulerClient(getEmailAwsClientConfig()),
     private readonly env: Record<string, string | undefined> = process.env,
   ) {}
 

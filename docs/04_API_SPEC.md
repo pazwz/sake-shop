@@ -927,6 +927,12 @@ PATCH
 
 ### Email worker
 
+`POST /api/v1/internal/email/identity` accepts only `{action:"create-disabled-schedule"}` with
+the existing CRON Bearer and Production environment. It verifies the real STS Email role and creates
+a DISABLED, 30-day-future `email-identity-probe-*` schedule. Returns only caller ARN/name/state.
+`DELETE` accepts only `{name:"email-identity-probe-<uuid>"}` to clean up that probe.
+Missing/wrong auth: 401; Preview: 403; invalid body/name: 422. No DB/SQS publish/email work occurs.
+
 `GET /api/v1/internal/email/health` is an authenticated, no-store auth probe: the existing
 CRON Bearer is required (missing/wrong: 401; correct: 204). It does not access the database,
 Outbox, provider or queue. It is never a delivery/recovery trigger.

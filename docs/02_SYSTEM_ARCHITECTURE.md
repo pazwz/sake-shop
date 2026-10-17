@@ -581,6 +581,15 @@ the existing application Bearer, separately from Preview deployment protection.
 `GET /api/v1/internal/email/health` verifies only this Bearer without DB/queue/provider access.
 The Worker accepts a direct `{kind:"auth-probe"}` invocation to call that health route only;
 it does not publish, consume or process email events during this probe.
+
+Production Email AWS clients explicitly use `EMAIL_EVENT_APP_ROLE_ARN` with Vercel OIDC / STS
+15-minute sessions, never the default/media credential chain. The exact approved role is
+`sake-shop-production-email-app`; missing/other role fails closed. Preview cannot select it.
+Trust pins the latte-moca issuer, audience and sake-shop Production subject. Only the existing
+email Application Policy is attached; no GetSchedule, S3 or Preview resource access.
+Media S3 credentials/configuration remain unchanged. A separately Bearer-protected, Production-only
+identity probe creates/cancels only `email-identity-probe-*` DISABLED future schedules and checks STS
+caller identity. It never accesses the database, publishes SQS messages or calls an email provider.
         ↓
 EmailOutboxService (bounded claim/retry)
         ↓

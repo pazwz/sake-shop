@@ -1,5 +1,24 @@
 # Email events — NOT provisioned / NOT deployed
 
+## Production application identity (Phase 2B-1)
+
+`sake-shop-production-email-app` trusts only `https://oidc.vercel.com/latte-moca`, audience
+`https://vercel.com/latte-moca`, subject `owner:latte-moca:project:sake-shop:environment:production`.
+The reproducible trust document is `production-app-trust.json`; no wildcard subject is used.
+Only the existing Production ApplicationPolicy is attached. It remains SendMessage on the exact
+Production queue, Create/Delete on `schedule/sake-shop-production-email-once/email-*`, and PassRole
+on the exact Production Scheduler role conditioned on Scheduler service. GetSchedule stays denied.
+
+Production-only non-secret `EMAIL_EVENT_APP_ROLE_ARN` selects this exact role. Email clients use the
+pinned official Vercel OIDC AWS provider with 900-second STS sessions, never media/static credentials.
+The media S3 client and its environment variables are unchanged. Preview cannot select this role.
+The existing Bearer protects the Production-only `/api/v1/internal/email/identity` probe. It checks
+STS caller identity, creates a DISABLED future identifier-only `email-identity-probe-*` schedule,
+then allows explicit cancellation. Operators read the schedule with their existing identity.
+No DB, Queue publication or email provider is used. Queue SendMessage/negative permission cases
+are checked with IAM simulation; real business delivery is deferred to separately authorized 2B-2.
+Keep both consumers and the three legacy schedules disabled throughout 2B-1.
+
 ## Production Phase 2A callback preparation (2026-10-17)
 
 Production application and Worker both require the explicit stable endpoint

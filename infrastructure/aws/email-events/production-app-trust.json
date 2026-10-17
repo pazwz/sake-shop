@@ -1,0 +1,12 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Effect": "Allow",
+    "Principal": { "Federated": "arn:aws:iam::108782085732:oidc-provider/oidc.vercel.com/latte-moca" },
+    "Action": "sts:AssumeRoleWithWebIdentity",
+    "Condition": { "StringEquals": {
+      "oidc.vercel.com/latte-moca:aud": "https://vercel.com/latte-moca",
+      "oidc.vercel.com/latte-moca:sub": "owner:latte-moca:project:sake-shop:environment:production"
+    } }
+  }]
+}
