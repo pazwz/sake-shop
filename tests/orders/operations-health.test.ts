@@ -64,7 +64,7 @@ test('Smaregi warning, stale, and fatal states are separated', async () => {
   assert.equal(warning.smaregiSync.status, 'WARNING');
 
   const stale = await serviceFor(
-    snapshot({ smaregiRuns: [run(SyncStatus.SUCCESS, 27 * 60)] }),
+    snapshot({ smaregiRuns: [run(SyncStatus.SUCCESS, 31 * 60)] }),
   ).getHealth(now);
   assert.equal(stale.smaregiSync.status, 'WARNING');
 
@@ -74,6 +74,21 @@ test('Smaregi warning, stale, and fatal states are separated', async () => {
     }),
   ).getHealth(now);
   assert.equal(failed.smaregiSync.status, 'CRITICAL');
+});
+
+test('daily Smaregi sync stays healthy through 30h and becomes critical after 48h', async () => {
+  for (const [minutesAgo, expected] of [
+    [26 * 60, 'HEALTHY'],
+    [30 * 60, 'HEALTHY'],
+    [30 * 60 + 1, 'WARNING'],
+    [48 * 60, 'WARNING'],
+    [48 * 60 + 1, 'CRITICAL'],
+  ] as const) {
+    const health = await serviceFor(
+      snapshot({ smaregiRuns: [run(SyncStatus.SUCCESS, minutesAgo)] }),
+    ).getHealth(now);
+    assert.equal(health.smaregiSync.status, expected, `${minutesAgo} minutes`);
+  }
 });
 
 test('reservation worker stale and expired active backlog are visible', async () => {

@@ -34,6 +34,8 @@ test('both public and locked checkout aggregation ignore elapsed holds before cl
     { status: 'ACTIVE', expiresAt: now },
     { status: 'ACTIVE', expiresAt: new Date(now.getTime() - 1) },
     { status: 'RELEASED', expiresAt: null },
+    { status: 'CONSUMED', expiresAt: new Date(now.getTime() - 1) },
+    { status: 'EXPIRED', expiresAt: new Date(now.getTime() - 1) },
   ];
   const delegate = {
     groupBy: async ({ where }: { where: Prisma.InventoryReservationWhereInput }) =>
@@ -57,6 +59,12 @@ test('both public and locked checkout aggregation ignore elapsed holds before cl
   assert.equal((await repository.expireDue(now)).count, 0);
   assert.equal((await repository.getActiveReservedQuantities(['p'])).get('p'), 2);
   assert.equal(rows[0].status, 'ACTIVE');
+  assert.equal(rows[1].status, 'ACTIVE');
+  assert.equal(rows[2].status, 'EXPIRED');
+  assert.equal(rows[3].status, 'EXPIRED');
+  assert.equal(rows[4].status, 'RELEASED');
+  assert.equal(rows[5].status, 'CONSUMED');
+  assert.equal(rows[6].status, 'EXPIRED');
 });
 
 for (const [label, offset, expected] of [

@@ -4,7 +4,8 @@ Version: 1.0
 
 ## Approved low-cost operations mode (2026-10-15)
 
-Development keeps Reservation, Email recovery and Smaregi AWS schedules DISABLED.
+Production daily schedules approved 2026-10-17: Smaregi at 09:00 and Reservation cleanup
+at 03:00, both Asia/Tokyo, reusing the existing resources. Email recovery stays DISABLED.
 Formal Smaregi default is once per 24 hours plus existing Admin manual sync.
 Effective occupancy is ACTIVE AND (expiresAt IS NULL OR expiresAt > server now).
 Cleanup only materializes EXPIRED for non-NULL expiry <= now; it is not needed for stock correctness.

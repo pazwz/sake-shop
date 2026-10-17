@@ -11,8 +11,9 @@ Admin idle deadline, retaining the eight-hour absolute ceiling. API/page auth re
 Customer sessions and Payment API contracts are unchanged.
 Internal email event processing accepts strict identifier-only outbox/campaign events with existing
 internal authentication. Legacy batch processing is a manual reconciliation tool, not a periodic job.
-Reservation expiration is idempotent cleanup only (recommended daily 03:00 JST); all three existing
-AWS schedules remain DISABLED. Smaregi formal default is 24h plus existing manual operation.
+Reservation expiration is idempotent cleanup only, scheduled daily 03:00 Asia/Tokyo.
+Smaregi runs daily 09:00 Asia/Tokyo plus existing Admin manual operation.
+The two existing schedules are enabled under the 2026-10-17 approval; legacy Email recovery stays DISABLED.
 
 Last Update: 2026-10-15
 

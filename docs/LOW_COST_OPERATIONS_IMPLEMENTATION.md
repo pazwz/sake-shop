@@ -1,5 +1,23 @@
 # Low-cost operations implementation — 2026-10-15
 
+## Production daily schedules — 2026-10-17
+
+The approved daily schedules supersede the original disabled development state below.
+Production Email Event cutover is complete: Production consumer Enabled, Preview consumer Disabled.
+
+| Existing resource (not recreated) | Expression | Timezone | State |
+| --- | --- | --- | --- |
+| sake-shop-smaregi-sync-15m | cron(0 9 * * ? *) | Asia/Tokyo | ENABLED |
+| sake-shop-reservation-expiration-5m | cron(0 3 * * ? *) | Asia/Tokyo | ENABLED |
+| sake-shop-email-outbox-2m | rate(10 minutes) | UTC | DISABLED |
+
+Flexible windows remain OFF. Existing targets, input, roles and retry settings are preserved.
+Smaregi health uses the last successful sync: HEALTHY through 30h (including 26h), WARNING
+after 30h and CRITICAL after 48h; a failed latest run remains CRITICAL immediately.
+Admin manual sync is unchanged. Reservation cleanup only marks elapsed, non-NULL ACTIVE
+holds EXPIRED; effective inventory and paid NULL-expiry holds are unchanged.
+No job is invoked manually, no migration runs, and Checkout remains Disabled.
+
 ## Delivery boundary
 
 Isolated worktree: /Users/shu/.codex/worktrees/low-cost-operations/sake-shop
@@ -59,7 +77,7 @@ Independent read-only review found and verified the campaign terminal-completion
 Existing test-database image URLs produced CloudFront 403 and Next development warnings; these are
 recorded, not represented as new Production failures or repaired in this task.
 
-## Existing schedules (read-only verified)
+## Original development schedules (2026-10-15 snapshot)
 
 | Existing name | State |
 | --- | --- |

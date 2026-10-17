@@ -10,8 +10,9 @@ one-time events. Outbox conditional claims, stale-lock recovery and provider ide
 Queue publication/schedule failure retains database work and exposes manual reconciliation;
 database commit and AWS publication are not atomic. No exactly-once guarantee is claimed.
 No resource is provisioned or Production env changed in this phase; infrastructure remains definitions.
-All legacy schedules remain DISABLED. Formal Smaregi cadence is 24h; reservation cleanup is
-recommended daily at 03:00 JST, never necessary for occupancy correctness.
+Production daily schedules approved 2026-10-17 reuse existing resources: Smaregi at 09:00
+and Reservation cleanup at 03:00, both Asia/Tokyo. Legacy Email recovery stays DISABLED.
+Cleanup is never necessary for occupancy correctness; Admin manual Smaregi sync remains available.
 Effective reservations include NULL paid holds and only non-NULL expiry strictly after server now.
 Server-signed Admin idle deadlines enforce 1h inactivity without adding a session table; activity
 renewal is same-origin and interaction-triggered, not a background heartbeat.
